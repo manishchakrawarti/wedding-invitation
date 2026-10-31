@@ -38,6 +38,7 @@ EN = {
     "save_card": "Save the card",
     "scroll": "Scroll ↓",
     "daughter_of": "daughter of", "son_of": "son of",
+    "scan_rsvp": "Scan for directions & RSVP",
     "your_name": "Your name *",
     "phone": "Phone",
     "arrival_date": "Arrival date",
@@ -47,6 +48,7 @@ EN = {
 
 T = {
     "hi": {
+        "scan_rsvp": "रास्ता और जवाब के लिए स्कैन करें",
         "your_name": "आपका नाम *",
         "phone": "फ़ोन",
         "arrival_date": "पहुँचने की तारीख",
@@ -68,6 +70,7 @@ T = {
         "daughter_of": "सुपुत्री", "son_of": "सुपुत्र",
     },
     "mr": {
+        "scan_rsvp": "मार्ग व उत्तरासाठी स्कॅन करा",
         "your_name": "आपले नाव *",
         "phone": "फोन",
         "arrival_date": "येण्याची तारीख",
@@ -89,6 +92,7 @@ T = {
         "daughter_of": "कन्या", "son_of": "चिरंजीव",
     },
     "bn": {
+        "scan_rsvp": "পথনির্দেশ ও উত্তরের জন্য স্ক্যান করুন",
         "your_name": "আপনার নাম *",
         "phone": "ফোন",
         "arrival_date": "পৌঁছানোর তারিখ",
@@ -110,6 +114,7 @@ T = {
         "daughter_of": "কন্যা", "son_of": "পুত্র",
     },
     "gu": {
+        "scan_rsvp": "રસ્તો અને જવાબ માટે સ્કેન કરો",
         "your_name": "આપનું નામ *",
         "phone": "ફોન",
         "arrival_date": "આવવાની તારીખ",
@@ -131,6 +136,7 @@ T = {
         "daughter_of": "સુપુત્રી", "son_of": "સુપુત્ર",
     },
     "pa": {
+        "scan_rsvp": "ਰਸਤੇ ਅਤੇ ਜਵਾਬ ਲਈ ਸਕੈਨ ਕਰੋ",
         "your_name": "ਤੁਹਾਡਾ ਨਾਮ *",
         "phone": "ਫ਼ੋਨ",
         "arrival_date": "ਪਹੁੰਚਣ ਦੀ ਤਾਰੀਖ",
@@ -152,6 +158,7 @@ T = {
         "daughter_of": "ਸਪੁੱਤਰੀ", "son_of": "ਸਪੁੱਤਰ",
     },
     "ta": {
+        "scan_rsvp": "வழி மற்றும் பதிலுக்கு ஸ்கேன் செய்யவும்",
         "your_name": "உங்கள் பெயர் *",
         "phone": "தொலைபேசி",
         "arrival_date": "வருகை தேதி",
@@ -173,6 +180,7 @@ T = {
         "daughter_of": "மகள்", "son_of": "மகன்",
     },
     "te": {
+        "scan_rsvp": "దారి మరియు జవాబు కోసం స్కాన్ చేయండి",
         "your_name": "మీ పేరు *",
         "phone": "ఫోన్",
         "arrival_date": "చేరుకునే తేదీ",
@@ -194,6 +202,7 @@ T = {
         "daughter_of": "కుమార్తె", "son_of": "కుమారుడు",
     },
     "kn": {
+        "scan_rsvp": "ದಾರಿ ಮತ್ತು ಉತ್ತರಕ್ಕಾಗಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ",
         "your_name": "ನಿಮ್ಮ ಹೆಸರು *",
         "phone": "ಫೋನ್",
         "arrival_date": "ಆಗಮನದ ದಿನಾಂಕ",
@@ -215,6 +224,7 @@ T = {
         "daughter_of": "ಪುತ್ರಿ", "son_of": "ಪುತ್ರ",
     },
     "ml": {
+        "scan_rsvp": "വഴിക്കും മറുപടിക്കും സ്കാൻ ചെയ്യുക",
         "your_name": "നിങ്ങളുടെ പേര് *",
         "phone": "ഫോൺ",
         "arrival_date": "എത്തുന്ന തീയതി",

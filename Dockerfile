@@ -2,6 +2,7 @@ FROM python:3.12-slim
 
 # libfribidi0 lets Pillow's bundled libraqm shape Hindi and other Indian scripts correctly.
 RUN apt-get update && apt-get install -y --no-install-recommends libfribidi0 fonts-dejavu-core \
+    chromium fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv

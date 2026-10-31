@@ -100,6 +100,16 @@
   {% endif %}
 
   {% if o.status == 'delivered' %}
+  <div class="card" style="border:2px solid var(--gold)">
+    <h2>📖 Your complete e-invite</h2>
+    <p>Cover page, every card, the celebrations schedule and a QR for directions &amp; RSVP, all in one file.</p>
+    <p style="display:flex;gap:10px;flex-wrap:wrap">
+      <a class="btn btn-primary" href="/o/{{ o.token }}/einvite/pdf">⬇ Download PDF</a>
+      <a class="btn" href="/o/{{ o.token }}/einvite/png">⬇ Long image for WhatsApp</a>
+    </p>
+    <p class="hint">The first download takes a few seconds while we prepare it.</p>
+  </div>
+
   <div class="card" id="email">
     <h2>✉️ Send to email</h2>
     {% set emailed = request.query_params.get('emailed') %}
@@ -111,7 +121,7 @@
       <input type="email" name="email" required value="{{ o.email }}" placeholder="you@example.com" style="flex:1;min-width:220px" aria-label="Email address">
       <button class="btn btn-primary" type="submit">Send my invitation</button>
     </form>
-    <p class="hint">We'll email the HD cards as attachments plus your invite page link.</p>
+    <p class="hint">We'll email your complete e-invite (PDF), the HD cards and your invite page link.</p>
   </div>
   {% endif %}
 

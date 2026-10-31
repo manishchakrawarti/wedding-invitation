@@ -15,7 +15,7 @@ from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STY
 from app.config import settings
 from app.db import get_db
 from app.models import Asset, EventDetails, Order, OrderStatus
-from app.services import hires, notify, orders, payments, pipeline
+from app.services import export, hires, notify, orders, payments, pipeline
 from app.services.cards import has_guest_console
 from app.services.maintenance import sample_image
 from app.services.storage import storage
@@ -479,6 +479,22 @@ async def apply_coupon(request: Request, order: Order = Depends(get_order), db: 
     return redirect(f"/o/{order.token}/preview?coupon=invalid#unlock")
 
 
+@router.get("/o/{token}/einvite/{fmt}")
+def einvite(fmt: str, order: Order = Depends(get_order)):
+    """The complete e-invite: 'pdf' booklet or 'png' long image for WhatsApp."""
+    if fmt not in ("pdf", "png"):
+        raise HTTPException(404)
+    if order.status != OrderStatus.DELIVERED.value:
+        raise HTTPException(403, "Your e-invite is ready to download once your invitation is unlocked")
+    try:
+        data = export.render(order, fmt)
+    except export.ExportUnavailable as exc:
+        raise HTTPException(503, f"The e-invite can't be created right now. Please try again shortly. ({exc})") from exc
+    name = f"{slugify(order.bride_name + '-weds-' + order.groom_name) or 'wedding'}-invitation.{fmt}"
+    return Response(data, media_type="application/pdf" if fmt == "pdf" else "image/png",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
 @router.post("/o/{token}/email")
 async def email_invite(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
     email = str((await request.form()).get("email", "")).strip()
@@ -492,10 +508,16 @@ async def email_invite(request: Request, order: Order = Depends(get_order), db: 
         if asset.content_type == "image/png":
             name = f"{slugify(order.bride_name + '-' + order.groom_name + '-' + asset.card_key) or 'invitation'}.png"
             attachments.append((name, storage.read(asset.path), "image/png"))
+    try:
+        pdf = export.render(order, "pdf")
+        attachments.insert(0, (f"{slugify(order.bride_name + '-weds-' + order.groom_name) or 'wedding'}-invitation.pdf", pdf, "application/pdf"))
+    except export.ExportUnavailable:
+        pass
     page = f"\nYour invitation page to share with guests: {settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug else ""
     body = (
-        f"Namaste! 🙏\n\nHere is your wedding invitation for {order.bride_name} & {order.groom_name} "
-        f"({len(attachments)} card(s) attached).\n\nDownload anytime: {notify.order_url(order)}{page}\n\n"
+        f"Namaste! 🙏\n\nHere is your wedding invitation for {order.bride_name} & {order.groom_name}: "
+        f"the complete e-invite (PDF) and {sum(1 for a in attachments if a[2] == 'image/png')} card(s) are attached.\n\n"
+        f"Download anytime: {notify.order_url(order)}{page}\n\n"
         f"Wishing you a beautiful wedding,\n{settings.brand_name}"
     )
     note = notify.send(db, "email", email, body, subject=f"Your wedding invitation: {order.bride_name} & {order.groom_name}",

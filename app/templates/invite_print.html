@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="{{ o.language }}">
+<head>
+<meta charset="utf-8">
+<title>{{ o.bride_name }} &amp; {{ o.groom_name }} · Wedding Invitation</title>
+{% set bride = o.bride_name_local if local and o.bride_name_local else o.bride_name %}
+{% set groom = o.groom_name_local if local and o.groom_name_local else o.groom_name %}
+{% set hosts = ev.hosts if ev and ev.hosts else t.our_families %}
+<style>
+  @font-face { font-family: "GreatVibes"; src: url("{{ fonts.GreatVibes }}"); }
+  @font-face { font-family: "Cinzel"; src: url("{{ fonts.Cinzel }}"); font-weight: 400 900; }
+  @font-face { font-family: "Cormorant"; src: url("{{ fonts.Cormorant }}"); font-weight: 300 700; }
+  {% if fonts.LocalScript %}@font-face { font-family: "LocalScript"; src: url("{{ fonts.LocalScript }}"); font-weight: 100 900; }{% endif %}
+  @page { size: {{ W }}px {{ H }}px; margin: 0; }
+  :root {
+    --bg1: rgb{{ st.bg_top }}; --bg2: rgb{{ st.bg_bottom }}; --acc: rgb{{ st.accent }};
+    --t1: rgb{{ st.text_primary }}; --t2: rgb{{ st.text_secondary }};
+    --serif: "Cormorant", "LocalScript", Georgia, serif;
+    --display: {% if local %}"LocalScript", {% endif %}"GreatVibes", serif;
+    --heading: "Cinzel", "LocalScript", serif;
+    --ink: #3b2320; --maroon: #6d1526; --gold: #c99a3c; --cream: #fff8ec;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: {{ W }}px; background: var(--cream); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: var(--serif); color: var(--ink); }
+  .page { width: {{ W }}px; height: {{ H }}px; position: relative; overflow: hidden; break-after: page; page-break-after: always; }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+
+  /* themed pages: cover + venue */
+  .themed { background: radial-gradient(ellipse at 50% 0%, var(--bg1), var(--bg2) 78%); color: var(--t2);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 120px 110px; }
+  .frame { position: absolute; inset: 34px; border: 5px solid var(--acc); border-radius: 10px; pointer-events: none; }
+  .arch { position: absolute; inset: 58px; border: 2px solid var(--acc); opacity: .55; border-radius: 50% 50% 10px 10px / 20% 20% 10px 10px; }
+  .corner { position: absolute; width: 120px; height: 120px; border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, var(--acc) 0 6deg, transparent 6deg 30deg); opacity: .35; }
+  .corner.tl { top: -40px; left: -40px; } .corner.tr { top: -40px; right: -40px; }
+  .corner.bl { bottom: -40px; left: -40px; } .corner.br { bottom: -40px; right: -40px; }
+  .toran { position: absolute; top: 74px; left: 110px; right: 110px; height: 34px;
+    background: radial-gradient(circle at 17px 17px, #f6a21a 14px, transparent 15px) 0 0 / 34px 34px repeat-x; }
+  .diyas { position: absolute; bottom: 92px; left: 0; right: 0; display: flex; justify-content: center; gap: 70px; }
+  .diya { width: 64px; height: 30px; background: var(--acc); border-radius: 0 0 40px 40px; position: relative; }
+  .diya::before { content: ""; position: absolute; left: 25px; top: -34px; width: 14px; height: 30px; border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%;
+    background: radial-gradient(circle at 50% 70%, #fff6cf, #ffc23d 55%, #ff8a00); }
+  .invocation { font-family: var(--serif); color: var(--acc); font-size: 34px; margin-bottom: 26px; }
+  .pre { font-family: var(--heading); color: var(--acc); font-size: 28px; {% if not local %}letter-spacing: 8px; text-transform: uppercase;{% endif %} }
+  .names { font-family: var(--display); color: var(--t1); line-height: 1.05; margin: 34px 0 24px;
+    font-size: {{ '118px' if local else '170px' }}; {% if local %}font-weight: 700;{% endif %} text-shadow: 0 6px 24px rgba(0,0,0,.25); }
+  .names .amp { display: block; font-family: "GreatVibes", var(--serif); font-size: 76px; color: var(--acc); font-weight: 400; margin: 6px 0; }
+  .date { font-family: var(--heading); font-size: 46px; letter-spacing: 2px; color: var(--t1); }
+  .place { font-size: 36px; margin-top: 12px; }
+  .hashtag { margin-top: 30px; color: var(--acc); font-size: 30px; font-family: var(--heading); letter-spacing: 1px; }
+  .divider { width: 360px; height: 2px; background: var(--acc); margin: 30px auto; position: relative; }
+  .divider::after { content: ""; position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; background: var(--acc); transform: translate(-50%, -50%) rotate(45deg); }
+
+  /* card pages */
+  .card-page img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* celebrations */
+  .sched { background: linear-gradient(180deg, #fffaf0, #fdf1dc); padding: 120px 110px; display: flex; flex-direction: column; justify-content: center; }
+  .sched.few .item { padding: 40px 0; } .sched.few .item h3 { font-size: 50px; } .sched.few .item .when, .sched.few .item .where { font-size: 36px; }
+  .sched h2 { font-family: var(--heading); color: var(--maroon); font-size: 58px; text-align: center; margin-bottom: 14px; }
+  .sched .sub { text-align: center; color: #8a6a3a; font-size: 30px; margin-bottom: 50px; font-style: italic; }
+  .item { display: grid; grid-template-columns: 110px 1fr; gap: 28px; align-items: start; padding: 26px 0; border-bottom: 2px dashed #e8d3ad; }
+  .item:last-child { border-bottom: 0; }
+  .icon { width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--gold); background: #fff; display: grid; place-items: center; font-size: 46px; }
+  .item h3 { font-family: var(--heading); color: var(--maroon); font-size: 42px; font-weight: 700; }
+  .item h3 small { font-family: var(--serif); color: #8a7464; font-size: 26px; font-weight: 500; margin-left: 10px; }
+  .item .when { color: var(--maroon); font-size: 32px; font-weight: 600; margin-top: 4px; }
+  .item .where { font-size: 30px; color: #5c4a42; }
+  .item .dress { display: inline-block; margin-top: 8px; background: #fff1d1; color: #6b4e12; border-radius: 30px; padding: 4px 18px; font-size: 26px; }
+  .sched.compact .item { padding: 16px 0; } .sched.compact .icon { width: 76px; height: 76px; font-size: 36px; }
+  .sched.compact .item h3 { font-size: 36px; } .sched.compact .item .when, .sched.compact .item .where { font-size: 27px; }
+
+  /* venue & rsvp */
+  .blessing { font-style: italic; font-size: 30px; opacity: .9; margin-bottom: 22px; }
+  .para { font-size: 34px; line-height: 1.45; max-width: 820px; }
+  .venue-name { font-family: var(--heading); color: var(--t1); font-size: 50px; margin-top: 10px; }
+  .qr { background: #fff; padding: 22px; border-radius: 22px; margin-top: 40px; box-shadow: 0 14px 40px rgba(0,0,0,.25); }
+  .qr img { width: 250px; height: 250px; display: block; }
+  .qr p { color: #3b2320; font-family: var(--serif); font-size: 26px; margin-top: 10px; font-weight: 600; }
+  .url { margin-top: 16px; font-size: 24px; opacity: .85; }
+  .brand { position: absolute; bottom: 52px; left: 0; right: 0; text-align: center; font-size: 22px; opacity: .7; }
+</style>
+</head>
+<body>
+
+{# 1 — Cover #}
+<section class="page themed">
+  <div class="frame"></div><div class="arch"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="toran"></div>
+  {% if o.style == 'muslim_nikah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
+  {% elif o.style != 'christian' and invocation %}<div class="invocation">{{ invocation }}</div>{% endif %}
+  <div class="pre">{{ 'Nikah' if o.style == 'muslim_nikah' and not local else t.pre }}</div>
+  <div class="names">{{ bride }}<span class="amp">{{ lang.connector }}</span>{{ groom }}</div>
+  <div class="divider"></div>
+  <div class="date">{{ pretty_date(o.wedding_date) }}</div>
+  <div class="place">{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
+  {% if ev and ev.hashtag %}<div class="hashtag">{{ ev.hashtag }}</div>{% endif %}
+  {% if o.style not in ['christian', 'modern_minimal'] %}<div class="diyas">{% for _ in range(7) %}<div class="diya"></div>{% endfor %}</div>{% endif %}
+</section>
+
+{# 2 — Cards: the main invitation, then one per function #}
+{% for c in card_pages %}
+<section class="page card-page"><img src="{{ c.src }}" alt="{{ c.title }}"></section>
+{% endfor %}
+
+{# 3 — Celebrations #}
+{% if schedule %}
+<section class="page sched {% if schedule|length > 4 %}compact{% elif schedule|length <= 2 %}few{% endif %}">
+  <h2>{{ t.celebrations }}</h2>
+  <div class="sub">{{ bride }} {{ lang.connector }} {{ groom }}</div>
+  {% for s in schedule %}
+  <div class="item">
+    <div class="icon">{{ s.icon }}</div>
+    <div>
+      <h3>{{ s.label_local or s.label }}{% if s.label_local %}<small>{{ s.label }}</small>{% endif %}</h3>
+      <div class="when">{{ s.pretty_date }}{% if s.pretty_time %} · {{ s.pretty_time }}{% endif %}</div>
+      <div class="where">{{ s.place }}</div>
+      {% if s.dress %}<span class="dress">{{ t.dress }}: {{ s.dress }}</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# 4 — Invitation note, venue & RSVP #}
+<section class="page themed">
+  <div class="frame"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  {% if ev and ev.blessing_line %}<div class="blessing">{{ ev.blessing_line }}</div>{% endif %}
+  <div class="para">{{ t.invite_para.format(hosts=hosts, bride=bride, groom=groom) }}</div>
+  <div class="divider"></div>
+  <div style="font-family:var(--heading);font-size:30px;color:var(--acc)">{{ t.venue }}</div>
+  <div class="venue-name">{{ o.venue_name }}</div>
+  <div class="place">{{ [o.venue_address, o.city]|select|join(', ') }}</div>
+  {% if qr %}
+  <div class="qr"><img src="{{ qr }}" alt="QR code"><p>{{ t.scan_rsvp }}</p></div>
+  <div class="url">{{ rsvp_url }}</div>
+  {% endif %}
+  <div class="brand">{{ settings.brand_name }}</div>
+</section>
+
+</body>
+</html>

@@ -516,7 +516,7 @@ def test_instant_free_download_then_paid_sizes(client):
     assert resp.headers["location"].endswith("?emailed=logged#email")  # SMTP not configured in tests
     with SessionLocal() as db:
         note = db.scalars(select(Notification).where(Notification.recipient == "priya@example.com")).first()
-    assert "2 card(s) attached" in note.body and f"/e/{order.rsvp_slug}" in note.body
+    assert "2 card(s) are attached" in note.body and f"/e/{order.rsvp_slug}" in note.body
 
 
 def test_instant_validation_rate_limit_and_hidden_package(client, monkeypatch):
@@ -555,3 +555,33 @@ def test_test_coupon_unlocks_instant_preview(client, monkeypatch):
     regular = place_order(client)
     client.post(f"/o/{regular.token}/coupon", data={"code": "TEST99-SECRET"})
     assert get(regular.token).status == OrderStatus.PENDING_PAYMENT.value
+
+
+def test_einvite_pdf_and_long_image(client):
+    import re
+
+    import pytest
+
+    from app.services import export
+
+    if not export.chrome_binary():
+        pytest.skip("Chrome/Chromium not installed")
+    order = create_instant(client, fn_haldi="on", fn_haldi_date=WEDDING)
+    assert client.get(f"/o/{order.token}/einvite/pdf").status_code == 403  # locked until unlocked
+    order = pay(client, order)
+    assert "Your complete e-invite" in client.get(f"/o/{order.token}").text
+
+    pdf = client.get(f"/o/{order.token}/einvite/pdf")
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    assert pdf.headers["content-type"] == "application/pdf"
+    # cover + main card + haldi card + celebrations + venue/RSVP
+    assert len(re.findall(rb"/Type\s*/Page[^s]", pdf.content)) == 5
+    png = client.get(f"/o/{order.token}/einvite/png")
+    assert png.status_code == 200 and _image_size(png) == (1080, 1350 * 5)
+    assert client.get(f"/o/{order.token}/einvite/gif").status_code == 404
+
+    # The email carries the PDF too.
+    client.post(f"/o/{order.token}/email", data={"email": "e@example.com"})
+    with SessionLocal() as db:
+        note = db.scalars(select(Notification).where(Notification.recipient == "e@example.com")).first()
+    assert "complete e-invite (PDF)" in note.body
