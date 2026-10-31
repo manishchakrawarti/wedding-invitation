@@ -28,6 +28,21 @@
   .tier strong { font: 700 1.35rem var(--serif); color: var(--maroon-dark); }
   .tier .dims { font-size: .82rem; color: var(--muted); }
   .tier .tier-price { font: 700 2rem var(--serif); color: var(--maroon); line-height: 1.1; }
+  .live-grid { display: grid; grid-template-columns: 380px 1fr; gap: 40px; align-items: start; }
+  @media (max-width: 860px) { .live-grid { grid-template-columns: 1fr; } }
+  .phone { width: 360px; max-width: 100%; height: 720px; margin: 0 auto; border: 12px solid #1d1416; border-radius: 44px; overflow: hidden;
+    box-shadow: 0 30px 60px rgba(77,15,27,.35); background: #000; }
+  .phone iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .dl-table { display: grid; gap: 10px; margin-top: 14px; }
+  .dl-row { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 16px; margin: 0; }
+  .dl-row.best { border: 2px solid var(--maroon); box-shadow: var(--shadow); }
+  .dl-row strong { font: 700 1.25rem var(--serif); color: var(--maroon-dark); }
+  .dl-row .dims { font-size: .82rem; color: var(--muted); }
+  .dl-price { font: 700 1.6rem var(--serif); color: var(--maroon); min-width: 64px; text-align: right; }
+  .free-tag { color: var(--green); }
+  .dl-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .tag-inline { background: var(--maroon); color: #fff; font-size: .7rem; font-weight: 700; padding: 1px 8px; border-radius: 99px; vertical-align: middle; }
+  @media (max-width: 520px) { .dl-row { grid-template-columns: 1fr auto; } .dl-actions { grid-column: 1 / -1; justify-content: stretch; } .dl-actions > * { flex: 1; } }
   .sticky-unlock { position: sticky; bottom: 0; z-index: 10; background: var(--maroon-dark); padding: 12px 0; }
   .sticky-unlock .wrap { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--cream); }
 </style>
@@ -52,11 +67,59 @@
 <section class="reveal-head">
   <div class="wrap">
     <h1>Your invitation is ready <span class="script">{{ o.bride_name }} &amp; {{ o.groom_name }}</span></h1>
-    <p class="muted">This is a watermarked preview. Unlock to get the clean HD files and your live invite page.</p>
+    <p class="muted">Tap the seal on the phone to open your live invitation, then download it below.</p>
   </div>
 </section>
-<section style="padding-top:20px">
+<section style="padding-top:10px" id="unlock">
+  <div class="wrap live-grid">
+    {% if o.rsvp_slug %}
+    <div class="phone-col">
+      <div class="phone"><iframe src="/e/{{ o.rsvp_slug }}" title="Your live invitation" loading="lazy"></iframe></div>
+      <p class="center small"><a href="/e/{{ o.rsvp_slug }}" target="_blank">Open full screen ↗</a></p>
+    </div>
+    {% endif %}
+    <div class="dl-col">
+      <h2 style="margin-bottom:4px">Download your e-invite</h2>
+      <p class="muted" style="margin-top:0">Cover, every card, the celebrations and venue in one <strong>PDF</strong> or one <strong>long image</strong> for WhatsApp. Any paid size also makes your invite page live for guests, with RSVP.</p>
+      {% if unlockable %}
+      <div class="dl-table">
+        <div class="dl-row">
+          <div><strong>{{ free.name }}</strong> <span class="dims">{{ free.width }}p</span><br><span class="small muted">{{ free.use }}</span></div>
+          <div class="dl-price free-tag">Free</div>
+          <div class="dl-actions">
+            <a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/einvite/pdf/free">⬇ PDF</a>
+            <a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/einvite/image/free">⬇ Image</a>
+          </div>
+        </div>
+        {% for t in tiers %}
+        <form method="post" action="/o/{{ o.token }}/unlock" class="dl-row {% if t.key == '1080' %}best{% endif %}">
+          <input type="hidden" name="res" value="{{ t.key }}">
+          <div><strong>{{ t.name }}</strong> <span class="dims">{{ t.width }}×{{ t.height }}</span>{% if t.key == '1080' %} <span class="tag-inline">Most popular</span>{% endif %}<br><span class="small muted">{{ t.use }}</span></div>
+          <div class="dl-price">₹{{ t.price }}</div>
+          <div class="dl-actions"><button class="btn btn-sm {% if t.key == '1080' %}btn-primary{% endif %}" type="submit">Get {{ t.name }}</button></div>
+        </form>
+        {% endfor %}
+      </div>
+      <p class="small muted" style="margin-top:10px">UPI · Cards · Netbanking. Upgrade anytime, paying only the difference.</p>
+      <details style="margin-top:10px" {% if request.query_params.get('coupon') %}open{% endif %}>
+        <summary class="small">Have a coupon code?</summary>
+        {% if request.query_params.get('coupon') == 'invalid' %}<div class="alert alert-error small" style="margin:10px 0 0">That coupon isn't valid.</div>{% endif %}
+        <form method="post" action="/o/{{ o.token }}/coupon" style="display:flex;gap:8px;margin-top:10px">
+          <input type="text" name="code" required maxlength="40" placeholder="Coupon code" aria-label="Coupon code" style="text-transform:uppercase">
+          <button class="btn btn-sm" type="submit">Apply</button>
+        </form>
+      </details>
+      {% else %}
+      <div class="alert alert-info">Our designer is giving your invitation a final check. Downloads will appear here shortly{% if o.email %}, and we'll email you{% endif %}.</div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:10px">
   <div class="wrap">
+    <h2 class="center">Your cards</h2>
+    <p class="center muted" style="margin-top:0">Watermarked previews. Tap <strong>⬇ Free</strong> for the {{ free.width }}p version of any card.</p>
     <div class="preview-grid">
       {% for a, final in items %}
       <figure><img src="/o/{{ o.token }}/files/{{ a.id }}" alt="Preview: {{ (a.meta or {}).get('title', a.card_key) }}">
@@ -64,44 +127,11 @@
           {% if unlockable and final %}<a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/download/{{ final.id }}/free">⬇ Free</a>{% endif %}</figcaption></figure>
       {% endfor %}
     </div>
-    {% if o.rsvp_slug %}
-    <p class="center" style="margin-top:22px"><a class="btn btn-ghost" href="/e/{{ o.rsvp_slug }}" target="_blank">✨ Open your invite page preview (palace doors, music, RSVP) ↗</a></p>
-    {% endif %}
   </div>
 </section>
 
 <section style="padding-top:10px">
   <div class="narrow">
-    <div class="unlock" id="unlock">
-      <h2 style="margin-bottom:6px">Love it? Choose your size</h2>
-      <p class="muted" style="margin-top:0">The <strong>{{ free.name }}</strong> image ({{ free.width }}×{{ free.height }}) is free: tap <strong>⬇ Free</strong> on any card above. Every paid size removes the watermark, makes your invite page live for guests, and includes your <strong>complete e-invite as a PDF and a long image</strong>.</p>
-      {% if unlockable %}
-        <div class="tiers">
-          {% for t in tiers %}
-          <form method="post" action="/o/{{ o.token }}/unlock" class="tier {% if t.key == '1080' %}best{% endif %}">
-            <input type="hidden" name="res" value="{{ t.key }}">
-            {% if t.key == '1080' %}<span class="tag">Most popular</span>{% endif %}
-            <strong>{{ t.name }}</strong>
-            <span class="dims">{{ t.width }} × {{ t.height }}</span>
-            <span class="tier-price">₹{{ t.price }}</span>
-            <span class="small muted">{{ t.use }}</span>
-            <button class="btn {% if t.key == '1080' %}btn-primary{% endif %} btn-block" type="submit">Get {{ t.name }}</button>
-          </form>
-          {% endfor %}
-        </div>
-        <p class="small muted" style="margin-top:12px">UPI · Cards · Netbanking. Upgrade anytime, paying only the difference.</p>
-        <details style="max-width:24em;margin:14px auto 0;text-align:left" {% if request.query_params.get('coupon') %}open{% endif %}>
-          <summary class="small">Have a coupon code?</summary>
-          {% if request.query_params.get('coupon') == 'invalid' %}<div class="alert alert-error small" style="margin:10px 0 0">That coupon isn't valid.</div>{% endif %}
-          <form method="post" action="/o/{{ o.token }}/coupon" style="display:flex;gap:8px;margin-top:10px">
-            <input type="text" name="code" required maxlength="40" placeholder="Coupon code" aria-label="Coupon code" style="text-transform:uppercase">
-            <button class="btn btn-sm" type="submit">Apply</button>
-          </form>
-        </details>
-      {% else %}
-        <div class="alert alert-info">Our designer is giving your card a final check. You'll be able to unlock it here shortly{% if o.email %}, and we'll email you{% endif %}.</div>
-      {% endif %}
-    </div>
     <p class="center small muted" style="margin-top:18px">Want changes? <a href="/create?style={{ o.style }}&lang={{ o.language }}">Create another version</a> · Need personal invites for every guest with RSVP tracking? <a href="/order?package=premium">See Premium</a></p>
     <p class="center small muted">Bookmark this page to come back to your preview.</p>
   </div>

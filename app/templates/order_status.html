@@ -103,11 +103,22 @@
   <div class="card" style="border:2px solid var(--gold)">
     <h2>📖 Your complete e-invite</h2>
     <p>Cover page, every card, the celebrations schedule and a QR for directions &amp; RSVP, all in one file.</p>
-    <p style="display:flex;gap:10px;flex-wrap:wrap">
-      <a class="btn btn-primary" href="/o/{{ o.token }}/einvite/pdf">⬇ Download PDF</a>
-      <a class="btn" href="/o/{{ o.token }}/einvite/png">⬇ Long image for WhatsApp</a>
-    </p>
-    <p class="hint">The first download takes a few seconds while we prepare it.</p>
+    {% set best_price = catalog.RESOLUTIONS[entitled].price if entitled else 0 %}
+    <div style="display:grid;gap:8px">
+      {% for t in tiers if t.price <= best_price %}{% set r = t %}
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px">
+        <span><strong>{{ r.name }}</strong> <span class="small muted">{{ r.width }}×{{ r.height }} · {{ r.use }}</span></span>
+        <span style="display:flex;gap:6px"><a class="btn btn-sm {% if r.key == entitled %}btn-primary{% endif %}" href="/o/{{ o.token }}/einvite/pdf/{{ r.key }}">⬇ PDF</a>
+          <a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/einvite/image/{{ r.key }}">⬇ Long image</a></span>
+      </div>
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px">
+        <span><strong>Standard</strong> <span class="small muted">720p · with a small credit</span></span>
+        <span style="display:flex;gap:6px"><a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/einvite/pdf/free">⬇ PDF</a>
+          <a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/einvite/image/free">⬇ Long image</a></span>
+      </div>
+    </div>
+    <p class="hint">Larger sizes take a few seconds the first time (4K up to ~30 s) while we prepare them.</p>
   </div>
 
   <div class="card" id="email">

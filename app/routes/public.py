@@ -219,7 +219,7 @@ def order_status(request: Request, order: Order = Depends(get_order)):
         return redirect(f"/o/{order.token}/preview")
     return templates.TemplateResponse(request, "order_status.html", {
         "o": order, "visible": PROOF_VISIBLE, "console": has_guest_console(order),
-        "entitled": hires.entitled(order) if order.source == "instant" else None, "tiers": hires.TIERS,
+        "entitled": hires.entitled(order), "tiers": hires.TIERS,
     })
 
 
@@ -479,19 +479,24 @@ async def apply_coupon(request: Request, order: Order = Depends(get_order), db: 
     return redirect(f"/o/{order.token}/preview?coupon=invalid#unlock")
 
 
-@router.get("/o/{token}/einvite/{fmt}")
-def einvite(fmt: str, order: Order = Depends(get_order)):
-    """The complete e-invite: 'pdf' booklet or 'png' long image for WhatsApp."""
-    if fmt not in ("pdf", "png"):
+@router.get("/o/{token}/einvite/{fmt}/{res}")
+def einvite(fmt: str, res: str, order: Order = Depends(get_order)):
+    """The complete e-invite as a 'pdf' booklet or one long 'image', in a given size (free/1080/2k/4k)."""
+    if fmt not in ("pdf", "image") or res not in RESOLUTIONS:
         raise HTTPException(404)
-    if order.status != OrderStatus.DELIVERED.value:
-        raise HTTPException(403, "Your e-invite is ready to download once your invitation is unlocked")
+    delivered = order.status == OrderStatus.DELIVERED.value
+    if res == "free":
+        if not (delivered or orders.preview_unlockable(order)):
+            raise HTTPException(403, "Available once your invitation is ready")
+    elif not (delivered and hires.allowed(order, res)):
+        raise HTTPException(403, "Unlock this size to download it")
     try:
-        data = export.render(order, fmt)
+        data = export.render(order, fmt, res)
     except export.ExportUnavailable as exc:
         raise HTTPException(503, f"The e-invite can't be created right now. Please try again shortly. ({exc})") from exc
-    name = f"{slugify(order.bride_name + '-weds-' + order.groom_name) or 'wedding'}-invitation.{fmt}"
-    return Response(data, media_type="application/pdf" if fmt == "pdf" else "image/png",
+    ext = "pdf" if fmt == "pdf" else "jpg"
+    name = f"{slugify(order.bride_name + '-weds-' + order.groom_name) or 'wedding'}-invitation-{res}.{ext}"
+    return Response(data, media_type="application/pdf" if fmt == "pdf" else "image/jpeg",
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
@@ -509,7 +514,7 @@ async def email_invite(request: Request, order: Order = Depends(get_order), db: 
             name = f"{slugify(order.bride_name + '-' + order.groom_name + '-' + asset.card_key) or 'invitation'}.png"
             attachments.append((name, storage.read(asset.path), "image/png"))
     try:
-        pdf = export.render(order, "pdf")
+        pdf = export.render(order, "pdf", "1080" if hires.allowed(order, "1080") else "free")
         attachments.insert(0, (f"{slugify(order.bride_name + '-weds-' + order.groom_name) or 'wedding'}-invitation.pdf", pdf, "application/pdf"))
     except export.ExportUnavailable:
         pass

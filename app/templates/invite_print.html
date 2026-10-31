@@ -80,6 +80,10 @@
   .qr p { color: #3b2320; font-family: var(--serif); font-size: 26px; margin-top: 10px; font-weight: 600; }
   .url { margin-top: 16px; font-size: 24px; opacity: .85; }
   .brand { position: absolute; bottom: 52px; left: 0; right: 0; text-align: center; font-size: 22px; opacity: .7; }
+  .credit { position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.85); color: #5a2828;
+    font: 600 22px var(--serif); padding: 6px 22px; border-radius: 30px; white-space: nowrap; }
+  {% if pages_range %}{% set sel = ':nth-of-type(n+' ~ pages_range[0] ~ '):nth-of-type(-n+' ~ pages_range[1] ~ ')' %}
+  .page { display: none; } .page{{ sel }} { display: block; } .page.themed{{ sel }}, .page.sched{{ sel }} { display: flex; }{% endif %}
 </style>
 </head>
 <body>
@@ -98,6 +102,7 @@
   <div class="place">{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
   {% if ev and ev.hashtag %}<div class="hashtag">{{ ev.hashtag }}</div>{% endif %}
   {% if o.style not in ['christian', 'modern_minimal'] %}<div class="diyas">{% for _ in range(7) %}<div class="diya"></div>{% endfor %}</div>{% endif %}
+  {% if credit %}<div class="credit">{{ credit }}</div>{% endif %}
 </section>
 
 {# 2 — Cards: the main invitation, then one per function #}
@@ -138,7 +143,7 @@
   <div class="qr"><img src="{{ qr }}" alt="QR code"><p>{{ t.scan_rsvp }}</p></div>
   <div class="url">{{ rsvp_url }}</div>
   {% endif %}
-  <div class="brand">{{ settings.brand_name }}</div>
+  {% if credit %}<div class="credit">{{ credit }}</div>{% else %}<div class="brand">{{ settings.brand_name }}</div>{% endif %}
 </section>
 
 </body>

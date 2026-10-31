@@ -557,7 +557,7 @@ def test_test_coupon_unlocks_instant_preview(client, monkeypatch):
     assert get(regular.token).status == OrderStatus.PENDING_PAYMENT.value
 
 
-def test_einvite_pdf_and_long_image(client):
+def test_einvite_pdf_and_long_image_in_sizes(client):
     import re
 
     import pytest
@@ -567,20 +567,31 @@ def test_einvite_pdf_and_long_image(client):
     if not export.chrome_binary():
         pytest.skip("Chrome/Chromium not installed")
     order = create_instant(client, fn_haldi="on", fn_haldi_date=WEDDING)
-    assert client.get(f"/o/{order.token}/einvite/pdf").status_code == 403  # locked until unlocked
-    order = pay(client, order)
-    assert "Your complete e-invite" in client.get(f"/o/{order.token}").text
+    base = f"/o/{order.token}/einvite"
 
-    pdf = client.get(f"/o/{order.token}/einvite/pdf")
-    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
-    assert pdf.headers["content-type"] == "application/pdf"
-    # cover + main card + haldi card + celebrations + venue/RSVP
-    assert len(re.findall(rb"/Type\s*/Page[^s]", pdf.content)) == 5
-    png = client.get(f"/o/{order.token}/einvite/png")
-    assert png.status_code == 200 and _image_size(png) == (1080, 1350 * 5)
-    assert client.get(f"/o/{order.token}/einvite/gif").status_code == 404
+    # Free preview: the live invitation is shown, and the 720p e-invite is free.
+    page = client.get(f"/o/{order.token}/preview").text
+    assert f'<iframe src="/e/{order.rsvp_slug}"' in page and "Download your e-invite" in page
+    free_pdf = client.get(f"{base}/pdf/free")
+    assert free_pdf.status_code == 200 and free_pdf.content.startswith(b"%PDF")
+    # cover + main card + haldi card + celebrations + venue
+    assert len(re.findall(rb"/Type\s*/Page[^s]", free_pdf.content)) == 5
+    free_img = client.get(f"{base}/image/free")
+    assert free_img.headers["content-type"] == "image/jpeg" and _image_size(free_img) == (720, 900 * 5)
+    assert client.get(f"{base}/pdf/1080").status_code == 403
 
-    # The email carries the PDF too.
+    # Buy Full HD (₹9): 1080 unlocked, 2K still locked.
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    order = pay(client, get(order.token))
+    assert order.amount_paid == 900 and order.status == OrderStatus.DELIVERED.value
+    status = client.get(f"/o/{order.token}").text
+    assert "Your complete e-invite" in status and f"{base}/pdf/1080" in status and f"{base}/pdf/2k" not in status
+    assert client.get(f"{base}/pdf/1080").content.startswith(b"%PDF")
+    assert _image_size(client.get(f"{base}/image/1080")) == (1080, 1350 * 5)
+    assert client.get(f"{base}/image/2k").status_code == 403
+    assert client.get(f"{base}/gif/1080").status_code == 404
+
+    # The email carries the Full HD PDF.
     client.post(f"/o/{order.token}/email", data={"email": "e@example.com"})
     with SessionLocal() as db:
         note = db.scalars(select(Notification).where(Notification.recipient == "e@example.com")).first()

@@ -14,7 +14,10 @@ TIERS = [r for r in sorted(RESOLUTIONS.values(), key=lambda r: r.price) if r.pri
 
 
 def entitled(order: Order) -> str | None:
-    """Highest paid tier covered by what the customer paid (plus any coupon)."""
+    """Highest paid tier covered by what the customer paid (plus any coupon).
+    Done-for-you orders that are fully paid get every size."""
+    if order.source not in ("instant", "test") and order.amount_paid and order.balance_due == 0:
+        return TIERS[-1].key
     credit = order.amount_paid + order.discount
     best = None
     for tier in TIERS:
