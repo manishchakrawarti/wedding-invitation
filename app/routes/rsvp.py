@@ -15,7 +15,7 @@ from app.config import settings
 from app.db import SessionLocal, get_db
 from app.models import Asset, Guest, Invitee, Order, OrderStatus, utcnow
 from app import events
-from app.services import demo, invites
+from app.services import demo, gifts, invites
 from app.services.cards import has_guest_console
 from app.services.storage import storage
 from app.templating import templates
@@ -54,14 +54,6 @@ def _music(order: Order):
     return next(iter(sorted(order.live_assets("music"), key=lambda a: a.id, reverse=True)), None)
 
 
-def _upi_link(order: Order) -> str:
-    upi = order.event.upi_id if order.event else ""
-    if not upi:
-        return ""
-    names = order.display_names
-    return f"upi://pay?pa={quote(upi)}&pn={quote(names)}&cu=INR&tn={quote('Shagun for ' + names)}"
-
-
 def _experience(request: Request, order: Order, invitee: Invitee | None, thanks: bool = False, preview: bool = False):
     sched = invites.schedule(order, invitee.functions if invitee and invitee.functions else None)
     main_place = ", ".join(p for p in (order.venue_name, order.venue_address, order.city) if p)
@@ -73,7 +65,7 @@ def _experience(request: Request, order: Order, invitee: Invitee | None, thanks:
         {
             "o": order, "inv": invitee, "ev": order.event, "schedule": sched, "hero": _hero(order),
             "music": _music(order), "map_embed": invites.map_embed(main_place), "map_link": invites.map_link(main_place),
-            "countdown_to": invites.main_moment(order), "upi_link": _upi_link(order), "food_choices": invites.FOOD_CHOICES,
+            "countdown_to": invites.main_moment(order), "gift": gifts.info(order), "food_choices": invites.FOOD_CHOICES,
             "blessings": blessings[-40:][::-1], "thanks": thanks, "preview": preview, "photos": invites.portraits(order),
             "occ": None if order.is_wedding else events.texts(order),
             "action": f"/i/{invitee.code}/rsvp" if invitee else f"/e/{order.rsvp_slug}/rsvp",
@@ -178,10 +170,20 @@ def qr(order: Order = Depends(get_event)):
 
 @router.get("/e/{slug}/shagun.png")
 def shagun_qr(order: Order = Depends(get_event)):
-    link = _upi_link(order)
+    link = gifts.upi_link(order)
     if not link:
         raise HTTPException(404)
     return _png_qr(link)
+
+
+@router.get("/e/{slug}/gift-qr")
+def gift_qr(order: Order = Depends(get_event)):
+    """The QR guests scan to send a gift: the family's own payment QR, else one made from their UPI ID."""
+    found = gifts.qr_bytes(order)
+    if found is None:
+        raise HTTPException(404)
+    data, mime = found
+    return Response(data, media_type=mime, headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/e/{slug}/calendar/{key}.ics")
@@ -253,7 +255,7 @@ def family_console(request: Request, key: str = "", msg: str = "", order: Order 
         "o": order, "ev": order.event, "rows": rows, "walk_ins": sorted(order.guests, key=lambda g: g.created_at, reverse=True),
         "stats": invites.stats(order), "key": key, "msg": msg, "schedule": invites.schedule(order),
         "music": _music(order), "food_choices": invites.FOOD_CHOICES, "days": invites.days_until(order),
-        "photos": invites.portraits(order), "photo_roles": invites.PORTRAIT_ROLES,
+        "photos": invites.portraits(order), "photo_roles": invites.PORTRAIT_ROLES, "gift": gifts.info(order),
     })
 
 
@@ -299,10 +301,13 @@ async def save_details(request: Request, order: Order = Depends(get_event), db: 
     key = str(form.get("key", ""))
     _check_key(order, key)
     ev = invites.event_details(db, order)
-    for field, limit in (("hosts", 200), ("blessing_line", 300), ("story", 3000), ("hashtag", 60), ("upi_id", 100), ("livestream_url", 300)):
+    for field, limit in (("hosts", 200), ("blessing_line", 300), ("story", 3000), ("hashtag", 60), ("livestream_url", 300)):
         setattr(ev, field, str(form.get(field, "")).strip()[:limit])
     ev.dress_codes = {f["key"]: str(form.get(f"dress_{f['key']}", "")).strip()[:120] for f in order.functions or []}
     errors: list[str] = []
+    gift = await gifts.read_gift_form(form, errors)
+    if not errors:
+        gifts.save(db, order, gift)
     new_photos = await invites.read_portrait_uploads(form, errors)
     enhance = str(form.get("enhance_photos", "on")) != "off"
     for role, data in new_photos.items():

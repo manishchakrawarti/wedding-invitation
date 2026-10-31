@@ -89,6 +89,12 @@
     <label class="check"><input type="checkbox" name="photo_consent" {% if v.photo_consent %}checked{% endif %}> <span>I have permission from everyone in these photos to show them on this invitation (<a href="/terms#photos" target="_blank">photo terms</a>).</span></label>
   </div>
 
+  <div class="card" id="card-gift">
+    <h2 class="step-title"><b>🎁</b> Receive gifts &amp; shagun <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional</span></h2>
+    <p class="hint" style="margin-top:-6px">Guests who can't come, or want to send their blessings, can pay you directly from the invitation with any UPI app. Add any one of these.</p>
+    {% with gv = {"upi": v.gift_upi, "phone": v.gift_phone, "name": v.gift_name}, gift_qr_src = "" %}{% include "_gift_fields.html" %}{% endwith %}
+  </div>
+
   <div class="card">
     <h2 class="step-title"><b>2</b> <span id="step2-title">{{ c.step2 }}</span></h2>
     <div class="form-grid">
@@ -212,7 +218,7 @@
   form.language.addEventListener('change', toggleLocal); toggleLocal();
   form.querySelectorAll('.fn-row input[type=checkbox]').forEach(box =>
     box.addEventListener('change', () => box.closest('.fn-row').classList.toggle('on', box.checked)));
-  form.querySelectorAll('input[type=file][data-preview]').forEach(input => input.addEventListener('change', () => {
+  form.querySelectorAll('input[type=file][data-preview]:not([name=gift_qr])').forEach(input => input.addEventListener('change', () => {
     const box = document.getElementById(input.dataset.preview), file = input.files[0];
     if (!file) return;
     const reader = new FileReader();

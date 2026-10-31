@@ -132,8 +132,11 @@
         {% for s in schedule %}
         <div><label for="dress_{{ s.key }}">{{ s.icon }} {{ s.label }} dress code</label><input id="dress_{{ s.key }}" name="dress_{{ s.key }}" type="text" value="{{ (ev.dress_codes or {}).get(s.key, '') }}" placeholder="{{ {'haldi': 'Yellow ethnic', 'mehndi': 'Green / bright colours', 'sangeet': 'Indo-western glam', 'reception': 'Formal / gowns & suits'}.get(s.key, 'Traditional ethnic') }}" maxlength="120"></div>
         {% endfor %}
-        <div><label for="upi_id">UPI ID for shagun <span class="hint">optional</span></label><input id="upi_id" name="upi_id" type="text" value="{{ ev.upi_id }}" placeholder="name@okhdfcbank" maxlength="100"></div>
-        <div><label for="livestream_url">Live-stream link <span class="hint">YouTube / Zoom, optional</span></label><input id="livestream_url" name="livestream_url" type="url" value="{{ ev.livestream_url }}" maxlength="300"></div>
+        <div class="full"><label for="livestream_url">Live-stream link <span class="hint">YouTube / Zoom, optional</span></label><input id="livestream_url" name="livestream_url" type="url" value="{{ ev.livestream_url }}" maxlength="300"></div>
+        <div class="full"><label style="font-size:1.05rem">🎁 Receive gifts &amp; shagun <span class="hint">guests pay you directly with any UPI app</span></label>
+          {% with gv = {"upi": ev.upi_id, "phone": ev.gift_phone, "name": ev.gift_name},
+                  gift_qr_src = ("/e/" ~ o.rsvp_slug ~ "/gift-qr") if gift and gift.uploaded_qr else "" %}{% include "_gift_fields.html" %}{% endwith %}
+        </div>
         <div class="full"><label>Photos on the invitation <span class="hint">bride &amp; groom by their names, family photo in "Invited by"</span></label>
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">
             {% for role, label in photo_roles.items() %}

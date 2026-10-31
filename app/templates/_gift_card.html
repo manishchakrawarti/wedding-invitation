@@ -1,0 +1,21 @@
+{# "Receive gifts" card on the customer's preview / order page. Expects o (order) and gift (gifts.info or None). #}
+<div class="card" id="gift">
+  <h2 style="margin-bottom:4px">🎁 Receive gifts &amp; shagun</h2>
+  {% if request.query_params.get('gift') == 'saved' %}<div class="alert alert-ok">Saved. {{ 'The gift section is now on your invitation.' if gift else 'The gift section is hidden.' }}</div>
+  {% elif request.query_params.get('gift_error') %}<div class="alert alert-error">{{ request.query_params.get('gift_error') }}</div>{% endif %}
+  {% if gift %}
+  <p class="muted" style="margin-top:0">Guests can send you a gift from your invitation page and e-invite:
+    {% if gift.upi_id %}UPI <strong>{{ gift.upi_id }}</strong>{% endif %}{% if gift.upi_id and gift.phone %} · {% endif %}{% if gift.phone %}mobile <strong>{{ gift.phone_pretty }}</strong>{% endif %}{% if gift.uploaded_qr %} · your QR code ✓{% endif %}</p>
+  {% else %}
+  <p class="muted" style="margin-top:0">Let guests who can't come, or want to bless you, send a gift straight to your bank account with any UPI app. It appears on your invitation page and e-invite.</p>
+  {% endif %}
+  <details {% if not gift or request.query_params.get('gift_error') %}open{% endif %}>
+    <summary>{{ 'Change gift details' if gift else 'Add gift details' }}</summary>
+    <form method="post" action="/o/{{ o.token }}/gift" enctype="multipart/form-data" style="margin-top:12px">
+      {% set ev = o.event %}
+      {% with gv = {"upi": ev.upi_id if ev else "", "phone": ev.gift_phone if ev else "", "name": ev.gift_name if ev else ""},
+              gift_qr_src = ("/o/" ~ o.token ~ "/gift-qr") if gift and gift.uploaded_qr else "" %}{% include "_gift_fields.html" %}{% endwith %}
+      <button class="btn btn-primary" type="submit" style="margin-top:12px">Save gift details</button>
+    </form>
+  </details>
+</div>

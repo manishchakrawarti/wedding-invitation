@@ -98,6 +98,12 @@
   </div>
 
   <div class="card">
+    <h2>🎁 Receive shagun <span class="hint">optional</span></h2>
+    <p class="hint" style="margin-top:-6px">Guests who can't come can send shagun straight to you from the invitation with any UPI app.</p>
+    {% with gv = {"upi": v.gift_upi, "phone": v.gift_phone, "name": v.gift_name}, gift_qr_src = "" %}{% include "_gift_fields.html" %}{% endwith %}
+  </div>
+
+  <div class="card">
     <h2>6. Your contact</h2>
     <div class="form-grid">
       <div class="full"><label for="customer_name">Your name *</label><input id="customer_name" name="customer_name" type="text" value="{{ v.customer_name }}" required maxlength="80"></div>

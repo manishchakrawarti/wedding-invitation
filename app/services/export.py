@@ -22,7 +22,7 @@ from app import events, i18n
 from app.catalog import LANGUAGES, STYLES
 from app.config import settings
 from app.models import Order
-from app.services import invites
+from app.services import gifts, invites
 from app.services.cards import cards_for_order
 from app.services.overlay import CANVAS, FONT_DIR, SCRIPT_FONTS
 from app.services.storage import storage
@@ -103,7 +103,11 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
         buf = io.BytesIO()
         img.save(buf, "JPEG", quality=88)
         photos[role] = _uri(buf.getvalue(), "image/jpeg")
-    pages = 1 + len(card_pages) + (1 if schedule else 0) + 1
+    gift = gifts.info(order)
+    if gift:
+        found = gifts.qr_bytes(order)
+        gift = {**gift, "qr": _uri(*found) if found else ""}
+    pages = 1 + len(card_pages) + (1 if schedule else 0) + 1 + (1 if gift else 0)
     free = tier == "free"
     rsvp_url = f"{settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug and not free else ""
     html = templates.get_template("invite_print.html").render(
@@ -111,7 +115,7 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
         local=order.language != "en", fonts=fonts, card_pages=card_pages, schedule=schedule, ev=order.event,
         qr=_qr_uri(rsvp_url) if rsvp_url else "", rsvp_url=rsvp_url, invocation=i18n.INVOCATIONS.get(order.language, ""),
         W=PAGE_W, H=PAGE_H, settings=settings, credit=f"Made with love · {settings.brand_name}" if free else "",
-        pages_range=pages_range, photos=photos, occ=None if order.is_wedding else events.texts(order),
+        pages_range=pages_range, photos=photos, occ=None if order.is_wedding else events.texts(order), gift=gift,
     )
     return html, pages
 

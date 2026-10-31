@@ -127,7 +127,13 @@
   .attend input:checked + span { border-color: var(--maroon); background: #fbeff1; color: var(--maroon); }
   .attend input:focus-visible + span { outline: 2px solid var(--gold); }
   .shagun { text-align: center; background: linear-gradient(135deg, #fff8e6, #fdebd3); border: 1px solid var(--gold-soft); border-radius: 18px; padding: 30px; }
-  .shagun img { width: 180px; margin: 12px auto; border-radius: 12px; background: #fff; padding: 8px; }
+  .shagun img { width: 200px; max-width: 70%; margin: 12px auto 4px; border-radius: 12px; background: #fff; padding: 8px; display: block; }
+  .pay-rows { display: grid; gap: 8px; max-width: 420px; margin: 14px auto 6px; }
+  .pay-row { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 10px; background: #fff; border: 1px solid var(--gold-soft); border-radius: 12px; padding: 10px 14px; text-align: left; }
+  .pay-row span { font-size: .78rem; color: var(--muted); }
+  .pay-row b { grid-row: 2; min-width: 0; overflow-wrap: anywhere; font-size: 1.05rem; }
+  .pay-row .copy { grid-column: 2; grid-row: 1 / span 2; border: 1px solid var(--gold); background: #fff8e6; color: var(--maroon); border-radius: 999px; padding: 6px 14px; font: 600 .85rem var(--sans); cursor: pointer; }
+  @media (max-width: 480px) { .shagun { padding: 24px 16px; } }
   .wall { columns: 2 260px; column-gap: 16px; }
   .wish { break-inside: avoid; background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--gold); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
   .wish b { display: block; color: var(--maroon); margin-top: 6px; font-family: var(--serif); font-size: 1.1rem; }
@@ -337,16 +343,20 @@
   </div>
 </section>
 
-{% if upi_link or (ev and ev.livestream_url) %}
-<section class="x-section">
+{% if gift or (ev and ev.livestream_url) %}
+<section class="x-section" id="gift">
   <div class="narrow reveal" style="display:grid;gap:20px">
-    {% if upi_link %}
+    {% if gift %}
     <div class="shagun">
       <h2 style="margin:0">{{ occ.gift_title if occ else t.shagun_title }}</h2>
       <p class="muted">{{ occ.gift_text if occ else t.shagun_text }}</p>
-      <img src="/e/{{ o.rsvp_slug }}/shagun.png" alt="UPI QR code for shagun">
-      <p><a class="btn btn-primary" href="{{ upi_link }}">{{ occ.gift_btn if occ else t.shagun_btn }}</a></p>
-      <p class="small muted">UPI ID: {{ ev.upi_id }}</p>
+      {% if gift.qr_src %}<img src="{{ gift.qr_src }}" alt="UPI QR code to send a gift" loading="lazy"><p class="small muted" style="margin-top:0">{{ t.gift_scan }}</p>{% endif %}
+      {% if gift.link %}<p class="upi-btn"><a class="btn btn-primary" href="{{ gift.link }}">{{ occ.gift_btn if occ else t.shagun_btn }}</a></p>{% endif %}
+      <div class="pay-rows">
+        {% if gift.upi_id %}<div class="pay-row"><span>UPI ID</span><b>{{ gift.upi_id }}</b><button class="copy" type="button" data-copy="{{ gift.upi_id }}">{{ t.copy_label }}</button></div>{% endif %}
+        {% if gift.phone %}<div class="pay-row"><span>{{ t.gift_mobile }}</span><b>{{ gift.phone_pretty }}</b><button class="copy" type="button" data-copy="{{ gift.phone }}">{{ t.copy_label }}</button></div>{% endif %}
+      </div>
+      <p class="small muted" style="margin-bottom:0">{{ t.gift_to }}: <b>{{ gift.payee }}</b></p>
     </div>
     {% endif %}
     {% if ev and ev.livestream_url %}
@@ -377,6 +387,18 @@
 
 {% block scripts %}
 <script>
+(function () {
+  // gifts: the UPI app button only works on phones; copy buttons for the UPI ID / mobile number
+  if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) document.querySelectorAll('.upi-btn').forEach(el => { el.hidden = true; });
+  document.querySelectorAll('.pay-row .copy').forEach(btn => btn.addEventListener('click', () => {
+    const done = () => { const old = btn.textContent; btn.textContent = {{ t.copied|tojson }}; setTimeout(() => { btn.textContent = old; }, 1600); };
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(btn.dataset.copy).then(done, () => {}); return; }
+    const ta = Object.assign(document.createElement('textarea'), { value: btn.dataset.copy });
+    document.body.appendChild(ta); ta.select();
+    try { if (document.execCommand('copy')) done(); } catch (e) {}
+    ta.remove();
+  }));
+})();
 (function () {
   const doors = document.getElementById('doors');
   const ui = document.getElementById('door-ui');

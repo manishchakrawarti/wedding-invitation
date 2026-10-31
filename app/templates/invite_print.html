@@ -96,6 +96,16 @@
   .names.brand { font-family: var(--heading); font-weight: 700; font-size: 92px; letter-spacing: 3px; }
   .credit { position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.85); color: #5a2828;
     font: 600 22px var(--serif); padding: 6px 22px; border-radius: 30px; white-space: nowrap; }
+  /* gifts */
+  .gift-title { font-family: var(--heading); color: var(--t1); font-size: 66px; line-height: 1.15; }
+  .gift-text { font-size: 34px; line-height: 1.4; max-width: 800px; margin-top: 18px; opacity: .95; }
+  .gift-qr { background: #fff; padding: 26px; border-radius: 26px; margin-top: 44px; box-shadow: 0 14px 40px rgba(0,0,0,.25); }
+  .gift-qr img { width: 400px; height: 400px; object-fit: contain; display: block; }
+  .gift-qr p { color: #3b2320; font-family: var(--serif); font-size: 25px; margin-top: 12px; font-weight: 600; max-width: 400px; }
+  .gift-rows { margin-top: 36px; display: grid; gap: 14px; }
+  .gift-row { background: rgba(255,255,255,.92); color: #3b2320; border-radius: 18px; padding: 14px 30px; font-size: 32px; }
+  .gift-row span { font-size: 24px; color: #8a6a3a; margin-right: 14px; }
+  .gift-to { margin-top: 24px; font-size: 28px; opacity: .9; }
   {% if pages_range %}{% set sel = ':nth-of-type(n+' ~ pages_range[0] ~ '):nth-of-type(-n+' ~ pages_range[1] ~ ')' %}
   .page { display: none; } .page{{ sel }} { display: block; } .page.themed{{ sel }}, .page.sched{{ sel }} { display: flex; }{% endif %}
 </style>
@@ -188,5 +198,21 @@
   {% if credit %}<div class="credit">{{ credit }}</div>{% else %}<div class="brand">{{ settings.brand_name }}</div>{% endif %}
 </section>
 
+{% if gift %}
+{# 5 — Send a gift (UPI) #}
+<section class="page themed">
+  <div class="frame"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="gift-title">{{ occ.gift_title if occ else t.shagun_title }}</div>
+  <div class="gift-text">{{ occ.gift_text if occ else t.shagun_text }}</div>
+  {% if gift.qr %}<div class="gift-qr"><img src="{{ gift.qr }}" alt="UPI QR code"><p>{{ t.gift_scan }}</p></div>{% endif %}
+  <div class="gift-rows">
+    {% if gift.upi_id %}<div class="gift-row"><span>UPI ID</span><b>{{ gift.upi_id }}</b></div>{% endif %}
+    {% if gift.phone %}<div class="gift-row"><span>{{ t.gift_mobile }}</span><b>{{ gift.phone_pretty }}</b></div>{% endif %}
+  </div>
+  <div class="gift-to">{{ t.gift_to }}: <b>{{ gift.payee }}</b></div>
+  {% if credit %}<div class="credit">{{ credit }}</div>{% else %}<div class="brand">{{ settings.brand_name }}</div>{% endif %}
+</section>
+{% endif %}
 </body>
 </html>

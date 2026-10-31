@@ -1,0 +1,42 @@
+{# Gift / shagun fields, shared by /create, /order, the family console and the order pages.
+   Expects: gv = {"upi": .., "phone": .., "name": ..} current values; gift_qr_src = current QR image URL or "". #}
+<div class="form-grid gift-fields">
+  <div><label for="gift_upi">UPI ID <span class="hint">e.g. name@okhdfcbank</span></label>
+    <input id="gift_upi" name="gift_upi" type="text" value="{{ gv.upi or '' }}" maxlength="100" placeholder="yourname@okaxis" autocomplete="off" spellcheck="false"></div>
+  <div><label for="gift_phone">or UPI mobile number <span class="hint">GPay / PhonePe / Paytm number</span></label>
+    <input id="gift_phone" name="gift_phone" type="tel" inputmode="numeric" value="{{ gv.phone or '' }}" maxlength="15" placeholder="98765 43210"></div>
+  <div class="full"><label for="gift_name">Receiver's name <span class="hint">as shown in UPI apps, so guests know it's really you</span></label>
+    <input id="gift_name" name="gift_name" type="text" value="{{ gv.name or '' }}" maxlength="100" placeholder="e.g. Priyanka Sharma"></div>
+  <div class="full">
+    <label class="gift-qr-pick">
+      <input type="file" name="gift_qr" accept="image/jpeg,image/png,image/webp" data-preview="prev-gift-qr">
+      <span class="ph" id="prev-gift-qr" {% if gift_qr_src %}style="background-image:url('{{ gift_qr_src }}')"{% endif %}><span {% if gift_qr_src %}hidden{% endif %}>▦</span></span>
+      <span><strong>{{ 'Replace your payment QR code' if gift_qr_src else 'or upload your payment QR code' }}</strong><br>
+        <span class="hint">Screenshot of "Receive money / My QR" from GPay, PhonePe, Paytm or your bank app. We read the UPI ID from it automatically.</span></span>
+    </label>
+    {% if gift_qr_src %}<label class="check"><input type="checkbox" name="gift_qr_remove"> <span>Remove the uploaded QR code</span></label>{% endif %}
+  </div>
+</div>
+<p class="hint" style="margin-bottom:0">🔒 Gifts go <strong>straight to your bank account</strong>. {{ settings.brand_name }} never handles this money and takes no cut. Leave all of these empty to hide the gift section.</p>
+<style>
+  .gift-qr-pick { display: flex; gap: 14px; align-items: center; cursor: pointer; font-weight: 400; margin: 4px 0 0;
+    background: #fff; border: 1.5px dashed var(--gold); border-radius: 14px; padding: 12px; }
+  .gift-qr-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .gift-qr-pick input:focus-visible + .ph { outline: 3px solid var(--gold); }
+  .gift-qr-pick .ph { width: 84px; height: 84px; flex: none; border-radius: 12px; background: #fbf3e4 center / contain no-repeat;
+    border: 2px solid var(--gold); display: grid; place-items: center; color: var(--gold); font-size: 2rem; }
+  .gift-qr-pick .ph.has span { display: none; }
+</style>
+<script>
+document.querySelectorAll('input[name=gift_qr]').forEach(input => {
+  if (input.dataset.bound) return;
+  input.dataset.bound = '1';
+  input.addEventListener('change', () => {
+    const box = document.getElementById('prev-gift-qr'), file = input.files[0];
+    if (!file || !box) return;
+    const reader = new FileReader();
+    reader.onload = e => { box.style.backgroundImage = `url(${e.target.result})`; box.classList.add('has'); };
+    reader.readAsDataURL(file);
+  });
+});
+</script>

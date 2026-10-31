@@ -107,6 +107,10 @@
         <dt>Photo consent</dt><dd>{{ 'Yes' if o.photo_consent else 'No' }}</dd>
         <dt>Marketing OK</dt><dd>{{ 'Yes' if o.marketing_consent else 'No' }}</dd>
         <dt>Referral</dt><dd>own {{ o.referral_code }}{% if o.referred_by_code %} · used {{ o.referred_by_code }}{% endif %}</dd>
+        {% set gift_qr = o.live_assets('gift_qr') | last %}
+        {% if o.event and (o.event.upi_id or o.event.gift_phone or gift_qr) %}
+        <dt>Gifts (UPI)</dt><dd>{{ o.event.upi_id or '' }}{% if o.event.upi_id and o.event.gift_phone %} · {% endif %}{% if o.event.gift_phone %}+91 {{ o.event.gift_phone }}{% endif %}{% if o.event.gift_name %} ({{ o.event.gift_name }}){% endif %}{% if gift_qr %} · <a href="/admin/assets/{{ gift_qr.id }}" target="_blank">own QR ↗</a>{% endif %}</dd>
+        {% endif %}
       </dl>
       {% if o.functions %}<p class="small"><strong>Functions:</strong><br>{% for f in o.functions %}{{ functions[f.key] }}: {{ f.date }} {{ f.time }} {{ f.venue }}<br>{% endfor %}</p>{% endif %}
       {% if o.customer_notes %}<p class="small"><strong>Customer notes:</strong><br>{{ o.customer_notes }}</p>{% endif %}

@@ -362,7 +362,7 @@ def test_smart_guest_invites(client, admin_auth):
     csv = client.get(f"/e/{slug}/guests.csv?key={key}").text
     assert "Sharma Family" in csv and "/i/" in csv
 
-    client.post(f"/e/{slug}/details", data={"key": key, "hosts": "The Kapoor family", "upi_id": "me@upi", "dress_haldi": "Yellow"})
+    client.post(f"/e/{slug}/details", data={"key": key, "hosts": "The Kapoor family", "gift_upi": "me@upi", "dress_haldi": "Yellow"})
     page = client.get(f"/i/{rahul.code}").text
     assert "The Kapoor family" in page and "upi://pay?pa=me%40upi" in page.replace("&amp;", "&")
     assert client.get(f"/e/{slug}/shagun.png").status_code == 200
@@ -949,3 +949,96 @@ def test_audit_homepage_seo_and_sharing(client):
     assert "/create?event=kids_birthday" in sitemap and "/occasions" in sitemap and "/o/" not in sitemap
     demo.ensure_demo()
     assert 'id="share-btn"' in client.get("/demo/en").text  # guests can share a live invitation
+
+
+# --- gifts (shagun) by UPI, for every occasion ------------------------------------
+
+def _qr_png(text: str) -> bytes:
+    import qrcode
+
+    buf = io.BytesIO()
+    qrcode.make(text, box_size=10, border=4).save(buf, "PNG")
+    return buf.getvalue()
+
+
+def _event_details(order_id: int):
+    from app.models import EventDetails
+
+    with SessionLocal() as db:
+        return db.scalar(select(EventDetails).where(EventDetails.order_id == order_id))
+
+
+def _instant_data(**overrides) -> dict:
+    return {"bride_name": "Priya", "groom_name": "Rohan", "language": "en", "style": "north_indian",
+            "wedding_date": WEDDING, "venue_name": "ITC Rajputana", "city": "Jaipur", **overrides}
+
+
+def test_gift_details_on_create_show_on_invite_page_and_einvite(client):
+    from app.services import export, gifts
+
+    resp = create_event(client, "kids_birthday", gift_upi="aarav.papa@okhdfcbank", gift_phone="+91 98765 43210",
+                        gift_name="Rakesh Mehta")
+    assert resp.status_code == 303, resp.text[:800]
+    order = get(resp.headers["location"].split("/")[2])
+    ev = _event_details(order.id)
+    assert (ev.upi_id, ev.gift_phone, ev.gift_name) == ("aarav.papa@okhdfcbank", "9876543210", "Rakesh Mehta")
+
+    page = client.get(f"/e/{order.rsvp_slug}").text.replace("&amp;", "&")
+    assert "Send a gift" in page and "upi://pay?pa=aarav.papa%40okhdfcbank&pn=Rakesh%20Mehta" in page
+    assert "+91 98765 43210" in page and "Rakesh Mehta" in page and f"/e/{order.rsvp_slug}/gift-qr" in page
+    assert ">Copy</button>" in page  # (a "copy" key once rendered Python's dict.copy here)
+    qr = client.get(f"/e/{order.rsvp_slug}/gift-qr")
+    assert qr.status_code == 200 and qr.headers["content-type"] == "image/png"
+    assert gifts.decode_qr(qr.content).startswith("upi://pay?pa=aarav.papa%40okhdfcbank")
+
+    # The PDF / long-image e-invite gets its own "Send a gift" page with the QR.
+    with SessionLocal() as db:
+        html, pages = export.build_html(db.get(Order, order.id), "free")
+    assert "aarav.papa@okhdfcbank" in html and "+91 98765 43210" in html and 'class="gift-qr"' in html
+    assert html.count('<section class="page') == pages
+
+
+def test_gift_by_mobile_only_validation_and_hidden_when_empty(client):
+    order = create_instant(client, gift_phone="98765 43210")
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert "Send your blessings" in page and "+91 98765 43210" in page
+    assert "upi://" not in page and "/gift-qr" not in page  # nothing to scan without a UPI ID or QR
+
+    plain = create_instant(client)
+    assert '<div class="shagun">' not in client.get(f"/e/{plain.rsvp_slug}").text
+
+    bad = client.post("/create", data=_instant_data(gift_upi="not-an-upi", gift_phone="12345"))
+    assert bad.status_code == 422 and "UPI ID doesn" in bad.text and "10-digit mobile number" in bad.text
+    assert 'value="not-an-upi"' in bad.text  # what they typed is kept
+
+
+def test_gift_qr_upload_reads_upi_id_and_can_be_changed(client):
+    from app.services import gifts
+
+    own_qr = _qr_png("upi://pay?pa=sharma.family@ybl&pn=Sharma%20Family&cu=INR")
+    resp = client.post("/create", data=_instant_data(), files={"gift_qr": ("qr.png", own_qr, "image/png")},
+                       follow_redirects=False)
+    assert resp.status_code == 303, resp.text[:800]
+    order = get(resp.headers["location"].split("/")[2])
+    ev = _event_details(order.id)
+    assert ev.upi_id == "sharma.family@ybl" and ev.gift_name == "Sharma Family"  # read from their QR
+    assert gifts.decode_qr(client.get(f"/e/{order.rsvp_slug}/gift-qr").content).startswith("upi://pay?pa=sharma.family@ybl")
+    page = client.get(f"/e/{order.rsvp_slug}").text.replace("&amp;", "&")
+    assert "upi://pay?pa=sharma.family%40ybl" in page  # the "Pay" button works too
+
+    preview = client.get(f"/o/{order.token}/preview").text
+    assert "Receive gifts" in preview and "sharma.family@ybl" in preview and f"/o/{order.token}/gift-qr" in preview
+
+    # A QR that isn't a UPI payment QR is refused and nothing changes.
+    r = client.post(f"/o/{order.token}/gift", files={"gift_qr": ("qr.png", _qr_png("https://example.com"), "image/png")},
+                    follow_redirects=False)
+    assert r.status_code == 303 and "gift_error=" in r.headers["location"]
+    assert _event_details(order.id).upi_id == "sharma.family@ybl"
+
+    # Switch to a mobile number and remove the QR.
+    r = client.post(f"/o/{order.token}/gift", data={"gift_phone": "9123456780", "gift_qr_remove": "on"}, follow_redirects=False)
+    assert "gift=saved" in r.headers["location"]
+    ev = _event_details(order.id)
+    assert ev.upi_id == "" and ev.gift_phone == "9123456780"
+    assert client.get(f"/e/{order.rsvp_slug}/gift-qr").status_code == 404
+    assert "+91 91234 56780" in client.get(f"/e/{order.rsvp_slug}").text

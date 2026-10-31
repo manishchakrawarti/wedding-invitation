@@ -152,7 +152,7 @@ class Order(Base):
         return [
             a
             for a in self.assets
-            if a.kind == kind and a.deleted_at is None and (kind in ("photo", "video", "music", "portrait", "portrait_raw") or a.version == version)
+            if a.kind == kind and a.deleted_at is None and (kind in ("photo", "video", "music", "portrait", "portrait_raw", "gift_qr") or a.version == version)
         ]
 
 
@@ -276,7 +276,9 @@ class EventDetails(Base):
     story: Mapped[str] = mapped_column(Text, default="")
     hashtag: Mapped[str] = mapped_column(String(60), default="")
     dress_codes: Mapped[dict] = mapped_column(JSON, default=dict)  # function key -> "Yellow / pastel ethnic"
-    upi_id: Mapped[str] = mapped_column(String(100), default="")  # shagun
+    upi_id: Mapped[str] = mapped_column(String(100), default="")  # gifts / shagun (see services/gifts.py)
+    gift_phone: Mapped[str] = mapped_column(String(15), default="")  # UPI-linked mobile, 10 digits
+    gift_name: Mapped[str] = mapped_column(String(100), default="")  # account holder shown to guests
     livestream_url: Mapped[str] = mapped_column(String(300), default="")
 
     order: Mapped[Order] = relationship(back_populates="event")

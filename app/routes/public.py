@@ -4,6 +4,7 @@ import secrets
 import time
 from collections import defaultdict
 from datetime import date
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
@@ -15,8 +16,8 @@ from app import events
 from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STYLES
 from app.config import settings
 from app.db import get_db
-from app.models import Asset, EventDetails, Order, OrderStatus
-from app.services import export, hires, invites, notify, orders, payments, pipeline
+from app.models import Asset, Order, OrderStatus
+from app.services import export, gifts, hires, invites, notify, orders, payments, pipeline
 from app.services.cards import has_guest_console
 from app.services.maintenance import sample_event_image, sample_image
 from app.services.storage import storage
@@ -158,9 +159,10 @@ async def submit_order(request: Request, db: Session = Depends(get_db)):
     def f(key: str) -> str:
         return str(form.get(key) or "").strip()
 
-    values = {k: f(k) for k in form.keys() if k not in ("photos", "addons")}
+    values = {k: f(k) for k in form.keys() if k not in ("photos", "addons", "gift_qr")}
     values["addons"] = form.getlist("addons")
     errors: list[str] = []
+    gift = await gifts.read_gift_form(form, errors)
 
     for key, label in [("customer_name", "Your name"), ("bride_name", "Bride's name"), ("groom_name", "Groom's name"), ("venue_name", "Venue")]:
         if not f(key):
@@ -234,6 +236,7 @@ async def submit_order(request: Request, db: Session = Depends(get_db)):
     )
     db.add(order)
     db.flush()
+    gifts.save(db, order, gift)
     for i, data in enumerate(photo_bytes, 1):
         key = storage.save(f"orders/{order.public_id}/photos/{i}.jpg", data)
         db.add(Asset(order_id=order.id, kind="photo", card_key=f"photo{i}", path=key, content_type="image/jpeg"))
@@ -250,7 +253,7 @@ def order_status(request: Request, order: Order = Depends(get_order)):
     if order.source == "instant" and order.status != OrderStatus.DELIVERED.value:
         return redirect(f"/o/{order.token}/preview")
     return templates.TemplateResponse(request, "order_status.html", {
-        "o": order, "visible": PROOF_VISIBLE, "console": has_guest_console(order),
+        "o": order, "visible": PROOF_VISIBLE, "console": has_guest_console(order), "gift": gifts.info(order),
         "entitled": hires.entitled(order), "tiers": hires.TIERS,
     })
 
@@ -437,9 +440,10 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     def f(key: str) -> str:
         return str(form.get(key) or "").strip()
 
-    values = {k: f(k) for k in form.keys() if not k.endswith("_photo")}
+    values = {k: f(k) for k in form.keys() if not k.endswith("_photo") and k != "gift_qr"}
     errors: list[str] = []
     portrait_uploads = await invites.read_portrait_uploads(form, errors)
+    gift = await gifts.read_gift_form(form, errors)
     etype = events.TYPES.get(f("event_type"))
     required = [("bride_name", "Bride's name"), ("groom_name", "Groom's name"), ("venue_name", "Venue")]
     if etype:
@@ -496,7 +500,8 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     db.add(order)
     db.flush()
     if f("hosts"):
-        db.add(EventDetails(order_id=order.id, hosts=f("hosts")[:200], dress_codes={}))
+        invites.event_details(db, order).hosts = f("hosts")[:200]
+    gifts.save(db, order, gift)
     enhance = f("enhance_photos") != "off"
     for role, data in portrait_uploads.items():
         invites.save_portrait(db, order, role, data, enhance=enhance)
@@ -520,7 +525,7 @@ def preview(request: Request, order: Order = Depends(get_order)):
     finals = {a.card_key: a for a in order.live_assets("final")}
     return templates.TemplateResponse(request, "preview.html", {
         "o": order, "working": working, "items": [(p, finals.get(p.card_key)) for p in proofs],
-        "unlockable": orders.preview_unlockable(order), "pkg": PACKAGES[order.package], "tiers": hires.TIERS,
+        "gift": gifts.info(order), "unlockable": orders.preview_unlockable(order), "pkg": PACKAGES[order.package], "tiers": hires.TIERS,
         "free": RESOLUTIONS["free"],
     })
 
@@ -558,6 +563,30 @@ def download(asset_id: int, res: str, order: Order = Depends(get_order)):
     name = f"{slugify(f'{order.bride_name}-{order.groom_name}-{final.card_key}-{res}') or 'invitation'}.{ext}"
     return Response(hires.render(order, final, res), media_type=content_type,
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@router.post("/o/{token}/gift")
+async def save_gift(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    """Add or change where guests send gifts (UPI ID, UPI mobile, payment QR) after creating the invite."""
+    if order.status == OrderStatus.CANCELLED.value:
+        raise HTTPException(404)
+    errors: list[str] = []
+    gift = await gifts.read_gift_form(await request.form(), errors)
+    back = f"/o/{order.token}/preview" if order.source == "instant" and order.status != OrderStatus.DELIVERED.value else f"/o/{order.token}"
+    if errors:
+        return redirect(f"{back}?gift_error={quote(' '.join(errors))}#gift")
+    gifts.save(db, order, gift)
+    orders.log_event(db, order, "Gift details updated")
+    db.commit()
+    return redirect(f"{back}?gift=saved#gift")
+
+
+@router.get("/o/{token}/gift-qr")
+def gift_qr(order: Order = Depends(get_order)):
+    asset = gifts.qr_asset(order)
+    if asset is None:
+        raise HTTPException(404)
+    return Response(storage.read(asset.path), media_type=asset.content_type, headers={"Cache-Control": "no-cache"})
 
 
 @router.post("/o/{token}/coupon")
