@@ -1,4 +1,5 @@
-{# "What are you celebrating?" — category tabs + event types, shown at the top of the create forms. #}
+{# "What are you celebrating?" — category tabs + event types at the top of the create form.
+   Without JavaScript the links load the matching form; with it, create.html switches the form in place. #}
 {% set current_cat = 'wedding' if current_event == 'wedding' else occasion_types[current_event].category %}
 <div class="card occ-picker">
   <h2 class="step-title"><b>✦</b> What are you celebrating?</h2>
@@ -11,15 +12,15 @@
   {% for c in occasion_categories.values() %}
   <div class="occ-panel {% if c.key == current_cat %}active{% endif %}" id="occ-panel-{{ c.key }}" role="tabpanel">
     {% if c.key == 'wedding' %}
-      <a class="occ-type {% if current_event == 'wedding' %}current{% endif %}" href="/create"><span>💍</span> Wedding <span class="hint">all functions</span></a>
+      <a class="occ-type {% if current_event == 'wedding' %}current{% endif %}" href="/create" data-event="wedding"><span>💍</span> Wedding <span class="hint">all functions</span></a>
     {% else %}
       {% for k in c.types %}{% set t = occasion_types[k] %}
-      <a class="occ-type {% if current_event == k %}current{% endif %}" href="/create?event={{ k }}"><span>{{ t.icon }}</span> {{ t.name }}</a>
+      <a class="occ-type {% if current_event == k %}current{% endif %}" href="/create?event={{ k }}" data-event="{{ k }}"><span>{{ t.icon }}</span> {{ t.name }}</a>
       {% endfor %}
     {% endif %}
   </div>
   {% endfor %}
-  <p class="hint" style="margin:10px 0 0">Selected: <strong>{{ 'Wedding' if current_event == 'wedding' else occasion_types[current_event].name }}</strong> · <a href="/occasions" target="_blank">See samples &amp; live demos of every occasion ↗</a></p>
+  <p class="hint" style="margin:10px 0 0">Selected: <strong id="occ-selected">{{ 'Wedding' if current_event == 'wedding' else occasion_types[current_event].name }}</strong> · the form below adapts to your choice · <a href="/occasions" target="_blank">samples &amp; live demos ↗</a></p>
 </div>
 <style>
   .occ-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -34,9 +35,3 @@
   .occ-type.current { border-color: var(--maroon); background: #fbeff1; box-shadow: 0 0 0 2px rgba(122, 26, 43, .12); }
   .occ-type .hint { font-weight: 400; }
 </style>
-<script>
-document.querySelectorAll('.occ-tab').forEach(tab => tab.addEventListener('click', () => {
-  document.querySelectorAll('.occ-tab').forEach(t => { const on = t === tab; t.classList.toggle('active', on); t.setAttribute('aria-selected', on); });
-  document.querySelectorAll('.occ-panel').forEach(p => p.classList.toggle('active', p.id === 'occ-panel-' + tab.dataset.cat));
-}));
-</script>

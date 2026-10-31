@@ -366,17 +366,43 @@ def _too_many_previews(ip: str) -> bool:
     return False
 
 
-def _create_context(values: dict, errors: list[str] | None = None) -> dict:
+def occasion_form_config() -> dict:
+    """How the create form looks for each occasion; the page switches between these in the browser."""
+    wedding_styles = [k for k, st in STYLES.items() if "wedding" in st.occasions]
+    cfg = {"wedding": {
+        "name": "Wedding", "heading": "Create your wedding invitation", "step1": "The couple", "step2": "Wedding details",
+        "primary": "Bride's name", "primary_ph": "e.g. Ananya", "secondary": "Groom's name", "secondary_ph": "e.g. Arjun",
+        "secondary_required": True, "detail": "", "detail_ph": "", "date": "Wedding date", "hosts": "Invited by",
+        "hosts_ph": "The Sharma & Mehta families", "photo1": "Bride's photo", "photo2": "Groom's photo",
+        "photo3": "Family photo", "styles": wedding_styles, "sample": "/samples/{style}.jpg", "wedding": True,
+    }}
+    for key, t in events.TYPES.items():
+        cfg[key] = {
+            "name": t.name, "heading": f"Create a {t.name} invitation", "step1": "Who's it for?", "step2": "When & where",
+            "primary": t.primary_label, "primary_ph": f"e.g. {t.demo[0]}", "secondary": t.secondary_label,
+            "secondary_ph": f"e.g. {t.demo[1]}" if t.demo[1] else "", "secondary_required": t.secondary_required,
+            "detail": t.detail_label, "detail_ph": f"e.g. {t.detail_hint}" if t.detail_hint else "", "date": "Date",
+            "hosts": "Hosted by", "hosts_ph": "The leadership team" if t.category == "corporate" else "The Sharma family",
+            "photo1": t.photo_labels[0], "photo2": t.photo_labels[1] or "Second photo",
+            "photo3": "Team / venue photo" if t.category == "corporate" else "Family photo",
+            "styles": list(t.styles), "sample": f"/samples/event/{key}.jpg?style={{style}}", "wedding": False,
+        }
+    return cfg
+
+
+def _create_context(values: dict, errors: list[str] | None = None, current: str = "wedding") -> dict:
+    cfg = occasion_form_config()
+    current = current if current in cfg else "wedding"
     return {
         "styles": STYLES, "languages": LANGUAGES, "functions": FUNCTIONS, "v": values, "errors": errors or [],
         "today": date.today().isoformat(), "pkg": PACKAGES["instant"],
-        "occasion_categories": events.CATEGORIES, "occasion_types": events.TYPES, "current_event": "wedding",
+        "occasion_categories": events.CATEGORIES, "occasion_types": events.TYPES, "current_event": current,
+        "form_cfg": cfg, "c": cfg[current],
     }
 
 
 def _event_context(etype, values: dict, errors: list[str] | None = None) -> dict:
-    return {**_create_context(values, errors), "et": etype, "cat": events.CATEGORIES[etype.category], "current_event": etype.key,
-            "event_styles": [STYLES[k] for k in etype.styles]}
+    return _create_context(values, errors, etype.key)
 
 
 @router.get("/create", response_class=HTMLResponse)
@@ -384,7 +410,7 @@ def create_form(request: Request, style: str = "north_indian", lang: str = "en",
     if event in events.TYPES:
         etype = events.TYPES[event]
         values = {"style": style if style in etype.styles else etype.styles[0], "language": lang if lang in LANGUAGES else "en"}
-        return templates.TemplateResponse(request, "create_event.html", _event_context(etype, values))
+        return templates.TemplateResponse(request, "create.html", _event_context(etype, values))
     values = {"style": style if style in STYLES else "north_indian", "language": lang if lang in LANGUAGES else "en", "fn_wedding": "on"}
     return templates.TemplateResponse(request, "create.html", _create_context(values))
 
@@ -435,7 +461,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
         errors.append("You've created several previews this hour. Please try again a little later, or message us on WhatsApp.")
     if errors:
         if etype:
-            return templates.TemplateResponse(request, "create_event.html", _event_context(etype, values, errors), status_code=422)
+            return templates.TemplateResponse(request, "create.html", _event_context(etype, values, errors), status_code=422)
         return templates.TemplateResponse(request, "create.html", _create_context(values, errors), status_code=422)
 
     price = PACKAGES["instant"].price * 100

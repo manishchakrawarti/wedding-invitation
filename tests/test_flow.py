@@ -804,7 +804,10 @@ def test_occasions_catalogue_pages(client):
     assert client.get("/samples/event/nope.jpg").status_code == 404
     form = client.get("/create?event=wedding_anniversary").text
     assert "Partner&#39;s name" in form and 'name="event_type" value="wedding_anniversary"' in form
-    assert "Balloon Party" not in client.get("/create").text  # wedding style picker stays wedding-only
+    import re
+
+    wedding_form = client.get("/create").text  # event styles exist on the page but start hidden for weddings
+    assert re.search(r'data-style="kids_party" hidden', wedding_form) and not re.search(r'data-style="north_indian" hidden', wedding_form)
     assert "every occasion" in client.get("/").text
 
 
@@ -886,3 +889,27 @@ def test_create_page_has_occasion_picker(client):
     event_page = client.get("/create?event=diwali_puja").text
     assert 'class="occ-tab active" data-cat="puja"' in event_page
     assert 'class="occ-type current" href="/create?event=diwali_puja"' in event_page
+
+
+def test_create_form_switches_occasion_in_place(client):
+    """One form for every occasion: the page carries each occasion's fields and labels for instant switching."""
+    import json
+    import re
+
+    page = client.get("/create").text
+    from app import events
+
+    cfg = json.loads(re.search(r"const CFG = (\{.*?\});\n", page, re.S).group(1))
+
+    assert set(cfg) == {"wedding", *events.TYPES}
+    assert cfg["kids_birthday"]["primary"] == "Child's name" and cfg["kids_birthday"]["detail"] == "Turning (age)"
+    assert cfg["wedding_anniversary"]["secondary_required"] is True and cfg["grand_opening"]["secondary"] == ""
+    assert cfg["wedding"]["wedding"] is True and "kids_party" in cfg["kids_birthday"]["styles"]
+    assert 'data-event="mundan"' in page and 'id="occ-selected"' in page
+    # Server-side first render matches the chosen occasion (works without JavaScript too).
+    bday = client.get("/create?event=kids_birthday").text
+    assert 'name="event_type" value="kids_birthday"' in bday and '<span id="primary-label">Child&#39;s name</span>' in bday
+    assert re.search(r'id="secondary-field"\s+hidden', bday)
+    # Submitting the unified form as a wedding still works.
+    order = create_instant(client, event_type="wedding")
+    assert order.event_type == "wedding" and order.groom_name == "Rohan"
