@@ -385,7 +385,8 @@ def test_live_demo(client):
     assert "Sharma Family" in page.text and "Our Story" in page.text
     assert client.get("/demo/console").status_code == 200
     with SessionLocal() as db:
-        assert len(db.scalars(select(Order).where(Order.source == "demo")).all()) == len(demo.DEMOS)
+        weddings = db.scalars(select(Order).where(Order.source == "demo", Order.event_type == "wedding")).all()
+        assert len(weddings) == len(demo.DEMOS)
 
     # Every language demo renders fully in its own language and script.
     from app import i18n
@@ -847,3 +848,29 @@ def test_every_event_type_creates_a_working_invitation(client):
         with SessionLocal() as db:
             html, _ = export.build_html(db.get(Order, order.id), "free")
         assert "event-headline" in html, key
+
+
+def test_live_demos_for_every_occasion(client):
+    from app import events
+    from app.services import demo, export
+
+    demo.ensure_demo()
+    home = client.get("/").text
+    assert home.count('class="lang-select occ-select"') == 2 and '<optgroup label="🪔 Religious Pujas">' in home
+    for key, t in events.TYPES.items():
+        resp = client.get(f"/demo?event={key}", follow_redirects=False)
+        assert resp.status_code == 302, key
+        page = client.get(resp.headers["location"]).text
+        assert "Dear Mehta Family" in page and t.demo[0].replace("'", "&#39;") in page, key
+        assert client.get(f"/demo/event/{key}/console").status_code == 200, key
+    assert "Silver Jubilee" in client.get("/demo/event/milestone_anniversary").text
+    assert client.get("/demo/event/bogus").status_code == 404
+    assert '/demo/event/kids_birthday' in client.get("/occasions").text
+    with SessionLocal() as db:
+        events_count = db.scalars(select(Order).where(Order.source == "demo", Order.event_type != "wedding")).all()
+    assert len(events_count) == len(events.TYPES)  # idempotent: one demo per type
+    if export.chrome_binary():  # illustrated people where they fit, none for corporate
+        kid = demo.demo_order("en", "kids_birthday")
+        assert "/portrait/bride" in client.get(f"/e/{kid.rsvp_slug}").text
+        shop = demo.demo_order("en", "grand_opening")
+        assert "/portrait/" not in client.get(f"/e/{shop.rsvp_slug}").text

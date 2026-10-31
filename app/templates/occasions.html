@@ -16,6 +16,7 @@
   .type img { aspect-ratio: 4 / 5; object-fit: cover; width: 100%; }
   .type div { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
   .type strong { font-family: var(--serif); font-size: 1.2rem; color: var(--maroon-dark); }
+  .type-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 8px; }
   .type .go { margin-top: auto; color: var(--maroon); font-weight: 600; font-size: .92rem; }
 </style>
 {% endblock %}
@@ -38,13 +39,17 @@
     <div class="types">
       {% if c.key == 'wedding' %}
         {% for s in styles.values() if 'wedding' in s.occasions %}{% if loop.index <= 4 %}
-        <a class="type" href="/create?style={{ s.key }}"><img src="/samples/{{ s.key }}.jpg" alt="{{ s.name }} wedding invitation" loading="lazy">
-          <div><strong>{{ s.name }}</strong><span class="small muted">{{ s.description }}</span><span class="go">Create free →</span></div></a>
+        <div class="type"><a href="/create?style={{ s.key }}"><img src="/samples/{{ s.key }}.jpg" alt="{{ s.name }} wedding invitation" loading="lazy"></a>
+          <div><strong>{{ s.name }}</strong><span class="small muted">{{ s.description }}</span>
+            <span class="type-actions"><a class="btn btn-sm btn-ghost" href="/demo/en" target="_blank">▶ Live demo</a>
+              <a class="btn btn-sm btn-primary" href="/create?style={{ s.key }}">Create free</a></span></div></div>
         {% endif %}{% endfor %}
       {% else %}
         {% for key in c.types %}{% set t = types[key] %}
-        <a class="type" href="/create?event={{ t.key }}"><img src="/samples/event/{{ t.key }}.jpg" alt="{{ t.name }} invitation" loading="lazy">
-          <div><strong>{{ t.icon }} {{ t.name }}</strong><span class="small muted">{{ t.headline_hi }}</span><span class="go">Create free →</span></div></a>
+        <div class="type"><a href="/demo/event/{{ t.key }}" target="_blank" aria-label="Live demo: {{ t.name }}"><img src="/samples/event/{{ t.key }}.jpg" alt="{{ t.name }} invitation" loading="lazy"></a>
+          <div><strong>{{ t.icon }} {{ t.name }}</strong><span class="small muted">{{ t.headline_hi }}</span>
+            <span class="type-actions"><a class="btn btn-sm btn-ghost" href="/demo/event/{{ t.key }}" target="_blank">▶ Live demo</a>
+              <a class="btn btn-sm btn-primary" href="/create?event={{ t.key }}">Create free</a></span></div></div>
         {% endfor %}
       {% endif %}
     </div>

@@ -193,28 +193,34 @@ def calendar(key: str, order: Order = Depends(get_event)):
                     headers={"Content-Disposition": f'attachment; filename="{key}.ics"'})
 
 
-def _ready_demo(lang: str) -> Order:
-    if lang not in demo.DEMOS:
+def _ready_demo(lang: str, event: str = "wedding") -> Order:
+    if event and event != "wedding":
+        if event not in events.TYPES:
+            raise HTTPException(404, "No demo for that occasion")
+        lang = "en"  # event demos are in English
+    elif lang not in demo.DEMOS:
         raise HTTPException(404, "No demo in that language")
-    order = demo.demo_order(lang)
+    order = demo.demo_order(lang, event or "wedding")
     if order is None or order.status != OrderStatus.DELIVERED.value:
         raise HTTPException(503, "The demo is being prepared, please try again in a minute.")
     return order
 
 
+@router.get("/demo/event/{event}/console")
 @router.get("/demo/console")  # registered before /demo/{lang} so "console" isn't read as a language
 @router.get("/demo/{lang}/console")
-def demo_console(lang: str = "en"):
+def demo_console(lang: str = "en", event: str = "wedding"):
     """Live sample of the family console."""
-    order = _ready_demo(lang)
+    order = _ready_demo(lang, event)
     return RedirectResponse(f"/e/{order.rsvp_slug}/guests?key={order.token}", status_code=302)
 
 
+@router.get("/demo/event/{event}")
 @router.get("/demo")
 @router.get("/demo/{lang}")
-def demo_invite(lang: str = "en"):
-    """Live sample invite for marketing: what a guest receives, in any supported language."""
-    order = _ready_demo(lang)
+def demo_invite(lang: str = "en", event: str = "wedding"):
+    """Live sample invite for marketing: what a guest receives, for any occasion and (weddings) language."""
+    order = _ready_demo(lang, event)
     with SessionLocal() as db:
         invitee = db.scalar(select(Invitee).where(Invitee.order_id == order.id).order_by(Invitee.id))
     return RedirectResponse(f"/i/{invitee.code}", status_code=302)

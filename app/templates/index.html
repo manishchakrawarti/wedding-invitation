@@ -6,6 +6,11 @@
       <h1>Not just a card. <span class="script">An invitation they'll never forget.</span></h1>
       <p class="lead">Palace doors swing open, marigold petals fall, your music plays, and each guest is greeted by name. Send personal invites to your whole guest list on WhatsApp, and know exactly who's coming to every function.</p>
       <form class="demo-picker" action="/demo" method="get" target="_blank">
+<label class="sr-only" for="demo-event-hero">Occasion</label>
+        <select class="lang-select occ-select" id="demo-event-hero" name="event">
+          <option value="wedding">💍 Wedding</option>
+          {% for c in occasion_categories.values() if c.types %}<optgroup label="{{ c.icon }} {{ c.name }}">{% for k in c.types %}<option value="{{ k }}">{{ occasion_types[k].icon }} {{ occasion_types[k].name }}</option>{% endfor %}</optgroup>{% endfor %}
+        </select>
         <label class="sr-only" for="demo-lang-hero">Demo language</label>
         <select class="lang-select" id="demo-lang-hero" name="lang">
           {% for code, l in catalog.LANGUAGES.items() %}<option value="{{ code }}" lang="{{ code }}">{{ l.native }}{% if code != 'en' %} · {{ l.name }}{% endif %}</option>{% endfor %}
@@ -43,7 +48,12 @@
       <div class="card"><div style="font-size:2rem">🙏</div><h3>Made by humans, in your language</h3><p>Hindi and 7 regional languages, names spelled exactly right, and a real designer checks every invite before you see it.</p></div>
     </div>
     <form class="demo-picker center" action="/demo" method="get" target="_blank" style="display:flex;justify-content:center;margin-top:30px">
-      <label class="sr-only" for="demo-lang-features">Demo language</label>
+<label class="sr-only" for="demo-event-features">Occasion</label>
+        <select class="lang-select occ-select" id="demo-event-features" name="event">
+          <option value="wedding">💍 Wedding</option>
+          {% for c in occasion_categories.values() if c.types %}<optgroup label="{{ c.icon }} {{ c.name }}">{% for k in c.types %}<option value="{{ k }}">{{ occasion_types[k].icon }} {{ occasion_types[k].name }}</option>{% endfor %}</optgroup>{% endfor %}
+        </select>
+        <label class="sr-only" for="demo-lang-features">Demo language</label>
       <select class="lang-select" id="demo-lang-features" name="lang">
         {% for code, l in catalog.LANGUAGES.items() %}<option value="{{ code }}" lang="{{ code }}">{{ l.native }}{% if code != 'en' %} · {{ l.name }}{% endif %}</option>{% endfor %}
       </select>
@@ -170,7 +180,12 @@
 <script>
 (function () {
   // Keep both demo pickers on the same language, starting from the visitor's phone/browser language.
-  const pickers = Array.from(document.querySelectorAll('.lang-select'));
+  const pickers = Array.from(document.querySelectorAll('.lang-select:not(.occ-select)'));
+  const occPickers = Array.from(document.querySelectorAll('.occ-select'));
+  // Event demos are English-only: lock the language picker while a non-wedding occasion is chosen.
+  const syncOcc = v => { occPickers.forEach(p => { p.value = v; });
+    pickers.forEach(p => { p.disabled = v !== 'wedding'; if (v !== 'wedding') p.value = 'en'; }); };
+  occPickers.forEach(p => p.addEventListener('change', () => syncOcc(p.value)));
   const supported = pickers[0] ? Array.from(pickers[0].options).map(o => o.value) : [];
   const preferred = (navigator.languages || [navigator.language || 'en']).map(l => l.slice(0, 2).toLowerCase()).find(l => supported.includes(l));
   const set = v => pickers.forEach(p => { p.value = v; });

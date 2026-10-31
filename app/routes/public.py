@@ -50,7 +50,8 @@ def redirect(url: str) -> RedirectResponse:
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(request, "index.html", {"packages": PACKAGES, "addons": ADDONS, "styles": STYLES,
-                                                               "occasion_categories": events.CATEGORIES})
+                                                               "occasion_categories": events.CATEGORIES,
+                                                               "occasion_types": events.TYPES})
 
 
 @router.get("/samples/{style_key}.jpg")

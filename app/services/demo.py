@@ -105,9 +105,9 @@ OTHER_GUESTS = [
 ]
 
 
-def demo_order(lang: str = "en") -> Order | None:
+def demo_order(lang: str = "en", event: str = "wedding") -> Order | None:
     with SessionLocal() as db:
-        return db.scalar(select(Order).where(Order.source == "demo", Order.language == lang))
+        return db.scalar(select(Order).where(Order.source == "demo", Order.language == lang, Order.event_type == event))
 
 
 def _schedule(cfg: dict, day: date) -> list[dict]:
@@ -217,4 +217,116 @@ def ensure_demo() -> None:
             order.delivered_at = utcnow()
             db.commit()
         log.info("demo wedding created: %s", lang)
+    ensure_event_demos()
     ensure_demo_portraits()
+    ensure_event_portraits()
+
+
+# --- demos for every other occasion (English) ------------------------------------
+EVENT_VENUES = {
+    "birthday": ("Funky Monkeys Party Hall", "Koregaon Park", "Pune"),
+    "anniversary": ("The Taj Lawns", "Colaba", "Mumbai"),
+    "puja": ("Sharma Niwas", "Sector 15", "Gurugram"),
+    "baby": ("Mehta Residence", "Satellite", "Ahmedabad"),
+    "festival": ("Community Clubhouse", "Indiranagar", "Bengaluru"),
+    "corporate": ("Hotel Grand Hyatt Ballroom", "BKC", "Mumbai"),
+}
+EVENT_WISHES = {
+    "birthday": "Happy birthday! Can't wait to celebrate with you 🎉",
+    "anniversary": "Congratulations on this beautiful milestone! ❤️",
+    "puja": "Jai Shri Ram 🙏 We'll be there for the blessings.",
+    "baby": "So much love to the little one and the family! 🌸",
+    "festival": "Can't wait for the celebrations! 🎊",
+    "corporate": "Looking forward to it. Congratulations to the whole team!",
+}
+
+
+def _demo_hashtag(t) -> str:
+    """'#AaravBirthdayParty', '#SunitaVijaySilverJubilee', '#ShreeJewellersGrandOpening'."""
+    import re
+
+    from app import events
+
+    skip = {"the", "family", "shri", "baby", "of", "and"}
+    headline = (events.jubilee(t.demo[2]) or (t.headline,))[0] if t.key == "milestone_anniversary" else t.headline
+    names = [w for w in re.findall(r"[A-Za-z0-9]+", f"{t.demo[0]} {t.demo[1]}") if w.lower() not in skip][:2]
+    head = [w for w in re.findall(r"[A-Za-z0-9]+", headline) if w.lower() not in skip][:2]
+    return "#" + "".join(w[:1].upper() + w[1:] for w in names + head)
+
+
+def ensure_event_demos() -> None:
+    """One live demo per event type, with guests, RSVPs and generated cards."""
+    from app import events
+
+    day = date.today() + timedelta(days=45)
+    for key, t in events.TYPES.items():
+        existing = demo_order("en", key)
+        if existing:
+            with SessionLocal() as db:  # keep older demos' hashtags up to date
+                ev = db.get(Order, existing.id).event
+                if ev and ev.hashtag != _demo_hashtag(t):
+                    ev.hashtag = _demo_hashtag(t)
+                    db.commit()
+            continue
+        primary, secondary, detail = t.demo
+        venue, address, city = EVENT_VENUES[t.category]
+        with SessionLocal() as db:
+            order = Order(
+                public_id=orders.new_public_id(db), token=new_token(), status=OrderStatus.QUEUED.value, source="demo",
+                customer_name="Demo", phone="910000000000", bride_name=primary, groom_name=secondary,
+                wedding_date=day, venue_name=venue, venue_address=address, city=city, language="en",
+                style=t.styles[0], package="premium", addons=[], event_type=key, occasion_detail=detail,
+                functions=[{"key": key, "label": t.headline, "label_hi": t.headline_hi, "date": day.isoformat(),
+                            "time": "10:00" if t.category == "puja" else "19:00", "venue": ""}],
+                referral_code=orders.new_referral_code(db, "demo"), total=0, amount_paid=0,
+            )
+            db.add(order)
+            db.flush()
+            hosts = "" if t.category in ("puja", "festival", "corporate") else "The Sharma family"
+            db.add(EventDetails(order_id=order.id, hosts=hosts, dress_codes={}, upi_id="demo@upi", hashtag=_demo_hashtag(t)))
+            for n, (name, side, _fns, reply, people, food) in enumerate([("Mehta Family", "", [], "", 0, "")] + OTHER_GUESTS):
+                db.add(Invitee(
+                    order_id=order.id, code=invites.new_code(db), name=name, side="", functions=[],
+                    attending=reply, headcount=people, attending_functions=[key] if reply in ("yes", "maybe") else [],
+                    food=food, message=EVENT_WISHES[t.category] if n == 1 else "", sent_at=utcnow(),
+                    opened_at=utcnow() if reply else None, open_count=2 if reply else 0,
+                    responded_at=utcnow() if reply else None,
+                ))
+                db.flush()
+            db.commit()
+            order_id = order.id
+        pipeline.run_order(order_id)
+        with SessionLocal() as db:
+            order = db.get(Order, order_id)
+            order.status = OrderStatus.DELIVERED.value
+            order.delivered_at = utcnow()
+            db.commit()
+        log.info("event demo created: %s", key)
+
+
+def ensure_event_portraits() -> None:
+    """Illustrated people for event demos (birthday child, couple, family…); none for corporate events."""
+    from app import events
+    from app.catalog import STYLES
+    from app.services import demo_art
+
+    for key in events.TYPES:
+        ref = demo_order("en", key)
+        if ref is None:
+            continue
+        with SessionLocal() as db:
+            order = db.get(Order, ref.id)
+            have = set(invites.portraits(order))
+            st = STYLES[order.style]
+            bg = ("#%02x%02x%02x" % tuple(min(255, c + 60) for c in st.bg_top), "#%02x%02x%02x" % st.bg_top)
+            added = []
+            for role in ("bride", "groom", "family"):
+                if role in have:
+                    continue
+                art = demo_art.event_portrait_svg(key, role, bg)
+                data = demo_art.render_png(*art) if art else None
+                if data:
+                    invites.save_portrait(db, order, role, data, enhance=False)
+                    added.append(role)
+            if added:
+                db.commit()

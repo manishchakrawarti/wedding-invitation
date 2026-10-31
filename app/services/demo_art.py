@@ -359,3 +359,46 @@ def couple_frame(bride_jpeg: bytes, groom_jpeg: bytes) -> bytes:
     out = io.BytesIO()
     canvas.convert("RGB").save(out, "JPEG", quality=92)
     return out.getvalue()
+
+
+# --- portraits for non-wedding demo events --------------------------------------
+_CHILD_BOY = Person("m", "wheat", "#2a6fdb", "#ffd43b", "none", age="child", mustache=False, extras={"mala": False})
+_CHILD_GIRL = Person("f", "fair", "#e64980", "#ffd43b", "none", age="child", nath=False, bindi=False)
+_ELDER_MAN = Person("m", "wheat", "#7a1f2b", GOLD, "none", age="elder", glasses=True, extras={"mala": False})
+_YOUNG_WOMAN = Person("f", "fair", "#7048e8", GOLD, "none", nath=False, bindi=False)
+_SAREE_WOMAN = Person("f", "wheat", "#c2255c", GOLD, "dupatta", "#e64980", nath=False)
+_KURTA_MAN = Person("m", "wheat", "#f3e2c0", "#c99a3c", "none", extras={"mala": False})
+_BRAHMIN_BOY = Person("m", "warm", "#fff4d6", "#e8662a", "none", age="child", mustache=False, tilak="red", extras={"mala": False})
+
+# event type -> (primary person, secondary person, family region or None)
+EVENT_PORTRAITS = {
+    "kids_birthday": (_CHILD_BOY, None, "north"),
+    "milestone_birthday": (_ELDER_MAN, None, "north"),
+    "theme_party": (_YOUNG_WOMAN, None, None),
+    "wedding_anniversary": (_SAREE_WOMAN, _KURTA_MAN, "north"),
+    "milestone_anniversary": (replace(_SAREE_WOMAN, age="elder"), replace(_KURTA_MAN, age="elder", glasses=True), "north"),
+    "baby_shower": (_SAREE_WOMAN, _KURTA_MAN, "north"),
+    "namakaran": (_CHILD_GIRL, None, "north"),
+    "annaprashan": (_CHILD_BOY, None, "north"),
+    "mundan": (_CHILD_BOY, None, "north"),
+    "upanayanam": (_BRAHMIN_BOY, None, "south"),
+    "kitty_party": (_YOUNG_WOMAN, None, None),
+    "christmas_newyear": (None, None, "kerala_christian"),
+}
+for _key in ("satyanarayan_puja", "rudrabhishek", "ganesh_chaturthi", "griha_pravesh", "krishna_janmashtami",
+             "durga_puja", "diwali_puja", "sundar_kand", "lohri_sankranti", "family_reunion"):
+    EVENT_PORTRAITS[_key] = (None, None, "bengal" if _key == "durga_puja" else "punjab" if _key == "lohri_sankranti" else "north")
+
+
+def event_portrait_svg(type_key: str, role: str, bg: tuple[str, str] = ("#fff1d6", "#f3c46a")) -> tuple[str, int, int] | None:
+    """SVG for a demo event's bride (= main person), groom (= second person) or family slot, or None."""
+    primary, secondary, family_region = EVENT_PORTRAITS.get(type_key, (None, None, None))
+    if role == "family":
+        return portrait_svg(family_region, "family") if family_region else None
+    person = primary if role == "bride" else secondary
+    if person is None:
+        return None
+    w = h = 900
+    scale = 1.75 if person.age == "child" else 1.55
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
+            + _backdrop(w, h, bg[0], bg[1], GOLD_DARK) + person_svg(person, w / 2, 400, scale) + "</svg>"), w, h
