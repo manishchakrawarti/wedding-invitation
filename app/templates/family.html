@@ -126,9 +126,9 @@
       <input type="hidden" name="key" value="{{ key }}">
       <div class="form-grid">
         <div><label for="hosts">Invited by <span class="hint">e.g. The Kapoor &amp; Verma families</span></label><input id="hosts" name="hosts" type="text" value="{{ ev.hosts }}" maxlength="200"></div>
-        <div><label for="hashtag">Wedding hashtag</label><input id="hashtag" name="hashtag" type="text" value="{{ ev.hashtag }}" placeholder="#PriyankaWedsManish" maxlength="60"></div>
+        <div><label for="hashtag">Hashtag</label><input id="hashtag" name="hashtag" type="text" value="{{ ev.hashtag }}" placeholder="{{ '#PriyankaWedsManish' if o.is_wedding else '#AaravTurns5' }}" maxlength="60"></div>
         <div class="full"><label for="blessing_line">Blessings line <span class="hint">e.g. With the blessings of Late Smt. Kamla Devi</span></label><input id="blessing_line" name="blessing_line" type="text" value="{{ ev.blessing_line }}" maxlength="300"></div>
-        <div class="full"><label for="story">Our story <span class="hint">how you met, optional</span></label><textarea id="story" name="story" maxlength="3000">{{ ev.story }}</textarea></div>
+        <div class="full"><label for="story">{{ 'Our story' if o.is_wedding else 'A few words for guests' }} <span class="hint">{{ 'how you met, optional' if o.is_wedding else 'optional' }}</span></label><textarea id="story" name="story" maxlength="3000">{{ ev.story }}</textarea></div>
         {% for s in schedule %}
         <div><label for="dress_{{ s.key }}">{{ s.icon }} {{ s.label }} dress code</label><input id="dress_{{ s.key }}" name="dress_{{ s.key }}" type="text" value="{{ (ev.dress_codes or {}).get(s.key, '') }}" placeholder="{{ {'haldi': 'Yellow ethnic', 'mehndi': 'Green / bright colours', 'sangeet': 'Indo-western glam', 'reception': 'Formal / gowns & suits'}.get(s.key, 'Traditional ethnic') }}" maxlength="120"></div>
         {% endfor %}

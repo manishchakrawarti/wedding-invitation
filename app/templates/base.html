@@ -3,8 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ settings.brand_name }} — Wedding Invitations{% endblock %}</title>
+  <title>{% block title %}{{ settings.brand_name }} · Invitations for weddings &amp; every occasion{% endblock %}</title>
   <meta name="description" content="{{ settings.brand_tagline }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%92%8C%3C/text%3E%3C/svg%3E">
+  {% block og %}<meta property="og:site_name" content="{{ settings.brand_name }}">
+  <meta property="og:title" content="{{ settings.brand_name }} · Invitations for weddings &amp; every occasion">
+  <meta property="og:description" content="{{ settings.brand_tagline }}">
+  <meta property="og:image" content="{{ settings.base_url }}/samples/north_indian.jpg">{% endblock %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Great+Vibes&family=Mukta:wght@400;600;700&display=swap" rel="stylesheet">

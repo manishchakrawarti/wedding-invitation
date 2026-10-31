@@ -68,7 +68,7 @@
           <div><label>Groom (local script)</label><input type="text" name="groom_name_local" value="{{ o.groom_name_local }}"></div>
           <div><label>Bride's parents</label><input type="text" name="bride_family" value="{{ o.bride_family }}"></div>
           <div><label>Groom's parents</label><input type="text" name="groom_family" value="{{ o.groom_family }}"></div>
-          <div><label>Wedding date</label><input type="date" name="wedding_date" value="{{ o.wedding_date.isoformat() }}"></div>
+          <div><label>{{ 'Wedding date' if o.is_wedding else 'Event date' }}</label><input type="date" name="wedding_date" value="{{ o.wedding_date.isoformat() }}"></div>
           <div><label>City</label><input type="text" name="city" value="{{ o.city }}"></div>
           <div class="full"><label>Venue</label><input type="text" name="venue_name" value="{{ o.venue_name }}"></div>
           <div class="full"><label>Venue address</label><input type="text" name="venue_address" value="{{ o.venue_address }}"></div>
@@ -102,7 +102,7 @@
         <dt>WhatsApp</dt><dd><a href="https://wa.me/{{ o.phone }}" target="_blank">+{{ o.phone }}</a></dd>
         <dt>Email</dt><dd>{{ o.email or '—' }}</dd>
         <dt>Language</dt><dd>{{ catalog.LANGUAGES[o.language].name }}</dd>
-        <dt>Wedding</dt><dd>{{ pretty_date(o.wedding_date) }}</dd>
+        <dt>{{ 'Wedding' if o.is_wedding else 'Occasion' }}</dt><dd>{% if not o.is_wedding %}{{ o.occasion_name }}{% if o.occasion_detail %} ({{ o.occasion_detail }}){% endif %} · {% endif %}{{ pretty_date(o.wedding_date) }}</dd>
         <dt>Venue</dt><dd>{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</dd>
         <dt>Photo consent</dt><dd>{{ 'Yes' if o.photo_consent else 'No' }}</dd>
         <dt>Marketing OK</dt><dd>{{ 'Yes' if o.marketing_consent else 'No' }}</dd>

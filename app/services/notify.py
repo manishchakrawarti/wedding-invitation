@@ -104,7 +104,7 @@ def _messages(order: Order, kind: str) -> tuple[str, str]:
         rsvp = f"\nRSVP page for guests: {settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug else ""
         return (
             f"Your invitation is ready — {order.public_id}",
-            f"Shubh Vivah! 🎉 Your final invitation for {names} is ready to download and share:\n"
+            f"{'Shubh Vivah! 🎉' if order.is_wedding else '🎉'} Your final invitation for {names} is ready to download and share:\n"
             f"{order_url(order)}{rsvp}\n\nLoved it? Share your referral code {order.referral_code} — friends get "
             f"₹{settings.referral_discount_inr} off.",
         )

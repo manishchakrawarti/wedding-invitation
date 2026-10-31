@@ -226,7 +226,13 @@ def texts(order) -> dict:
     hosts = (order.event.hosts if order.event and order.event.hosts else "") or (
         primary if t.category in ("puja", "festival", "corporate") else DEFAULT_HOSTS[hi])
     para = INVITE_PARA[t.category][hi].format(hosts=hosts, names=names, headline=headline)
+    gifts = {
+        "wishes_label": ("Your wishes 💌", "आपकी शुभकामनाएँ 💌"), "gift_title": ("Send a gift 🎁", "उपहार भेजें 🎁"),
+        "gift_text": ("Can't make it in person? Send your gift via UPI.", "आ नहीं पा रहे? UPI से उपहार भेजें।"),
+        "gift_btn": ("Send gift via UPI", "UPI से उपहार भेजें"),
+    }
     return {
+        **{k: v[hi] for k, v in gifts.items()},
         "type": t, "headline": headline, "kicker": t.kicker_hi if hi else t.kicker, "primary": primary,
         "secondary": secondary, "names": names, "detail": detail, "hosts": hosts, "para": para,
         "schedule_title": SCHEDULE_TITLE[hi], "initials": (primary[:1] + (("&" + secondary[:1]) if secondary else "")),

@@ -162,7 +162,12 @@ def whatsapp_text(order: Order, invitee: Invitee) -> str:
     bride = order.bride_name_local if local and order.bride_name_local else order.bride_name
     groom = order.groom_name_local if local and order.groom_name_local else order.groom_name
     hosts = order.event.hosts if order.event and order.event.hosts else t["our_families"]
-    body = t["invite_para"].format(hosts=hosts, bride=bride, groom=groom)
+    if getattr(order, "is_wedding", True):
+        body = t["invite_para"].format(hosts=hosts, bride=bride, groom=groom)
+    else:
+        from app import events
+
+        body = events.texts(order)["para"]
     return (
         f"🙏 {t['dear'].format(name=invitee.name)},\n\n{body}\n"
         f"📅 {pretty_date(order.wedding_date)}\n\n"

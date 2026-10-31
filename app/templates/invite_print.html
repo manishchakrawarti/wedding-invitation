@@ -153,7 +153,7 @@
 {% if schedule %}
 <section class="page sched {% if schedule|length > 4 %}compact{% elif schedule|length <= 2 %}few{% endif %}">
   <h2>{{ occ.schedule_title if occ else t.celebrations }}</h2>
-  <div class="sub">{{ bride }} {{ lang.connector }} {{ groom }}</div>
+  <div class="sub">{% if occ %}{{ occ.names }}{% else %}{{ bride }} {{ lang.connector }} {{ groom }}{% endif %}</div>
   {% for s in schedule %}
   <div class="item">
     <div class="icon">{{ s.icon }}</div>

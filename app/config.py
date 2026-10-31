@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # --- Brand (A1) ---
     brand_name: str = "Shubh Aamantran"
-    brand_tagline: str = "Beautiful AI-crafted wedding invitations, delivered on WhatsApp"
+    brand_tagline: str = "Beautiful invitations for weddings and every occasion, ready to share on WhatsApp"
     order_prefix: str = "SA"
     instagram_handle: str = "shubhaamantran"
     whatsapp_number: str = "919999999999"  # country code + number, digits only

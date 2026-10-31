@@ -77,6 +77,7 @@ def dashboard(request: Request, status: str = "", q: str = "", msg: str = "", db
         "by_month": sorted(by_month.items())[-12:],
         "max_month": max((v[1] for v in by_month.values()), default=0) or 1,
         "packages": Counter(o.package for o in paid),
+        "occasions": Counter(o.occasion_name for o in paid),
     }
     return templates.TemplateResponse(request, "admin/dashboard.html", {"rows": rows, "stats": stats, "status": status, "q": q, "msg": msg, "to_confirm": to_confirm})
 

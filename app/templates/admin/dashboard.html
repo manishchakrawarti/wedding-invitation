@@ -17,7 +17,7 @@
 
 <div class="grid2" style="margin-bottom:22px">
   <div class="card" style="margin:0">
-    <h3>Wedding season (by wedding month)</h3>
+    <h3>Season (by event month)</h3>
     {% for month, vals in stats.by_month %}
       <div style="display:grid;grid-template-columns:70px 1fr 110px;gap:10px;align-items:center;margin:6px 0" class="small">
         <span>{{ month }}</span><div class="bar" style="width:{{ (vals[1] / stats.max_month * 100)|round }}%"></div><span>{{ vals[0] }} · {{ inr(vals[1]) }}</span>
@@ -27,6 +27,8 @@
   <div class="card" style="margin:0">
     <h3>Packages sold</h3>
     {% for key, p in catalog.PACKAGES.items() %}<div class="small" style="margin:6px 0">{{ p.name }}: <strong>{{ stats.packages.get(key, 0) }}</strong></div>{% endfor %}
+    <h3 style="margin-top:16px">Occasions</h3>
+    {% for name, n in stats.occasions.most_common(8) %}<div class="small" style="margin:6px 0">{{ name }}: <strong>{{ n }}</strong></div>{% else %}<p class="small muted">No paid orders yet.</p>{% endfor %}
     <form method="post" action="/admin/cleanup" style="margin-top:16px"><button class="btn btn-sm btn-ghost" type="submit">Run retention cleanup now</button></form>
     <p class="small muted">Photos are auto-deleted after {{ settings.photo_retention_days }} days; delivered files after {{ settings.final_retention_days }}. For Looker Studio / Power BI, connect the <a href="/admin/export/orders.csv">orders CSV</a>.</p>
   </div>
@@ -43,7 +45,7 @@
 
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Order</th><th>Couple</th><th>Wedding</th><th>Package</th><th>Status</th><th>Paid</th><th>API cost</th><th>Placed</th></tr></thead>
+  <thead><tr><th>Order</th><th>For</th><th>Event date</th><th>Package</th><th>Status</th><th>Paid</th><th>API cost</th><th>Placed</th></tr></thead>
   <tbody>
   {% for o in rows %}
     <tr>

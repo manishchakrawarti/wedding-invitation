@@ -162,7 +162,7 @@
       <dt>Status</dt><dd><span class="pill {{ o.status }}">{{ o.status_label }}</span></dd>
       <dt>Package</dt><dd>{{ catalog.PACKAGES[o.package].name }}{% for a in o.addons %} + {{ catalog.ADDONS[a].name }}{% endfor %}</dd>
       <dt>Style</dt><dd>{{ catalog.STYLES[o.style].name }} · {{ catalog.LANGUAGES[o.language].name }}</dd>
-      <dt>Wedding</dt><dd>{{ pretty_date(o.wedding_date) }}, {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</dd>
+      <dt>{{ 'Wedding' if o.is_wedding else o.occasion_name }}</dt><dd>{{ pretty_date(o.wedding_date) }}, {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</dd>
       <dt>Paid</dt><dd>{{ inr(o.amount_paid) }} of {{ inr(o.total) }}</dd>
       <dt>Revisions left</dt><dd>{{ o.revisions_left }}</dd>
     </dl>

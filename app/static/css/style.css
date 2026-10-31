@@ -87,6 +87,13 @@ section { padding: 64px 0; }
 .sample strong { font-family: var(--serif); font-size: 1.2rem; color: var(--maroon-dark); display: block; }
 .sample span { font-size: .88rem; color: var(--muted); }
 
+/* self-serve price tiers */
+.tier-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 28px 0 22px; }
+.tier-box { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 18px; text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.tier-box.popular { border: 2px solid var(--maroon); box-shadow: var(--shadow); }
+.tier-box strong { font: 700 1.3rem var(--serif); color: var(--maroon-dark); }
+.tier-amt { font: 700 2rem var(--serif); color: var(--maroon); }
+
 /* occasions */
 .occ-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; text-align: left; }
 .occ-card { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; text-decoration: none; color: inherit; transition: transform .15s, box-shadow .15s; }

@@ -4,7 +4,7 @@
   <div class="wrap">
     <div>
       <h1>Not just a card. <span class="script">An invitation they'll never forget.</span></h1>
-      <p class="lead">Palace doors swing open, marigold petals fall, your music plays, and each guest is greeted by name. Send personal invites to your whole guest list on WhatsApp, and know exactly who's coming to every function.</p>
+      <p class="lead">Weddings, birthdays, pujas, anniversaries and every celebration: palace doors swing open, petals fall, your music plays, and each guest is greeted by name. Share on WhatsApp and know exactly who's coming.</p>
       <form class="demo-picker" action="/demo" method="get" target="_blank">
 <label class="sr-only" for="demo-event-hero">Occasion</label>
         <select class="lang-select occ-select" id="demo-event-hero" name="event">
@@ -20,15 +20,15 @@
       <p style="margin:6px 0 0"><a class="btn btn-primary" href="/create" style="font-size:1.08rem">🎨 Create yours free</a>
         <span style="color:var(--gold-soft);margin-left:8px">Free download · HD from ₹{{ catalog.PACKAGES['instant'].price }}</span></p>
       <div class="trust">
-        <span>✦ From ₹{{ catalog.PACKAGES['basic'].price }}</span>
+        <span>✦ Free to create</span>
+        <span>✦ {{ occasion_types|length + 1 }} occasions</span>
         <span>✦ {{ catalog.LANGUAGES|length }} languages</span>
-        <span>✦ 2 free revisions</span>
         <span>✦ Pay by UPI</span>
       </div>
     </div>
     <div class="hero-cards" aria-hidden="true">
-      <img src="/samples/south_indian.jpg" alt="">
-      <img src="/samples/muslim_nikah.jpg" alt="">
+      <img src="/samples/event/kids_birthday.jpg" alt="">
+      <img src="/samples/event/satyanarayan_puja.jpg" alt="">
       <img src="/samples/north_indian.jpg" alt="">
     </div>
   </div>
@@ -37,11 +37,11 @@
 
 <section id="experience" style="background:var(--paper)">
   <div class="wrap">
-    <h2 class="center">A wedding invitation that does the work for you</h2>
+    <h2 class="center">An invitation that does the work for you</h2>
     <p class="center muted" style="max-width:44em;margin:0 auto 36px">Families spend weeks calling relatives, chasing RSVPs and guessing headcounts for the caterer. We turn your invitation into a smart assistant.</p>
     <div class="steps" style="counter-reset:none">
-      <div class="card"><div style="font-size:2rem">🚪</div><h3>Cinematic opening</h3><p>Royal palace doors open to falling petals and your music. Guests feel the wedding before they arrive.</p></div>
-      <div class="card"><div style="font-size:2rem">💌</div><h3>Personal for every guest</h3><p>"Dear Sharma Family…" Each guest gets their own link with their name, and sees only the functions they're invited to.</p></div>
+      <div class="card"><div style="font-size:2rem">🚪</div><h3>Cinematic opening</h3><p>Palace doors open to falling petals and your music. Guests feel the celebration before they arrive.</p></div>
+      <div class="card"><div style="font-size:2rem">💌</div><h3>Personal for every guest</h3><p>"Dear Sharma Family…" Each guest gets their own link with their name, and sees only the functions they're invited to (Premium).</p></div>
       <div class="card"><div style="font-size:2rem">📲</div><h3>Send on WhatsApp in one tap</h3><p>Paste your guest list once. Tap "Send" and WhatsApp opens with a personal message ready for each guest.</p></div>
       <div class="card"><div style="font-size:2rem">📊</div><h3>Know who's coming</h3><p>See live who opened, who replied, headcount per function, veg/Jain counts and who needs station pickup. Export it for your caterer.</p></div>
       <div class="card"><div style="font-size:2rem">🪙</div><h3>Shagun, maps &amp; reminders</h3><p>Shagun via UPI for those who can't come, Google Maps for every venue, dress codes, and add-to-calendar reminders.</p></div>
@@ -96,7 +96,7 @@
       <table>
         <thead><tr><th></th><th class="center">Free AI tool</th><th class="center">{{ settings.brand_name }}</th></tr></thead>
         <tbody>
-          <tr><td>Beautiful invitation design</td><td class="center">Hit or miss</td><td class="center">✅ Checked by our designer</td></tr>
+          <tr><td>Beautiful invitation design</td><td class="center">Hit or miss</td><td class="center">✅ Automatic quality checks (designer-checked with done-for-you)</td></tr>
           <tr><td>Names &amp; Hindi text spelled correctly</td><td class="center">❌ Often garbled</td><td class="center">✅ Always exact</td></tr>
           <tr><td>Card for every function in one matching style</td><td class="center">❌</td><td class="center">✅</td></tr>
           <tr><td>Cinematic invite page with music</td><td class="center">❌</td><td class="center">✅</td></tr>
@@ -109,12 +109,13 @@
         </tbody>
       </table>
     </div>
+    <p class="small muted center" style="margin-top:10px">Personal guest invites, open tracking, headcounts and pickup lists come with Premium or the Smart Guest Invites add-on.</p>
   </div>
 </section>
 
 <section id="samples">
   <div class="wrap">
-    <h2 class="center">Choose your style</h2>
+    <h2 class="center">Wedding styles</h2>
     <p class="center muted">Each design is created for your couple. Your names, dates and venue are typeset in real fonts, so spellings are always perfect.</p>
     <div class="gallery">
       {% for s in styles.values() if 'wedding' in s.occasions %}
@@ -131,19 +132,32 @@
   <div class="wrap">
     <h2 class="center">How it works</h2>
     <div class="steps" style="margin-top:36px">
-      <div class="step"><h3>Tell us your story</h3><p>Fill a 3-minute form with names, dates, venue and functions. Add a couple photo if you like.</p></div>
-      <div class="step"><h3>Pay securely</h3><p>UPI, card or netbanking. Pay in full or {{ settings.advance_percent }}% advance.</p></div>
-      <div class="step"><h3>Approve your proof</h3><p>We send a proof on WhatsApp. Approve it or ask for changes, with {{ settings.max_free_revisions }} revisions free.</p></div>
-      <div class="step"><h3>Share the joy</h3><p>Download HD files and forward to family. Premium adds an RSVP page with map and QR.</p></div>
+      <div class="step"><h3>Pick your occasion</h3><p>Wedding, birthday, puja, anniversary, baby ceremony, festival or business event. Fill in a few details and add photos if you like.</p></div>
+      <div class="step"><h3>See it instantly</h3><p>Your invitation card and cinematic invite page are ready in seconds, free to preview.</p></div>
+      <div class="step"><h3>Download free or in HD</h3><p>Standard is free. Full HD ₹9, 2K ₹49, 4K ₹99, including the PDF and WhatsApp long image.</p></div>
+      <div class="step"><h3>Share &amp; track RSVPs</h3><p>Send the link on WhatsApp. Guests see maps and timings, add it to their calendar and RSVP.</p></div>
     </div>
+    <p class="center" style="margin-top:26px"><a class="btn btn-primary" href="/create">Create yours free</a>
+      <a class="btn btn-ghost" href="/order?package=premium">Prefer us to design it? Done-for-you weddings</a></p>
   </div>
 </section>
 
 <section id="pricing">
   <div class="wrap">
     <h2 class="center">Simple, honest pricing</h2>
-    <p class="center muted">One-time price. No hidden charges.</p>
-    <div class="pricing" style="margin-top:36px">
+    <p class="center muted">Create it yourself for any occasion. Pay only for the size you need.</p>
+    <div class="tier-strip">
+      {% for r in catalog.RESOLUTIONS.values() %}
+      <div class="tier-box {% if r.key == '1080' %}popular{% endif %}">
+        <strong>{{ r.name }}</strong><span class="small muted">{{ r.width }} × {{ r.height }}</span>
+        <span class="tier-amt">{{ 'Free' if r.price == 0 else '₹' ~ r.price }}</span><span class="small">{{ r.use }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="center"><a class="btn btn-primary" href="/create">Create free</a></p>
+    <h3 class="center" style="margin-top:50px">Done-for-you wedding packages</h3>
+    <p class="center muted">Our designers create and check every card, with revisions, video and smart guest invites.</p>
+    <div class="pricing" style="margin-top:28px">
       {% for p in packages.values() if p.listed %}
       <div class="plan {% if p.popular %}popular{% endif %}">
         {% if p.popular %}<span class="badge-pop">Most loved</span>{% endif %}
@@ -167,12 +181,15 @@
 <section style="background:var(--paper)">
   <div class="narrow">
     <h2 class="center">Questions families ask</h2>
-    <details><summary>How fast will I get my invitation?</summary><p>Proofs arrive within 48 hours of payment (24 hours with Premium or Express). After you approve, the final files are delivered immediately.</p></details>
+    <details><summary>Which occasions can I make invitations for?</summary><p>Weddings plus {{ occasion_types|length }} other occasions: birthdays, anniversaries, pujas (Satyanarayan, Griha Pravesh, Diwali…), baby ceremonies, festivals and parties, and business events. <a href="/occasions">See them all</a>.</p></details>
+    <details><summary>Is it really free?</summary><p>Yes. Creating and previewing is free, and the Standard (720p) download is free. Pay only if you want Full HD (₹9), 2K (₹49) or 4K (₹99), which also makes your invite page live for RSVPs.</p></details>
+    <details><summary>How do guests RSVP?</summary><p>Share your invite page link on WhatsApp. Guests open it, see the schedule and map, add it to their calendar and reply in a tap. You see every reply on your order page.</p></details>
+    <details><summary>How fast will I get my invitation?</summary><p>Self-made invitations are ready in seconds. Done-for-you wedding proofs arrive within 48 hours of payment (24 hours with Premium or Express).</p></details>
     <details><summary>Can the card be in Hindi or my regional language?</summary><p>Yes: {{ catalog.LANGUAGES.values()|map(attribute='name')|join(', ') }}. Just write the names in your script on the order form, exactly as you want them printed.</p></details>
-    <details><summary>Is my couple photo safe?</summary><p>Photos are used only to make your invitation, never shown publicly without your separate permission, and deleted automatically within {{ settings.photo_retention_days }} days. See our <a href="/privacy">privacy policy</a>.</p></details>
-    <details><summary>What if I don't like the design?</summary><p>You get {{ settings.max_free_revisions }} free revisions. Tell us what to change and we redesign it. Extra revisions are ₹{{ catalog.ADDONS['extra_revision'].price }} each.</p></details>
+    <details><summary>Are my photos safe?</summary><p>Photos are used only to make your invitation, never shown publicly without your separate permission, and deleted automatically within {{ settings.photo_retention_days }} days. See our <a href="/privacy">privacy policy</a>.</p></details>
+    <details><summary>What if I don't like the design?</summary><p>Self-made: switch styles and create another version in seconds, free. Done-for-you: you get {{ settings.max_free_revisions }} free revisions. Tell us what to change and we redesign it. Extra revisions are ₹{{ catalog.ADDONS['extra_revision'].price }} each.</p></details>
     <details><summary>Do you make printed cards?</summary><p>We deliver print-ready HD files that any local press can print. Message us on WhatsApp for printing help.</p></details>
-    <p class="center" style="margin-top:28px"><a class="btn btn-wa" href="{{ wa_link('Namaste! I have a question about wedding invitations') }}">Ask on WhatsApp</a></p>
+    <p class="center" style="margin-top:28px"><a class="btn btn-wa" href="{{ wa_link('Namaste! I have a question about invitations') }}">Ask on WhatsApp</a></p>
   </div>
 </section>
 {% endblock %}

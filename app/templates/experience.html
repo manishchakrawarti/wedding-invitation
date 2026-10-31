@@ -8,12 +8,14 @@
 {% set preview_mode = o.source == 'instant' and o.status != 'delivered' %}
 {% block title %}{{ o.display_names }}{% if not o.is_wedding %} · {{ o.occasion_name }}{% endif %}{% if inv %} · Invitation for {{ inv.name }}{% endif %}{% endblock %}
 {% block lang %}{{ o.language }}{% endblock %}
+{% block og %}{% endblock %}
 {% block head %}
 {% if lf %}<link href="https://fonts.googleapis.com/css2?family={{ lf|replace(' ', '+') }}:wght@400;600;700&display=swap" rel="stylesheet">{% endif %}
 <meta property="og:title" content="{{ o.display_names }} — {{ o.occasion_name }} Invitation{% if inv %} for {{ inv.name }}{% endif %}">
 <meta property="og:description" content="{{ pretty_date(o.wedding_date) }} · {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}. {{ t.tap }} 💌">
 {% if hero %}<meta property="og:image" content="{{ settings.base_url }}/e/{{ o.rsvp_slug }}/invite">{% endif %}
 <meta name="theme-color" content="rgb{{ st.bg_bottom }}">
+<meta name="robots" content="noindex, nofollow">
 <style>
   :root {
     --bg1: rgb{{ st.bg_top }}; --bg2: rgb{{ st.bg_bottom }}; --acc: rgb{{ st.accent }};
@@ -81,6 +83,9 @@
   .event-detail { font-size: clamp(1.15rem, 4vw, 1.5rem); color: var(--t2); margin: -4px 0 14px; font-style: italic; }
   body .brand-name { font-family: var(--serif); font-weight: 700; letter-spacing: 2px; font-size: clamp(2.2rem, 8vw, 4.2rem); }
   .seal:not(:has(small)) { font-size: 3rem; }
+  .share-btn { margin-top: 16px; background: rgba(255,255,255,.14); color: var(--t1); border: 1.5px solid var(--acc); border-radius: 99px;
+    padding: 9px 20px; font: 600 .95rem var(--sans); cursor: pointer; }
+  .share-btn:hover { background: rgba(255,255,255,.24); }
   .x-names .amp { display: block; font-size: .45em; color: var(--acc); margin: 6px 0; }
   .x-date { font-family: var(--serif); font-size: clamp(1.3rem, 4vw, 1.8rem); letter-spacing: 2px; }
   .countdown { display: flex; gap: 12px; justify-content: center; margin: 30px 0 10px; flex-wrap: wrap; }
@@ -206,6 +211,8 @@
     <div><b data-u="m">0</b><span>{{ t.mins }}</span></div><div><b data-u="s">0</b><span>{{ t.secs }}</span></div>
   </div>
   {% if ev and ev.hashtag %}<div class="hashtag">{{ ev.hashtag }}</div>{% endif %}
+  {% if not preview_mode %}<button type="button" class="share-btn" id="share-btn" data-url="{{ settings.base_url }}/e/{{ o.rsvp_slug }}"
+    data-title="{{ o.display_names }} · {{ o.occasion_name }}">📤 Share invitation</button>{% endif %}
   <div class="scroll-hint">{{ t.scroll }}</div>
 </section>
 <div class="toran"></div>
@@ -231,7 +238,7 @@
 {% if hero %}
 <section class="x-section" style="padding-top:0">
   <div class="wrap center reveal">
-    <img class="card-img" src="/e/{{ o.rsvp_slug }}/invite" alt="Wedding invitation card of {{ o.bride_name }} and {{ o.groom_name }}">
+    <img class="card-img" src="/e/{{ o.rsvp_slug }}/invite" alt="{{ o.occasion_name }} invitation card for {{ o.display_names }}">
     <p style="margin-top:18px"><a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/invite" download="invitation.png">{{ t.save_card }}</a></p>
   </div>
 </section>
@@ -323,7 +330,7 @@
         </div>
       </details>
       {% endif %}
-      <label for="message" style="margin-top:14px">{{ t.blessings_label }}</label>
+      <label for="message" style="margin-top:14px">{{ occ.wishes_label if occ else t.blessings_label }}</label>
       <textarea id="message" name="message" maxlength="1000" placeholder="Wishing you a lifetime of love…">{{ inv.message if inv else '' }}</textarea>
       <button class="btn btn-primary btn-block" type="submit" style="margin-top:14px" {% if preview_mode %}disabled title="Available after unlocking"{% endif %}>{{ t.update_rsvp if inv and inv.attending else t.send_rsvp }}</button>
     </form>
@@ -335,10 +342,10 @@
   <div class="narrow reveal" style="display:grid;gap:20px">
     {% if upi_link %}
     <div class="shagun">
-      <h2 style="margin:0">{{ t.shagun_title }}</h2>
-      <p class="muted">{{ t.shagun_text }}</p>
+      <h2 style="margin:0">{{ occ.gift_title if occ else t.shagun_title }}</h2>
+      <p class="muted">{{ occ.gift_text if occ else t.shagun_text }}</p>
       <img src="/e/{{ o.rsvp_slug }}/shagun.png" alt="UPI QR code for shagun">
-      <p><a class="btn btn-primary" href="{{ upi_link }}">{{ t.shagun_btn }}</a></p>
+      <p><a class="btn btn-primary" href="{{ upi_link }}">{{ occ.gift_btn if occ else t.shagun_btn }}</a></p>
       <p class="small muted">UPI ID: {{ ev.upi_id }}</p>
     </div>
     {% endif %}
@@ -416,6 +423,14 @@
       if (fade > 0) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
     })(start);
   }
+
+  // Share: native share sheet on phones, WhatsApp elsewhere
+  const share = document.getElementById('share-btn');
+  if (share) share.addEventListener('click', async () => {
+    const { url, title } = share.dataset;
+    if (navigator.share) { try { await navigator.share({ title, text: title, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    window.open('https://wa.me/?text=' + encodeURIComponent(title + ' 💌 ' + url), '_blank', 'noopener');
+  });
 
   // Countdown
   const cd = document.getElementById('countdown');

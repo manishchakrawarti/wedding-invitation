@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from sqlalchemy import select
 
 from app.db import SessionLocal
-from app.models import Asset, Guest, Notification, Order, OrderStatus
+from app.models import Asset, Guest, Invitee, Notification, Order, OrderStatus
 from app.services import orders, payments
 from app.services.overlay import RAQM
 from app.utils import inr, normalize_phone
@@ -913,3 +913,39 @@ def test_create_form_switches_occasion_in_place(client):
     # Submitting the unified form as a wedding still works.
     order = create_instant(client, event_type="wedding")
     assert order.event_type == "wedding" and order.groom_name == "Rohan"
+
+
+def test_audit_every_occasion_reads_right_for_guests(client, admin_auth):
+    """Non-wedding invitations never fall back to wedding wording."""
+    from app.services import export, invites, notify
+
+    order = get(create_event(client, "kids_birthday").headers["location"].split("/")[2])
+    with SessionLocal() as db:
+        o = db.get(Order, order.id)
+        o.package = "premium"
+        db.commit()
+        text = invites.whatsapp_text(o, Invitee(name="Mehta Family", code="xyz"))
+        html, _ = export.build_html(o, "free")
+        _, delivered = notify._messages(o, "delivered")
+    assert "wedding of" not in text and "Aarav" in text and "birthday" in text
+    assert '<div class="sub">Aarav</div>' in html  # no dangling "&" for single-honoree events
+    assert "Shubh Vivah" not in delivered
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert "Your wishes" in page and "the couple" not in page
+    assert '<meta name="robots" content="noindex, nofollow">' in page
+    status = client.get(f"/admin/orders/{order.id}", auth=admin_auth).text
+    assert "Kids&#39; Birthday" in status and "Event date" in status
+
+
+def test_audit_homepage_seo_and_sharing(client):
+    from app.services import demo
+
+    home = client.get("/").text
+    assert "Free to create" in home and "Done-for-you wedding packages" in home and "Which occasions" in home
+    assert 'class="tier-box popular"' in home and 'rel="icon"' in home and 'property="og:image"' in home
+    robots = client.get("/robots.txt").text
+    assert "Disallow: /e/" in robots and "Disallow: /i/" in robots and "/sitemap.xml" in robots
+    sitemap = client.get("/sitemap.xml").text
+    assert "/create?event=kids_birthday" in sitemap and "/occasions" in sitemap and "/o/" not in sitemap
+    demo.ensure_demo()
+    assert 'id="share-btn"' in client.get("/demo/en").text  # guests can share a live invitation
