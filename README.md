@@ -1,8 +1,8 @@
-# Shubh Aamantran: AI wedding invitation business
+# Invite All (invite-all.com): invitations for weddings and every occasion
 
 A complete web app for selling Indian wedding invitations. Customers order, pay, approve a proof and receive their cards and RSVP page. Behind the scenes, an AI pipeline designs each card and you review it before it goes out.
 
-"Shubh Aamantran" is a placeholder brand. Change it in `.env`.
+Brand: **Invite All** (invite-all.com). Change it in `.env` (`BRAND_NAME`).
 
 ## Run it locally
 

@@ -12,10 +12,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", extra="ignore")
 
     # --- Brand (A1) ---
-    brand_name: str = "Shubh Aamantran"
+    brand_name: str = "Invite All"
     brand_tagline: str = "Beautiful invitations for weddings and every occasion, ready to share on WhatsApp"
-    order_prefix: str = "SA"
-    instagram_handle: str = "shubhaamantran"
+    order_prefix: str = "IA"
+    instagram_handle: str = "inviteall"
     whatsapp_number: str = "919999999999"  # country code + number, digits only
     support_email: str = "hello@example.com"
     business_city: str = "India"

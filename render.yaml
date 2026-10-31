@@ -26,7 +26,9 @@ services:
       - key: ADMIN_PASSWORD
         generateValue: true    # strong random password; see it in Render → Environment
       - key: BRAND_NAME
-        sync: false
+        value: Invite All
+      - key: ORDER_PREFIX
+        value: IA
       - key: BRAND_TAGLINE
         value: Beautiful invitations for weddings and every occasion, ready to share on WhatsApp
       - key: WHATSAPP_NUMBER
