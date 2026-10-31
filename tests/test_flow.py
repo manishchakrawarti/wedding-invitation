@@ -508,3 +508,26 @@ def test_instant_validation_rate_limit_and_hidden_package(client, monkeypatch):
     # The ₹99 package can't be bought through the done-for-you order form.
     resp = client.post("/order", data=order_form(package="instant"))
     assert resp.status_code == 422
+
+
+def test_test_coupon_unlocks_instant_preview(client, monkeypatch):
+    from app.config import settings
+
+    order = create_instant(client)
+    # Disabled by default: no code configured.
+    resp = client.post(f"/o/{order.token}/coupon", data={"code": "anything"}, follow_redirects=False)
+    assert resp.headers["location"].endswith("/preview?coupon=invalid#unlock")
+
+    monkeypatch.setattr(settings, "test_coupon_code", "TEST99-SECRET")
+    client.post(f"/o/{order.token}/coupon", data={"code": "wrong"})
+    assert get(order.token).status == OrderStatus.PREVIEW.value
+    resp = client.post(f"/o/{order.token}/coupon", data={"code": "test99-secret"}, follow_redirects=False)
+    assert resp.headers["location"].endswith("?coupon=1")
+    order = get(order.token)
+    assert order.status == OrderStatus.DELIVERED.value and order.total == 0 and order.discount == 9900
+    final = next(a for a in order.assets if a.kind == "final")
+    assert client.get(f"/o/{order.token}/files/{final.id}").status_code == 200
+    # Only for ₹99 previews: it does nothing on a regular order.
+    regular = place_order(client)
+    client.post(f"/o/{regular.token}/coupon", data={"code": "TEST99-SECRET"})
+    assert get(regular.token).status == OrderStatus.PENDING_PAYMENT.value

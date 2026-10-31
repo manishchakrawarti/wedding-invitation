@@ -7,6 +7,7 @@
   <p class="muted" style="margin:0">Order {{ o.public_id }}</p>
   <h1><span class="script" style="font-size:1.2em">{{ o.bride_name }} &amp; {{ o.groom_name }}</span></h1>
 
+  {% if request.query_params.get('coupon') %}<div class="alert alert-ok">Coupon applied. Your invitation is unlocked! 🎉</div>{% endif %}
   {% if request.query_params.get('paid') %}<div class="alert alert-ok">Payment received, thank you! 🙏</div>{% endif %}
   {% if request.query_params.get('changes') %}<div class="alert alert-ok">Got it! Our designers are working on your changes. We'll WhatsApp you the new proof.</div>{% endif %}
 

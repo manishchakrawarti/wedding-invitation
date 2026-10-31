@@ -70,6 +70,14 @@
       {% if unlockable %}
         <a class="btn btn-primary" href="/o/{{ o.token }}/pay" style="font-size:1.1rem;padding:14px 34px">Unlock for ₹{{ pkg.price }}</a>
         <p class="small muted" style="margin-top:10px">UPI · Cards · Netbanking. Instant download after payment.</p>
+        <details style="max-width:24em;margin:14px auto 0;text-align:left" {% if request.query_params.get('coupon') %}open{% endif %}>
+          <summary class="small">Have a coupon code?</summary>
+          {% if request.query_params.get('coupon') == 'invalid' %}<div class="alert alert-error small" style="margin:10px 0 0">That coupon isn't valid.</div>{% endif %}
+          <form method="post" action="/o/{{ o.token }}/coupon" style="display:flex;gap:8px;margin-top:10px">
+            <input type="text" name="code" required maxlength="40" placeholder="Coupon code" aria-label="Coupon code" style="text-transform:uppercase">
+            <button class="btn btn-sm" type="submit">Apply</button>
+          </form>
+        </details>
       {% else %}
         <div class="alert alert-info">Our designer is giving your card a final check. You'll be able to unlock it here shortly{% if o.email %}, and we'll email you{% endif %}.</div>
       {% endif %}

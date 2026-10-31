@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     # Secret code for ₹1 test orders: /order?test=<code>. Empty = disabled.
     test_order_code: str = ""
     test_order_price_inr: int = 1
+    # Secret coupon that unlocks a ₹99 instant preview for free (owner testing). Empty = disabled.
+    test_coupon_code: str = ""
 
     # --- Generation (C3) ---
     gemini_api_key: str = ""

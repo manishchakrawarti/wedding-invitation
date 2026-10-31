@@ -432,6 +432,14 @@ def preview(request: Request, order: Order = Depends(get_order)):
     })
 
 
+@router.post("/o/{token}/coupon")
+async def apply_coupon(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    code = str((await request.form()).get("code", ""))
+    if payments.apply_test_coupon(db, order, code):
+        return redirect(f"/o/{order.token}?coupon=1")
+    return redirect(f"/o/{order.token}/preview?coupon=invalid#unlock")
+
+
 @router.post("/o/{token}/email")
 async def email_invite(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
     email = str((await request.form()).get("email", "")).strip()

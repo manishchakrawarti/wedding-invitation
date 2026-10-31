@@ -104,6 +104,19 @@ def mark_paid(db: Session, payment: Payment, provider_payment_id: str = "") -> N
         db.commit()
 
 
+def apply_test_coupon(db: Session, order: Order, code: str) -> bool:
+    """Owner's test coupon: makes an unlockable instant preview free and delivers it like a paid one."""
+    if not (settings.test_coupon_code and hmac.compare_digest(code.strip().upper(), settings.test_coupon_code.upper())):
+        return False
+    if not orders.preview_unlockable(order):
+        return False
+    order.discount += order.balance_due
+    order.total = order.amount_paid
+    orders.log_event(db, order, "Test coupon applied: unlocked for free")
+    orders.deliver(db, order)
+    return True
+
+
 def record_offline_payment(db: Session, order: Order, amount_inr: int, note: str) -> None:
     """For UPI/cash/bank transfers received outside Razorpay; entered by the owner."""
     payment = Payment(order_id=order.id, purpose="balance" if order.amount_paid else "full", amount=amount_inr * 100, provider="offline")
