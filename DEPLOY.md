@@ -43,6 +43,13 @@ some cards): **Hetzner CX22** (2 CPU, 4 GB) ≈ €3.79/month ≈ **₹380/month
 4. Recommended: upgrade the account to **Pay As You Go**. It stays ₹0 within the free limits, and
    Oracle won't reclaim "idle" free servers. Add a **budget alert of ₹100** so you're told if anything ever costs money.
 
+### Google Cloud (what invite-all.com runs on now)
+Free trial: ₹28,797 of credit for 90 days. VM **e2-medium** in **asia-south1 (Mumbai)**, Debian 13 or Ubuntu 24.04.
+- **Edit VM → Firewall → tick Allow HTTP and Allow HTTPS.** Without them, ports 80/443 time out and no HTTPS certificate is issued.
+- **VPC network → IP addresses → ⋮ → Promote to static** so the IP doesn't change after a restart.
+- **Compute Engine → Metadata → SSH keys** to add your public key (the username comes from the key's comment).
+- Move the site to a cheaper server before the trial ends (copy the `data` volume; see backups below).
+
 ## Step 3: Point the domain at the server
 In Cloudflare → `invite-all.com` → **DNS**, add (proxy **off / grey cloud** at first, so HTTPS can be issued):
 

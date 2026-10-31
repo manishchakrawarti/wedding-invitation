@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-command setup for a fresh Ubuntu 22.04/24.04 server (Oracle Cloud Always Free, Hetzner, any VPS;
+# One-command setup for a fresh Ubuntu 22.04/24.04 or Debian 12/13 server (Google Cloud, Oracle, Hetzner, any VPS;
 # x86 or ARM). Installs Docker, opens the web ports, adds swap on small machines, clones the app,
 # creates a production .env with a strong admin password, starts the site with automatic HTTPS
 # (Caddy + Let's Encrypt) and schedules daily database backups.
@@ -61,7 +61,9 @@ sudo docker compose up -d --build
 
 say "Scheduling a daily database backup (02:30, keeps 14)"
 CRON="30 2 * * * cd $APP_DIR && docker compose exec -T app python scripts/backup_sqlite.py >> $HOME/invite-all-backup.log 2>&1"
-( crontab -l 2>/dev/null | grep -v "backup_sqlite.py"; echo "$CRON" ) | crontab -
+command -v crontab >/dev/null 2>&1 || { sudo apt-get install -y cron && sudo systemctl enable --now cron; }
+# `crontab -l` fails when no crontab exists yet; don't let that abort the script under `set -e`.
+( { crontab -l 2>/dev/null || true; } | grep -v "backup_sqlite.py" || true; echo "$CRON" ) | crontab -
 
 say "Done"
 echo "Site:  https://$DOMAIN   (HTTPS appears once DNS points here)"
