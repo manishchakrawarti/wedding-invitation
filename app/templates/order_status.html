@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Order {{ o.public_id }} · {{ settings.brand_name }}{% endblock %}
+{% block content %}
+{% set step = {'pending_payment': 0, 'queued': 2, 'generating': 2, 'qc_review': 2, 'failed': 2, 'proof_sent': 3, 'changes_requested': 2, 'balance_due': 4, 'delivered': 5, 'cancelled': 0}[o.status] %}
+<section style="padding-top:36px">
+<div class="narrow">
+  <p class="muted" style="margin:0">Order {{ o.public_id }}</p>
+  <h1><span class="script" style="font-size:1.2em">{{ o.bride_name }} &amp; {{ o.groom_name }}</span></h1>
+
+  {% if request.query_params.get('paid') %}<div class="alert alert-ok">Payment received, thank you! 🙏</div>{% endif %}
+  {% if request.query_params.get('changes') %}<div class="alert alert-ok">Got it! Our designers are working on your changes. We'll WhatsApp you the new proof.</div>{% endif %}
+
+  <div class="card">
+    <ol class="timeline">
+      {% for label in ['Order placed', 'Paid', 'Designing', 'Proof', 'Approved', 'Delivered'] %}
+      <li class="{% if loop.index0 < step or (loop.index0 == 5 and step == 5) %}done{% elif loop.index0 == step %}current{% endif %}">{{ label }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div class="card">
+    {% if o.status == 'pending_payment' %}
+      <h2>Complete your payment</h2>
+      <p>Your design starts the moment payment is received.</p>
+      <a class="btn btn-primary" href="/o/{{ o.token }}/pay">Pay now</a>
+    {% elif o.status in ['queued', 'generating', 'qc_review', 'failed', 'changes_requested'] %}
+      <h2>Your invitation is being designed ✨</h2>
+      <p>Our studio is crafting your {{ catalog.STYLES[o.style].name }} design and checking every detail. You'll get a WhatsApp message on +{{ o.phone }} when your proof is ready{% if catalog.PACKAGES[o.package].express or 'express' in o.addons %} (within 24 hours){% else %} (within 48 hours){% endif %}.</p>
+    {% elif o.status == 'proof_sent' %}
+      <h2>Your proof is ready!</h2>
+      <p>Please review it and approve, or tell us what to change.</p>
+      <a class="btn btn-primary" href="/o/{{ o.token }}/proof">Review proof</a>
+    {% elif o.status == 'balance_due' %}
+      <h2>Almost there!</h2>
+      <p>You've approved the design. Pay the balance of <strong>{{ inr(o.balance_due) }}</strong> to download your final files.</p>
+      <a class="btn btn-primary" href="/o/{{ o.token }}/pay?purpose=balance">Pay balance</a>
+    {% elif o.status == 'delivered' %}
+      <h2>Your invitation is ready 🎉</h2>
+      <p>Download the HD files below and share them with family and friends.</p>
+    {% elif o.status == 'cancelled' %}
+      <h2>This order was cancelled</h2>
+      <p>Questions? <a href="{{ wa_link('Hi, about order ' ~ o.public_id) }}">Message us on WhatsApp</a>.</p>
+    {% endif %}
+  </div>
+
+  {% if o.status == 'delivered' %}
+  <div class="card">
+    <h2>Downloads</h2>
+    <div class="files">
+      {% for a in o.live_assets('final') %}
+      <div class="file">
+        <img src="/o/{{ o.token }}/files/{{ a.id }}" alt="{{ (a.meta or {}).get('title', a.card_key) }}">
+        <div class="meta"><span>{{ (a.meta or {}).get('title', a.card_key) }}</span><a class="btn btn-sm" href="/o/{{ o.token }}/files/{{ a.id }}?download=1">Download</a></div>
+      </div>
+      {% endfor %}
+      {% for a in o.live_assets('video') %}
+      <div class="file">
+        <video src="/o/{{ o.token }}/files/{{ a.id }}" controls playsinline style="width:100%;aspect-ratio:4/5;background:#000"></video>
+        <div class="meta"><span>Video invite</span><a class="btn btn-sm" href="/o/{{ o.token }}/files/{{ a.id }}?download=1">Download</a></div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if catalog.PACKAGES[o.package].video and not o.live_assets('video') %}
+      <p class="alert alert-info" style="margin-top:18px">Your animated video invite is in production. We'll WhatsApp you as soon as it's ready.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if o.rsvp_slug and o.status not in ['pending_payment', 'cancelled'] %}
+  <div class="card" style="border:2px solid var(--gold)">
+    <h2>💌 Smart guest invites</h2>
+    <p>Add your guest list and send every guest a <strong>personal invitation</strong> on WhatsApp with their name and only their functions. Then watch who opened it, who's coming, headcount per function, food preferences and who needs pickup, all live.</p>
+    <p><a class="btn btn-primary" href="/e/{{ o.rsvp_slug }}/guests?key={{ o.token }}">Open family console</a>
+       <a class="btn btn-ghost" href="/e/{{ o.rsvp_slug }}" target="_blank">View invitation page ↗</a></p>
+    <p class="small muted">General invite link (for WhatsApp groups): {{ settings.base_url }}/e/{{ o.rsvp_slug }}</p>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>Order details</h2>
+    <dl class="kv">
+      <dt>Status</dt><dd><span class="pill {{ o.status }}">{{ o.status_label }}</span></dd>
+      <dt>Package</dt><dd>{{ catalog.PACKAGES[o.package].name }}{% for a in o.addons %} + {{ catalog.ADDONS[a].name }}{% endfor %}</dd>
+      <dt>Style</dt><dd>{{ catalog.STYLES[o.style].name }} · {{ catalog.LANGUAGES[o.language].name }}</dd>
+      <dt>Wedding</dt><dd>{{ pretty_date(o.wedding_date) }}, {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</dd>
+      <dt>Paid</dt><dd>{{ inr(o.amount_paid) }} of {{ inr(o.total) }}</dd>
+      <dt>Revisions left</dt><dd>{{ o.revisions_left }}</dd>
+    </dl>
+  </div>
+
+  <div class="card center">
+    <h3>Share the love, save ₹{{ settings.referral_discount_inr }}</h3>
+    <p>Your referral code <strong style="font-size:1.3rem;letter-spacing:2px">{{ o.referral_code }}</strong> gives friends ₹{{ settings.referral_discount_inr }} off their invitation.</p>
+    <a class="btn btn-wa btn-sm" href="https://wa.me/?text={{ ('Get a beautiful wedding invitation from ' ~ settings.brand_name ~ ' with ₹' ~ settings.referral_discount_inr ~ ' off: ' ~ settings.base_url ~ '/order?ref=' ~ o.referral_code)|urlencode }}">Share on WhatsApp</a>
+  </div>
+  <p class="center small muted">Bookmark this page. It's your private link for this order.</p>
+</div>
+</section>
+{% endblock %}

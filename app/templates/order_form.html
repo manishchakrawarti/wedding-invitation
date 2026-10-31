@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Order your invitation · {{ settings.brand_name }}{% endblock %}
+{% block content %}
+<section style="padding-top:36px">
+<form class="narrow" method="post" action="/order" enctype="multipart/form-data" id="order-form">
+  <h1>Order your invitation</h1>
+  <p class="muted">Takes about 3 minutes. Fields marked * are required.</p>
+
+  {% if test_mode %}
+  <input type="hidden" name="test" value="{{ v.test }}">
+  <div class="alert alert-info"><strong>🧪 TEST ORDER:</strong> any package (including Premium) costs only ₹{{ settings.test_order_price_inr }}. This order goes through the real flow but is excluded from revenue stats.</div>
+  {% endif %}
+
+  {% if errors %}
+  <div class="alert alert-error"><strong>Please fix the following:</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+  {% endif %}
+
+  <div class="card">
+    <h2>1. Package</h2>
+    <div class="choice-grid">
+      {% for p in packages.values() %}
+      <label class="choice pkg-choice">
+        <input type="radio" name="package" value="{{ p.key }}" data-price="{{ p.price }}"
+               data-includes="{{ ['function_cards' if p.function_cards, 'rsvp' if p.rsvp, 'express' if p.express]|select|join(' ') }}"
+               {% if v.package == p.key %}checked{% endif %} required>
+        <span class="face"><strong>{{ p.name }}: ₹{{ "{:,}".format(p.price) }}</strong><span class="small muted">{{ p.tagline }}</span></span>
+      </label>
+      {% endfor %}
+    </div>
+    <h3 style="margin-top:20px">Add-ons</h3>
+    {% for a in addons.values() if a.selectable %}
+    <label class="check addon-check" data-addon="{{ a.key }}">
+      <input type="checkbox" name="addons" value="{{ a.key }}" data-price="{{ a.price }}" {% if a.key in (v.addons or []) %}checked{% endif %}>
+      <span><strong>{{ a.name }}</strong> (+₹{{ a.price }}) <span class="hint">{{ a.description }}</span> <em class="hint included" hidden>Included in your package</em></span>
+    </label>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <h2>2. Design style</h2>
+    <div class="choice-grid">
+      {% for s in styles.values() %}
+      <label class="choice">
+        <input type="radio" name="style" value="{{ s.key }}" {% if v.style == s.key %}checked{% endif %} required>
+        <span class="face"><img src="/samples/{{ s.key }}.jpg" alt="" loading="lazy"><div>{{ s.name }}</div></span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. The couple</h2>
+    <div class="form-grid">
+      <div><label for="bride_name">Bride's name *</label><input id="bride_name" name="bride_name" type="text" value="{{ v.bride_name }}" required maxlength="60"></div>
+      <div><label for="groom_name">Groom's name *</label><input id="groom_name" name="groom_name" type="text" value="{{ v.groom_name }}" required maxlength="60"></div>
+      <div><label for="bride_family">Bride's parents <span class="hint">optional, e.g. Mrs &amp; Mr Rakesh Sharma</span></label><input id="bride_family" name="bride_family" type="text" value="{{ v.bride_family }}" maxlength="80"></div>
+      <div><label for="groom_family">Groom's parents <span class="hint">optional</span></label><input id="groom_family" name="groom_family" type="text" value="{{ v.groom_family }}" maxlength="80"></div>
+      <div class="full">
+        <label for="language">Card language *</label>
+        <select id="language" name="language">
+          {% for l in languages.values() %}<option value="{{ l.code }}" {% if v.language == l.code %}selected{% endif %}>{{ l.name }} · {{ l.native }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="local-names"><label for="bride_name_local">Bride's name in your script</label><input id="bride_name_local" name="bride_name_local" type="text" value="{{ v.bride_name_local }}" placeholder="e.g. अनन्या" maxlength="60"></div>
+      <div class="local-names"><label for="groom_name_local">Groom's name in your script</label><input id="groom_name_local" name="groom_name_local" type="text" value="{{ v.groom_name_local }}" placeholder="e.g. अर्जुन" maxlength="60"></div>
+      <p class="hint full local-names">We print names exactly as you type them here, so please double-check the spelling.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>4. Wedding details</h2>
+    <div class="form-grid">
+      <div><label for="wedding_date">Wedding date *</label><input id="wedding_date" name="wedding_date" type="date" min="{{ today }}" value="{{ v.wedding_date }}" required></div>
+      <div><label for="city">City</label><input id="city" name="city" type="text" value="{{ v.city }}" maxlength="60"></div>
+      <div class="full"><label for="venue_name">Venue name *</label><input id="venue_name" name="venue_name" type="text" value="{{ v.venue_name }}" required maxlength="100"></div>
+      <div class="full"><label for="venue_address">Venue address <span class="hint">used for the map on the RSVP page</span></label><input id="venue_address" name="venue_address" type="text" value="{{ v.venue_address }}" maxlength="160"></div>
+    </div>
+    <h3 style="margin-top:20px">Functions</h3>
+    <p class="hint">Tick each function. Date and venue default to the wedding's if left empty.</p>
+    {% for key, label in functions.items() %}
+    <div class="fn-row {% if v.get('fn_' ~ key) %}on{% endif %}">
+      <label class="check" style="margin:0"><input type="checkbox" name="fn_{{ key }}" {% if v.get('fn_' ~ key) %}checked{% endif %}> <span>{{ label }}</span></label>
+      <div class="fn-fields">
+        <input type="date" name="fn_{{ key }}_date" value="{{ v.get('fn_' ~ key ~ '_date', '') }}" aria-label="{{ label }} date">
+        <input type="time" name="fn_{{ key }}_time" value="{{ v.get('fn_' ~ key ~ '_time', '') }}" aria-label="{{ label }} time">
+        <input type="text" name="fn_{{ key }}_venue" value="{{ v.get('fn_' ~ key ~ '_venue', '') }}" placeholder="Venue (if different)" aria-label="{{ label }} venue">
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <h2>5. Couple photo <span class="hint">optional</span></h2>
+    <p class="hint">Up to {{ max_photos }} clear, front-facing photos (JPG/PNG, max 10 MB each). We blend you into the design as a traditional illustrated portrait.</p>
+    <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple>
+    <label class="check"><input type="checkbox" name="photo_consent" {% if v.photo_consent %}checked{% endif %}> <span>I am in these photos or have permission from everyone in them, and I agree they may be used to create this invitation (<a href="/terms#photos" target="_blank">photo terms</a>). Photos are deleted within {{ settings.photo_retention_days }} days.</span></label>
+    <label class="check"><input type="checkbox" name="marketing_consent" {% if v.marketing_consent %}checked{% endif %}> <span>Optional: you may feature my finished invitation on your Instagram / website.</span></label>
+  </div>
+
+  <div class="card">
+    <h2>6. Your contact</h2>
+    <div class="form-grid">
+      <div class="full"><label for="customer_name">Your name *</label><input id="customer_name" name="customer_name" type="text" value="{{ v.customer_name }}" required maxlength="80"></div>
+      <div><label for="phone">WhatsApp number *</label><input id="phone" name="phone" type="tel" value="{{ v.phone }}" placeholder="98765 43210" required></div>
+      <div><label for="email">Email <span class="hint">optional</span></label><input id="email" name="email" type="email" value="{{ v.email }}"></div>
+      <div class="full"><label for="notes">Anything special? <span class="hint">colours, family deity, shloka, dress-code note…</span></label><textarea id="notes" name="notes" maxlength="1000">{{ v.notes }}</textarea></div>
+      <div><label for="referral">Referral code <span class="hint">₹{{ settings.referral_discount_inr }} off</span></label><input id="referral" name="referral" type="text" value="{{ v.referral }}" maxlength="16" style="text-transform:uppercase"></div>
+      <div>
+        <label>Payment</label>
+        <label class="check"><input type="radio" name="payment_option" value="full" {% if v.payment_option != 'advance' %}checked{% endif %}> <span>Pay in full now</span></label>
+        <label class="check"><input type="radio" name="payment_option" value="advance" {% if v.payment_option == 'advance' %}checked{% endif %}> <span>{{ settings.advance_percent }}% advance, balance after approval</span></label>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" name="accept_terms" required {% if v.accept_terms %}checked{% endif %}> <span>I accept the <a href="/terms" target="_blank">terms</a>, <a href="/privacy" target="_blank">privacy policy</a> and <a href="/refund" target="_blank">refund &amp; revision policy</a>.</span></label>
+  </div>
+
+  <div class="summary-bar">
+    <div class="wrap">
+      <div><div class="small">Total</div><div class="total" id="total">₹0</div></div>
+      <button class="btn" type="submit">Continue to payment →</button>
+    </div>
+  </div>
+</form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById('order-form');
+  const fmt = n => '₹' + n.toLocaleString('en-IN');
+  function update() {
+    const pkg = form.querySelector('input[name=package]:checked');
+    const includes = pkg ? pkg.dataset.includes.split(' ') : [];
+    let total = pkg ? +pkg.dataset.price : 0;
+    form.querySelectorAll('.addon-check').forEach(row => {
+      const box = row.querySelector('input');
+      const inc = includes.includes(row.dataset.addon);
+      box.disabled = inc;
+      row.querySelector('.included').hidden = !inc;
+      if (box.checked && !inc) total += +box.dataset.price;
+    });
+    if (form.referral.value.trim()) total = Math.max(total - {{ settings.referral_discount_inr }}, 0);
+    {% if test_mode %}total = {{ settings.test_order_price_inr }};{% endif %}
+    document.getElementById('total').textContent = fmt(total) + (form.referral.value.trim() ? '*' : '');
+    const local = form.language.value !== 'en';
+    form.querySelectorAll('.local-names').forEach(el => el.style.display = local ? '' : 'none');
+  }
+  form.addEventListener('change', update);
+  form.referral.addEventListener('input', update);
+  form.querySelectorAll('.fn-row input[type=checkbox]').forEach(box => {
+    box.addEventListener('change', () => box.closest('.fn-row').classList.toggle('on', box.checked));
+  });
+  update();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Not just a card. <span class="script">An invitation they'll never forget.</span></h1>
+      <p class="lead">Palace doors swing open, marigold petals fall, your music plays, and each guest is greeted by name. Send personal invites to your whole guest list on WhatsApp, and know exactly who's coming to every function.</p>
+      <p>
+        <a class="btn" href="/demo" target="_blank">✨ Open a live demo invite</a>
+        <a class="btn btn-ghost" style="color:var(--gold-soft)" href="/order?package=premium">Order yours</a>
+      </p>
+      <div class="trust">
+        <span>✦ From ₹{{ catalog.PACKAGES['basic'].price }}</span>
+        <span>✦ {{ catalog.LANGUAGES|length }} languages</span>
+        <span>✦ 2 free revisions</span>
+        <span>✦ Pay by UPI</span>
+      </div>
+    </div>
+    <div class="hero-cards" aria-hidden="true">
+      <img src="/samples/south_indian.jpg" alt="">
+      <img src="/samples/muslim_nikah.jpg" alt="">
+      <img src="/samples/north_indian.jpg" alt="">
+    </div>
+  </div>
+</section>
+<div class="toran"></div>
+
+<section id="experience" style="background:var(--paper)">
+  <div class="wrap">
+    <h2 class="center">A wedding invitation that does the work for you</h2>
+    <p class="center muted" style="max-width:44em;margin:0 auto 36px">Families spend weeks calling relatives, chasing RSVPs and guessing headcounts for the caterer. We turn your invitation into a smart assistant.</p>
+    <div class="steps" style="counter-reset:none">
+      <div class="card"><div style="font-size:2rem">🚪</div><h3>Cinematic opening</h3><p>Royal palace doors open to falling petals and your music. Guests feel the wedding before they arrive.</p></div>
+      <div class="card"><div style="font-size:2rem">💌</div><h3>Personal for every guest</h3><p>"Dear Sharma Family…" Each guest gets their own link with their name, and sees only the functions they're invited to.</p></div>
+      <div class="card"><div style="font-size:2rem">📲</div><h3>Send on WhatsApp in one tap</h3><p>Paste your guest list once. Tap "Send" and WhatsApp opens with a personal message ready for each guest.</p></div>
+      <div class="card"><div style="font-size:2rem">📊</div><h3>Know who's coming</h3><p>See live who opened, who replied, headcount per function, veg/Jain counts and who needs station pickup. Export it for your caterer.</p></div>
+      <div class="card"><div style="font-size:2rem">🪙</div><h3>Shagun, maps &amp; reminders</h3><p>Shagun via UPI for those who can't come, Google Maps for every venue, dress codes, and add-to-calendar reminders.</p></div>
+      <div class="card"><div style="font-size:2rem">🙏</div><h3>Made by humans, in your language</h3><p>Hindi and 7 regional languages, names spelled exactly right, and a real designer checks every invite before you see it.</p></div>
+    </div>
+    <p class="center" style="margin-top:30px">
+      <a class="btn btn-primary" href="/demo" target="_blank">See what guests receive</a>
+      <a class="btn btn-ghost" href="/demo/console" target="_blank">See the family console</a>
+    </p>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="narrow">
+    <h2 class="center">"Can't I just make a card with a free AI tool?"</h2>
+    <p class="center muted">You can make a picture. Here's everything else a shaadi needs.</p>
+    <div class="table-wrap" style="margin-top:24px">
+      <table>
+        <thead><tr><th></th><th class="center">Free AI tool</th><th class="center">{{ settings.brand_name }}</th></tr></thead>
+        <tbody>
+          <tr><td>Beautiful invitation design</td><td class="center">Hit or miss</td><td class="center">✅ Checked by our designer</td></tr>
+          <tr><td>Names &amp; Hindi text spelled correctly</td><td class="center">❌ Often garbled</td><td class="center">✅ Always exact</td></tr>
+          <tr><td>Card for every function in one matching style</td><td class="center">❌</td><td class="center">✅</td></tr>
+          <tr><td>Cinematic invite page with music</td><td class="center">❌</td><td class="center">✅</td></tr>
+          <tr><td>Personal invite with each guest's name</td><td class="center">❌</td><td class="center">✅</td></tr>
+          <tr><td>Different functions for different guests</td><td class="center">❌</td><td class="center">✅</td></tr>
+          <tr><td>See who opened &amp; who's coming</td><td class="center">❌</td><td class="center">✅ Live</td></tr>
+          <tr><td>Headcount &amp; food counts for the caterer</td><td class="center">❌</td><td class="center">✅ One-click export</td></tr>
+          <tr><td>Pickup list for outstation guests</td><td class="center">❌</td><td class="center">✅</td></tr>
+          <tr><td>Shagun via UPI, maps, calendar reminders</td><td class="center">❌</td><td class="center">✅</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="samples">
+  <div class="wrap">
+    <h2 class="center">Choose your style</h2>
+    <p class="center muted">Each design is created for your couple. Your names, dates and venue are typeset in real fonts, so spellings are always perfect.</p>
+    <div class="gallery">
+      {% for s in styles.values() %}
+      <a class="sample" href="/order?style={{ s.key }}">
+        <img src="/samples/{{ s.key }}.jpg" alt="{{ s.name }} invitation sample" loading="lazy">
+        <div><strong>{{ s.name }}</strong><span>{{ s.description }}</span></div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section id="how" style="background:var(--paper)">
+  <div class="wrap">
+    <h2 class="center">How it works</h2>
+    <div class="steps" style="margin-top:36px">
+      <div class="step"><h3>Tell us your story</h3><p>Fill a 3-minute form with names, dates, venue and functions. Add a couple photo if you like.</p></div>
+      <div class="step"><h3>Pay securely</h3><p>UPI, card or netbanking. Pay in full or {{ settings.advance_percent }}% advance.</p></div>
+      <div class="step"><h3>Approve your proof</h3><p>We send a proof on WhatsApp. Approve it or ask for changes, with {{ settings.max_free_revisions }} revisions free.</p></div>
+      <div class="step"><h3>Share the joy</h3><p>Download HD files and forward to family. Premium adds an RSVP page with map and QR.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <h2 class="center">Simple, honest pricing</h2>
+    <p class="center muted">One-time price. No hidden charges.</p>
+    <div class="pricing" style="margin-top:36px">
+      {% for p in packages.values() %}
+      <div class="plan {% if p.popular %}popular{% endif %}">
+        {% if p.popular %}<span class="badge-pop">Most loved</span>{% endif %}
+        <h3>{{ p.name }}</h3>
+        <div class="price">₹{{ "{:,}".format(p.price) }}</div>
+        <div class="muted">{{ p.tagline }}</div>
+        <ul>{% for f in p.features %}<li>{{ f }}</li>{% endfor %}</ul>
+        <a class="btn {% if p.popular %}btn-primary{% endif %} btn-block" href="/order?package={{ p.key }}">Choose {{ p.name }}</a>
+      </div>
+      {% endfor %}
+    </div>
+    <h3 class="center" style="margin-top:44px">Add-ons</h3>
+    <div class="addons">
+      {% for a in addons.values() %}
+      <div class="addon"><strong>{{ a.name }}</strong>: ₹{{ a.price }}<br><span class="small muted">{{ a.description }}</span></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--paper)">
+  <div class="narrow">
+    <h2 class="center">Questions families ask</h2>
+    <details><summary>How fast will I get my invitation?</summary><p>Proofs arrive within 48 hours of payment (24 hours with Premium or Express). After you approve, the final files are delivered immediately.</p></details>
+    <details><summary>Can the card be in Hindi or my regional language?</summary><p>Yes: {{ catalog.LANGUAGES.values()|map(attribute='name')|join(', ') }}. Just write the names in your script on the order form, exactly as you want them printed.</p></details>
+    <details><summary>Is my couple photo safe?</summary><p>Photos are used only to make your invitation, never shown publicly without your separate permission, and deleted automatically within {{ settings.photo_retention_days }} days. See our <a href="/privacy">privacy policy</a>.</p></details>
+    <details><summary>What if I don't like the design?</summary><p>You get {{ settings.max_free_revisions }} free revisions. Tell us what to change and we redesign it. Extra revisions are ₹{{ catalog.ADDONS['extra_revision'].price }} each.</p></details>
+    <details><summary>Do you make printed cards?</summary><p>We deliver print-ready HD files that any local press can print. Message us on WhatsApp for printing help.</p></details>
+    <p class="center" style="margin-top:28px"><a class="btn btn-wa" href="{{ wa_link('Namaste! I have a question about wedding invitations') }}">Ask on WhatsApp</a></p>
+  </div>
+</section>
+{% endblock %}

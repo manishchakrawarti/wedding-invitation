@@ -1,0 +1,387 @@
+import hashlib
+import hmac
+import json
+import re
+from datetime import date, timedelta
+
+from sqlalchemy import select
+
+from app.db import SessionLocal
+from app.models import Asset, Guest, Notification, Order, OrderStatus
+from app.services import orders, payments
+from app.services.overlay import RAQM
+from app.utils import inr, normalize_phone
+
+WEDDING = (date.today() + timedelta(days=60)).isoformat()
+
+
+def order_form(**overrides):
+    data = {
+        "package": "basic", "style": "north_indian", "language": "en",
+        "bride_name": "Ananya", "groom_name": "Arjun", "bride_family": "Mrs & Mr Sharma",
+        "wedding_date": WEDDING, "venue_name": "The Leela Palace", "city": "Jaipur",
+        "fn_wedding": "on", "fn_wedding_time": "19:30",
+        "customer_name": "Ravi Sharma", "phone": "98765 43210", "email": "ravi@example.com",
+        "payment_option": "full", "accept_terms": "on",
+    }
+    data.update(overrides)
+    return data
+
+
+def place_order(client, files=None, **overrides) -> Order:
+    resp = client.post("/order", data=order_form(**overrides), files=files, follow_redirects=False)
+    assert resp.status_code == 303, resp.text[:2000]
+    token = resp.headers["location"].split("/")[2]
+    return get(token)
+
+
+def get(token: str) -> Order:
+    with SessionLocal() as db:
+        order = db.scalar(select(Order).where(Order.token == token))
+        order.assets, order.payments, order.revisions, order.guests, order.events  # load relationships
+        return order
+
+
+def pay(client, order: Order, purpose: str = "") -> Order:
+    page = client.get(f"/o/{order.token}/pay" + (f"?purpose={purpose}" if purpose else ""))
+    assert page.status_code == 200
+    payment_id = re.search(r"/pay/simulate/(\d+)", page.text).group(1)
+    resp = client.post(f"/o/{order.token}/pay/simulate/{payment_id}", follow_redirects=False)
+    assert resp.status_code == 303
+    return get(order.token)
+
+
+# --- units -------------------------------------------------------------------
+
+def test_inr_lakh_grouping():
+    assert inr(49900) == "₹499"
+    assert inr(149999900) == "₹14,99,999"
+    assert inr(1234567800) == "₹1,23,45,678"
+
+
+def test_phone_normalization():
+    assert normalize_phone("98765 43210") == "919876543210"
+    assert normalize_phone("+91-98765-43210") == "919876543210"
+    assert normalize_phone("098765 43210") == "919876543210"
+
+
+def test_pricing_ignores_included_addons_and_applies_referral():
+    assert orders.price("basic", ["rsvp", "express"], False) == (49900 + 99900 + 29900, 0, 179700)
+    # Premium already includes RSVP/express/function cards.
+    assert orders.price("premium", ["rsvp", "express", "function_cards"], True) == (299900, 10000, 289900)
+    assert orders.effective_addons("basic", ["extra_revision", "bogus", "rsvp"]) == ["rsvp"]
+
+
+def test_razorpay_signatures(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "razorpay_key_secret", "secret123")
+    sig = hmac.new(b"secret123", b"order_1|pay_1", hashlib.sha256).hexdigest()
+    assert payments.verify_checkout_signature("order_1", "pay_1", sig)
+    assert not payments.verify_checkout_signature("order_1", "pay_2", sig)
+    body = b'{"event":"x"}'
+    assert payments.verify_webhook_signature(body, hmac.new(b"whsec_test", body, hashlib.sha256).hexdigest())
+    assert not payments.verify_webhook_signature(body, "nope")
+
+
+# --- pages -------------------------------------------------------------------
+
+def test_public_pages(client):
+    for path in ["/", "/order", "/terms", "/privacy", "/refund", "/healthz"]:
+        assert client.get(path).status_code == 200, path
+    resp = client.get("/samples/north_indian.jpg")
+    assert resp.status_code == 200 and resp.headers["content-type"] == "image/jpeg"
+
+
+def test_order_validation_errors(client):
+    resp = client.post("/order", data=order_form(bride_name="", phone="123", accept_terms=""))
+    assert resp.status_code == 422
+    assert "Bride&#39;s name is required" in resp.text and "valid WhatsApp number" in resp.text
+    resp = client.post("/order", data=order_form(language="hi"))
+    assert resp.status_code == 422 and "script too" in resp.text
+
+
+def test_photos_require_consent(client, photo_bytes):
+    resp = client.post("/order", data=order_form(), files=[("photos", ("me.jpg", photo_bytes, "image/jpeg"))])
+    assert resp.status_code == 422 and "photo consent" in resp.text
+
+
+def test_admin_requires_auth(client):
+    assert client.get("/admin").status_code == 401
+    assert client.get("/admin", auth=("admin", "wrong")).status_code == 401
+
+
+# --- end-to-end flows ------------------------------------------------------------
+
+def test_full_payment_flow_with_revision(client, admin_auth, photo_bytes):
+    order = place_order(client, files=[("photos", ("me.jpg", photo_bytes, "image/jpeg"))], photo_consent="on")
+    assert order.status == OrderStatus.PENDING_PAYMENT.value
+    assert order.total == 49900 and len([a for a in order.assets if a.kind == "photo"]) == 1
+
+    # Final files are locked before delivery.
+    order = pay(client, order)
+    assert order.status == OrderStatus.QC_REVIEW.value, [e.message for e in get(order.token).events]
+    assert order.amount_paid == 49900 and order.current_version == 1
+    final = next(a for a in order.assets if a.kind == "final")
+    assert final.qc["passed"], final.qc
+    assert client.get(f"/o/{order.token}/files/{final.id}").status_code == 403
+    proof = next(a for a in order.assets if a.kind == "proof")
+    assert client.get(f"/o/{order.token}/files/{proof.id}").status_code == 404  # not reviewed by owner yet
+
+    # Owner reviews and sends proof.
+    assert client.get(f"/admin/orders/{order.id}", auth=admin_auth).status_code == 200
+    client.post(f"/admin/orders/{order.id}/send-proof", auth=admin_auth)
+    assert get(order.token).status == OrderStatus.PROOF_SENT.value
+    assert client.get(f"/o/{order.token}/proof").status_code == 200
+    assert client.get(f"/o/{order.token}/files/{proof.id}").status_code == 200
+
+    # Customer asks for changes; owner regenerates and re-sends.
+    client.post(f"/o/{order.token}/proof/changes", data={"notes": "More marigolds please"})
+    order = get(order.token)
+    assert order.status == OrderStatus.CHANGES_REQUESTED.value and order.revisions_used == 1
+    client.post(f"/admin/orders/{order.id}/regenerate", data={"notes": "More marigolds"}, auth=admin_auth)
+    order = get(order.token)
+    assert order.status == OrderStatus.QC_REVIEW.value and order.current_version == 2
+    client.post(f"/admin/orders/{order.id}/send-proof", auth=admin_auth)
+
+    # Approve → fully paid → delivered.
+    client.post(f"/o/{order.token}/proof/approve")
+    order = get(order.token)
+    assert order.status == OrderStatus.DELIVERED.value
+    final = next(a for a in order.assets if a.kind == "final" and a.version == 2)
+    resp = client.get(f"/o/{order.token}/files/{final.id}?download=1")
+    assert resp.status_code == 200 and resp.headers["content-type"] == "image/png"
+    assert "attachment" in resp.headers["content-disposition"]
+
+    with SessionLocal() as db:
+        kinds = [n.body for n in db.scalars(select(Notification).where(Notification.order_id == order.id))]
+    assert any("proof for Ananya & Arjun is ready" in b for b in kinds) and any("final invitation" in b for b in kinds)
+
+
+def test_advance_then_balance(client, admin_auth):
+    order = place_order(client, payment_option="advance", package="video")
+    order = pay(client, order)
+    assert order.amount_paid == 75000 and order.balance_due == 74900
+    client.post(f"/admin/orders/{order.id}/send-proof", auth=admin_auth)
+    client.post(f"/o/{order.token}/proof/approve")
+    order = get(order.token)
+    assert order.status == OrderStatus.BALANCE_DUE.value
+    order = pay(client, order, "balance")
+    assert order.status == OrderStatus.DELIVERED.value and order.balance_due == 0
+
+
+def test_revision_limit_then_paid_revision(client, admin_auth):
+    order = place_order(client)
+    pay(client, order)
+    for _ in range(2):
+        client.post(f"/admin/orders/{order.id}/send-proof", auth=admin_auth)
+        client.post(f"/o/{order.token}/proof/changes", data={"notes": "change"})
+    client.post(f"/admin/orders/{order.id}/send-proof", auth=admin_auth)
+    resp = client.post(f"/o/{order.token}/proof/changes", data={"notes": "third"}, follow_redirects=False)
+    assert resp.headers["location"].endswith("/pay?purpose=revision")
+    order = pay(client, get(order.token), "revision")
+    assert order.extra_revisions == 1 and order.revisions_left == 1 and order.amount_paid == 49900 + 19900
+
+
+def test_premium_function_cards_and_rsvp(client, admin_auth):
+    order = place_order(
+        client, package="premium",
+        fn_haldi="on", fn_haldi_date=WEDDING, fn_haldi_time="10:00",
+        fn_mehndi="on", fn_mehndi_venue="Sharma Residence",
+    )
+    order = pay(client, order)
+    finals = [a for a in order.assets if a.kind == "final"]
+    assert sorted(a.card_key for a in finals) == ["haldi", "main", "mehndi"]
+    assert order.rsvp_slug == "ananya-weds-arjun" or order.rsvp_slug.startswith("ananya-weds-arjun")
+
+    client.post(f"/admin/orders/{order.id}/send-proof", auth=admin_auth)
+    client.post(f"/o/{order.token}/proof/approve")
+    slug = order.rsvp_slug
+    page = client.get(f"/e/{slug}")
+    assert page.status_code == 200 and "Haldi" in page.text
+    assert order.token not in page.text  # never leak the private order link to guests
+    assert client.get(f"/e/{slug}/invite").status_code == 200
+    assert client.get(f"/e/{slug}/qr.png").status_code == 200
+
+    client.post(f"/e/{slug}/rsvp", data={"name": "Meena Aunty", "attending": "yes", "headcount": "3", "functions": ["haldi"]})
+    with SessionLocal() as db:
+        guest = db.scalar(select(Guest).where(Guest.order_id == order.id))
+    assert guest.name == "Meena Aunty" and guest.headcount == 3
+    assert client.get(f"/e/{slug}/guests").status_code == 403
+    guests = client.get(f"/e/{slug}/guests?key={order.token}")
+    assert guests.status_code == 200 and "Meena Aunty" in guests.text
+
+
+def test_referral_discount(client):
+    first = place_order(client)
+    second = place_order(client, referral=first.referral_code.lower())
+    assert second.discount == 10000 and second.total == 39900 and second.referred_by_code == first.referral_code
+
+
+def test_failed_generation_alerts_and_retries(client, monkeypatch):
+    from app.services import pipeline
+
+    calls = []
+
+    class Boom:
+        def generate(self, *a, **k):
+            calls.append(1)
+            raise RuntimeError("model overloaded")
+
+    monkeypatch.setattr(pipeline, "get_generator", lambda: Boom())
+    order = pay(client, place_order(client))
+    assert order.status == OrderStatus.FAILED.value
+    assert len(calls) == 3  # generation_max_attempts
+
+
+def test_hindi_card_blocked_without_shaping(client):
+    order = pay(client, place_order(client, language="hi", bride_name_local="अनन्या", groom_name_local="अर्जुन"))
+    final = next(a for a in order.assets if a.kind == "final")
+    shaping = next(c for c in final.qc["checks"] if c["name"] == "script_shaping")
+    assert shaping["status"] == ("pass" if RAQM else "fail")
+
+
+def test_razorpay_webhook_marks_paid(client):
+    order = place_order(client)
+    client.get(f"/o/{order.token}/pay")
+    payment = get(order.token).payments[0]
+    body = json.dumps({"event": "payment.captured", "payload": {"payment": {"entity": {"id": "pay_X", "order_id": payment.provider_order_id}}}}).encode()
+    sig = hmac.new(b"whsec_test", body, hashlib.sha256).hexdigest()
+    assert client.post("/webhooks/razorpay", content=body, headers={"X-Razorpay-Signature": sig}).status_code == 200
+    assert get(order.token).amount_paid == 49900
+    # Replays are idempotent.
+    client.post("/webhooks/razorpay", content=body, headers={"X-Razorpay-Signature": sig})
+    assert get(order.token).amount_paid == 49900
+
+
+def test_whatsapp_auto_reply(client):
+    order = place_order(client)
+    msg = {"entry": [{"changes": [{"value": {"messages": [{"from": "919000000001", "type": "text", "text": {"body": f"status {order.public_id}"}}]}}]}]}
+    client.post("/webhooks/whatsapp", json=msg)
+    with SessionLocal() as db:
+        reply = db.scalars(select(Notification).where(Notification.recipient == "919000000001")).all()[-1]
+    assert order.public_id in reply.body and "Awaiting payment" in reply.body
+
+
+def test_retention_cleanup(client, photo_bytes):
+    from app.models import utcnow
+    from app.services.maintenance import cleanup_expired
+
+    order = place_order(client, files=[("photos", ("me.jpg", photo_bytes, "image/jpeg"))], photo_consent="on")
+    with SessionLocal() as db:
+        photo = db.scalar(select(Asset).where(Asset.order_id == order.id, Asset.kind == "photo"))
+        photo.created_at = utcnow() - timedelta(days=31)
+        db.commit()
+        result = cleanup_expired(db)
+        db.refresh(photo)
+    assert result["photos"] >= 1 and photo.deleted_at is not None
+
+
+def test_razorpay_me_manual_payment(client, admin_auth, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "razorpay_me_url", "https://razorpay.me/@example")
+    order = place_order(client)
+    page = client.get(f"/o/{order.token}/pay")
+    assert "https://razorpay.me/@example" in page.text and "Simulate payment" not in page.text
+    payment_id = re.search(r"/pay/claim/(\d+)", page.text).group(1)
+    assert client.post(f"/o/{order.token}/pay/simulate/{payment_id}").status_code == 404
+
+    client.post(f"/o/{order.token}/pay/claim/{payment_id}", data={"reference": "pay_ABC123"})
+    order = get(order.token)
+    assert order.status == OrderStatus.PENDING_PAYMENT.value and order.payments[0].status == "claimed"
+    assert "pay_ABC123" in client.get(f"/o/{order.token}/pay").text
+    assert "payment(s) to confirm" in client.get("/admin", auth=admin_auth).text
+
+    client.post(f"/admin/payments/{payment_id}/confirm", auth=admin_auth)
+    order = get(order.token)
+    assert order.amount_paid == 49900 and order.status == OrderStatus.QC_REVIEW.value
+
+
+def test_one_rupee_test_order(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "test_order_code", "secret-code")
+    assert "TEST ORDER" not in client.get("/order?test=wrong").text
+    assert "TEST ORDER" in client.get("/order?test=secret-code").text
+
+    order = place_order(client, package="premium", test="secret-code", payment_option="advance")
+    assert order.total == 100 and order.payment_option == "full" and order.source == "test"
+    normal = place_order(client, package="premium", test="wrong")
+    assert normal.total == 299900 and normal.source == "website"
+
+
+def test_resend_and_test_email(client, admin_auth):
+    order = place_order(client)
+    resp = client.post(f"/admin/orders/{order.id}/resend", auth=admin_auth)
+    assert "order_received" in resp.text
+    resp = client.post("/admin/notifications/test-email", data={"to": "me@example.com"}, auth=admin_auth)
+    assert "SMTP is not configured" in resp.text
+
+
+def test_smart_guest_invites(client, admin_auth):
+    order = place_order(client, package="premium", fn_haldi="on", fn_haldi_date=WEDDING, fn_reception="on")
+    order = pay(client, order)
+    client.post(f"/admin/orders/{order.id}/send-proof", auth=admin_auth)
+    client.post(f"/o/{order.token}/proof/approve")
+    slug, key = order.rsvp_slug, order.token
+    assert "family console" in client.get(f"/o/{order.token}").text.lower()
+
+    # Bulk add: functions, phone and side are parsed per line; empty functions -> defaults.
+    resp = client.post(f"/e/{slug}/guests/add", data={
+        "key": key, "guests": "Sharma Family, 98765 43210, haldi wedding, bride\nMeena Aunty, reception\nRahul",
+        "default_functions": ["wedding"],
+    })
+    assert "Added 3 guest(s)" in resp.text
+    assert "wa.me/919876543210?text=" in resp.text  # one-tap WhatsApp send with a personal message
+    assert client.post(f"/e/{slug}/guests/add", data={"key": "wrong", "guests": "X"}).status_code == 403
+    sharma, meena, rahul = _invitees(order.id)
+    assert sharma.functions == ["haldi", "wedding"] and sharma.phone == "919876543210" and sharma.side == "bride"
+    assert meena.functions == ["reception"] and rahul.functions == ["wedding"]
+
+    # Personal page: greets by name, shows only invited functions, counts opens (not previews).
+    page = client.get(f"/i/{meena.code}")
+    assert "Dear Meena Aunty" in page.text and "Reception" in page.text and "Haldi" not in page.text
+    client.get(f"/i/{meena.code}?preview=1")
+    assert _invitees(order.id)[1].open_count == 1
+
+    client.post(f"/i/{sharma.code}/rsvp", data={
+        "attending": "yes", "headcount": "4", "functions": ["haldi", "wedding", "reception"], "food": "jain",
+        "arrival_date": WEDDING, "arrival_mode": "train", "needs_pickup": "on", "message": "Badhaai ho!",
+    })
+    sharma = _invitees(order.id)[0]
+    assert sharma.attending_functions == ["haldi", "wedding"]  # can't RSVP to functions they're not invited to
+    assert sharma.needs_pickup and sharma.food == "jain"
+
+    console = client.get(f"/e/{slug}/guests?key={key}")
+    assert console.status_code == 200 and "Need pickup" in console.text
+    assert "Badhaai ho!" in client.get(f"/e/{slug}").text  # blessings wall
+    ics = client.get(f"/e/{slug}/calendar/haldi.ics")
+    assert ics.status_code == 200 and "BEGIN:VEVENT" in ics.text
+    csv = client.get(f"/e/{slug}/guests.csv?key={key}").text
+    assert "Sharma Family" in csv and "/i/" in csv
+
+    client.post(f"/e/{slug}/details", data={"key": key, "hosts": "The Kapoor family", "upi_id": "me@upi", "dress_haldi": "Yellow"})
+    page = client.get(f"/i/{rahul.code}").text
+    assert "The Kapoor family" in page and "upi://pay?pa=me%40upi" in page.replace("&amp;", "&")
+    assert client.get(f"/e/{slug}/shagun.png").status_code == 200
+
+
+def _invitees(order_id):
+    from app.models import Invitee
+    with SessionLocal() as db:
+        return db.scalars(select(Invitee).where(Invitee.order_id == order_id).order_by(Invitee.id)).all()
+
+
+def test_live_demo(client):
+    from app.services import demo
+
+    demo.ensure_demo()
+    demo.ensure_demo()  # idempotent
+    resp = client.get("/demo", follow_redirects=False)
+    assert resp.status_code == 302 and resp.headers["location"].startswith("/i/")
+    page = client.get(resp.headers["location"])
+    assert "Sharma Family" in page.text and "Our Story" in page.text
+    assert client.get("/demo/console").status_code == 200
+    with SessionLocal() as db:
+        assert len(db.scalars(select(Order).where(Order.source == "demo")).all()) == 1

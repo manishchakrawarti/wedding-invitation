@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Family console · {{ o.bride_name }} &amp; {{ o.groom_name }}{% endblock %}
+{% block head %}
+<meta name="robots" content="noindex">
+<style>
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 20px 0; }
+  .tile { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 14px; text-align: center; }
+  .tile b { display: block; font: 700 2rem var(--serif); color: var(--maroon-dark); line-height: 1.1; }
+  .tile span { font-size: .82rem; color: var(--muted); }
+  .tile.hl { background: #e8f5ee; border-color: #b9e0c9; } .tile.hl b { color: var(--green); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 820px) { .two { grid-template-columns: 1fr; } }
+  .status { font-size: .82rem; white-space: nowrap; }
+  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .row-actions form { margin: 0; }
+  td .name { font-weight: 600; }
+  .side { font-size: .72rem; padding: 1px 8px; border-radius: 99px; background: #f1e7fb; color: #6b2fa3; }
+  .side.groom { background: #e7eefc; color: #2852a3; }
+  .funnel { height: 10px; background: var(--line); border-radius: 6px; overflow: hidden; margin-top: 6px; }
+  .funnel div { height: 100%; background: var(--gold); }
+</style>
+{% endblock %}
+{% block content %}
+<section style="padding-top:30px">
+<div class="wrap">
+  <p class="muted" style="margin:0">Family console · private link, share only with family</p>
+  <h1 style="margin-bottom:6px"><span class="script" style="font-size:1.15em">{{ o.bride_name }} &amp; {{ o.groom_name }}</span></h1>
+  <p class="muted">{{ pretty_date(o.wedding_date) }} · {% if days > 0 %}<strong>{{ days }} days to go</strong>{% elif days == 0 %}<strong>Today is the day! 🎉</strong>{% else %}Married {{ -days }} days ago 💕{% endif %}
+     · <a href="/e/{{ o.rsvp_slug }}" target="_blank">General invite page ↗</a> · <a href="/e/{{ o.rsvp_slug }}/qr.png" download>QR code</a> · <a href="/e/{{ o.rsvp_slug }}/guests.csv?key={{ key }}">Download Excel/CSV</a></p>
+  {% if msg %}<div class="alert alert-ok">{{ msg }}</div>{% endif %}
+
+  <div class="tiles">
+    <div class="tile"><b>{{ stats.invited }}</b><span>Invited</span></div>
+    <div class="tile"><b>{{ stats.sent }}</b><span>Sent on WhatsApp</span></div>
+    <div class="tile"><b>{{ stats.opened }}</b><span>Opened invite</span></div>
+    <div class="tile"><b>{{ stats.replied }}</b><span>Replied</span></div>
+    <div class="tile hl"><b>{{ stats.yes_people + stats.walk_ins }}</b><span>People attending</span></div>
+    <div class="tile"><b>{{ stats.maybe_people }}</b><span>Maybe</span></div>
+    <div class="tile"><b>{{ stats.declined }}</b><span>Declined</span></div>
+    <div class="tile"><b>{{ stats.pickups }}</b><span>Need pickup</span></div>
+  </div>
+  {% if stats.invited %}
+  <div class="small muted">Opened {{ (stats.opened / stats.invited * 100)|round|int }}% · Replied {{ (stats.replied / stats.invited * 100)|round|int }}%</div>
+  <div class="funnel"><div style="width:{{ (stats.replied / stats.invited * 100)|round }}%"></div></div>
+  {% endif %}
+
+  <div class="two" style="margin-top:24px">
+    <div class="card">
+      <h2>🍽 Headcount for caterer</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Function</th><th>Invited guests</th><th>Expected people <span class="hint">(incl. maybe)</span></th></tr></thead>
+        <tbody>{% for k, f in stats.per_function.items() %}<tr><td>{{ f.icon }} {{ f.label }}</td><td>{{ f.invited }}</td><td><strong>{{ f.headcount }}</strong></td></tr>{% endfor %}</tbody>
+      </table></div>
+      <p class="small" style="margin-top:12px">{% for k, label in food_choices.items() %}{{ label }}: <strong>{{ stats.food[k] }}</strong>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+      {% if stats.walk_ins %}<p class="small muted">+ {{ stats.walk_ins }} people via the general invite link.</p>{% endif %}
+    </div>
+
+    <div class="card">
+      <h2>➕ Add guests</h2>
+      <form method="post" action="/e/{{ o.rsvp_slug }}/guests/add">
+        <input type="hidden" name="key" value="{{ key }}">
+        <label for="guests">One guest or family per line: <span class="hint">Name, phone, functions, bride/groom</span></label>
+        <textarea id="guests" name="guests" rows="6" required placeholder="Sharma Family, 98765 43210, haldi sangeet wedding, bride&#10;Meena Aunty, 9123456780, reception, groom&#10;Rahul Verma, 9988776655"></textarea>
+        <label style="margin-top:10px">If a line has no functions, invite them to:</label>
+        {% for s in schedule %}<label class="check" style="display:inline-flex;margin-right:12px"><input type="checkbox" name="default_functions" value="{{ s.key }}" checked> <span>{{ s.icon }} {{ s.label }}</span></label>{% endfor %}
+        <button class="btn btn-primary btn-block" type="submit" style="margin-top:10px">Add to guest list</button>
+        <p class="hint">Tip: copy names from your Excel or WhatsApp list and paste them all at once.</p>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>👨‍👩‍👧 Guest list ({{ rows|length }})</h2>
+    <p class="small muted">Tap <strong>Send</strong> to open WhatsApp with a personal message and link for that guest. Each guest sees their own name and only their functions.</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Guest</th><th>Invited to</th><th>Status</th><th>Reply</th><th></th></tr></thead>
+      <tbody>
+      {% for r in rows %}{% set i = r.i %}
+        <tr>
+          <td><span class="name">{{ i.name }}</span> {% if i.side %}<span class="side {{ i.side }}">{{ i.side }}</span>{% endif %}<br><span class="small muted">{{ '+' ~ i.phone if i.phone else 'no phone' }}</span></td>
+          <td class="small">{{ r.fns|join(', ') }}</td>
+          <td class="status">
+            {% if i.opened_at %}<span class="pill pass">👀 Opened{% if i.open_count > 1 %} ×{{ i.open_count }}{% endif %}</span>
+            {% elif i.sent_at %}<span class="pill proof_sent">✓ Sent</span>
+            {% else %}<span class="pill skip">Not sent</span>{% endif %}
+          </td>
+          <td class="small">
+            {% if i.attending == 'yes' %}<span class="pill delivered">🎉 Yes · {{ i.headcount }}</span>
+            {% elif i.attending == 'maybe' %}<span class="pill warn">🤔 Maybe · {{ i.headcount }}</span>
+            {% elif i.attending == 'no' %}<span class="pill fail">Declined</span>
+            {% else %}<span class="muted">—</span>{% endif %}
+            {% if i.food %}<br>{{ food_choices[i.food] }}{% endif %}
+            {% if i.arrival_date %}<br>🚆 {{ i.arrival_date }} by {{ i.arrival_mode }}{% if i.needs_pickup %} · <strong>pickup</strong>{% endif %}{% endif %}
+          </td>
+          <td>
+            <div class="row-actions">
+              <a class="btn btn-sm btn-wa send" href="{{ r.wa }}" target="_blank" rel="noopener" data-id="{{ i.id }}">Send</a>
+              <button class="btn btn-sm btn-ghost copy" type="button" data-url="{{ r.url }}">Copy link</button>
+              <a class="btn btn-sm btn-ghost" href="/i/{{ i.code }}?preview=1" target="_blank">Preview</a>
+              <form method="post" action="/e/{{ o.rsvp_slug }}/guests/{{ i.id }}/delete" onsubmit="return confirm('Remove {{ i.name|e }}?')"><input type="hidden" name="key" value="{{ key }}"><button class="btn btn-sm btn-ghost" style="color:var(--red)" type="submit" aria-label="Remove {{ i.name }}">✕</button></form>
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="center muted">No guests yet. Add your guest list above.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  {% if walk_ins %}
+  <div class="card">
+    <h2>Replies via the general link ({{ walk_ins|length }})</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Phone</th><th>Reply</th><th>People</th><th>Message</th></tr></thead>
+      <tbody>{% for g in walk_ins %}<tr><td>{{ g.name }}</td><td>{{ g.phone }}</td><td>{{ g.attending }}</td><td>{{ g.headcount }}</td><td class="small">{{ g.message }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>✨ Personalise the invitation page</h2>
+    <form method="post" action="/e/{{ o.rsvp_slug }}/details" enctype="multipart/form-data">
+      <input type="hidden" name="key" value="{{ key }}">
+      <div class="form-grid">
+        <div><label for="hosts">Invited by <span class="hint">e.g. The Kapoor &amp; Verma families</span></label><input id="hosts" name="hosts" type="text" value="{{ ev.hosts }}" maxlength="200"></div>
+        <div><label for="hashtag">Wedding hashtag</label><input id="hashtag" name="hashtag" type="text" value="{{ ev.hashtag }}" placeholder="#PriyankaWedsManish" maxlength="60"></div>
+        <div class="full"><label for="blessing_line">Blessings line <span class="hint">e.g. With the blessings of Late Smt. Kamla Devi</span></label><input id="blessing_line" name="blessing_line" type="text" value="{{ ev.blessing_line }}" maxlength="300"></div>
+        <div class="full"><label for="story">Our story <span class="hint">how you met, optional</span></label><textarea id="story" name="story" maxlength="3000">{{ ev.story }}</textarea></div>
+        {% for s in schedule %}
+        <div><label for="dress_{{ s.key }}">{{ s.icon }} {{ s.label }} dress code</label><input id="dress_{{ s.key }}" name="dress_{{ s.key }}" type="text" value="{{ (ev.dress_codes or {}).get(s.key, '') }}" placeholder="{{ {'haldi': 'Yellow ethnic', 'mehndi': 'Green / bright colours', 'sangeet': 'Indo-western glam', 'reception': 'Formal / gowns & suits'}.get(s.key, 'Traditional ethnic') }}" maxlength="120"></div>
+        {% endfor %}
+        <div><label for="upi_id">UPI ID for shagun <span class="hint">optional</span></label><input id="upi_id" name="upi_id" type="text" value="{{ ev.upi_id }}" placeholder="name@okhdfcbank" maxlength="100"></div>
+        <div><label for="livestream_url">Live-stream link <span class="hint">YouTube / Zoom, optional</span></label><input id="livestream_url" name="livestream_url" type="url" value="{{ ev.livestream_url }}" maxlength="300"></div>
+        <div class="full"><label for="music">Background music <span class="hint">MP3, plays when guests open the invite{% if music %} · current track uploaded ✓{% endif %}</span></label><input id="music" name="music" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*">
+          <p class="hint">Use music you have the rights to (royalty-free shehnai, or a recording of your own).</p></div>
+      </div>
+      <button class="btn btn-primary" type="submit" style="margin-top:12px">Save</button>
+    </form>
+  </div>
+</div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.send').forEach(a => a.addEventListener('click', () => {
+  const body = new FormData(); body.append('key', {{ key|tojson }});
+  fetch(`/e/{{ o.rsvp_slug }}/guests/${a.dataset.id}/sent`, { method: 'POST', body });
+  const cell = a.closest('tr').querySelector('.status .pill');
+  if (cell && cell.textContent.includes('Not sent')) { cell.className = 'pill proof_sent'; cell.textContent = '✓ Sent'; }
+}));
+document.querySelectorAll('.copy').forEach(b => b.addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(b.dataset.url); b.textContent = 'Copied ✓'; } catch (e) { prompt('Copy this link:', b.dataset.url); }
+  setTimeout(() => b.textContent = 'Copy link', 1800);
+}));
+</script>
+{% endblock %}

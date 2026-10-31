@@ -1,0 +1,18 @@
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+jinja2==3.1.6
+sqlalchemy==2.0.55
+python-multipart==0.0.32
+pydantic-settings==2.15.0
+pillow==12.3.0
+httpx==0.28.1
+google-genai==2.33.0
+qrcode[pil]==8.2
+
+# Optional
+# google-cloud-storage   # STORAGE_BACKEND=gcs
+# psycopg[binary]        # DATABASE_URL=postgresql+psycopg://...
+# opencv-python-headless # face-detection QC check
+
+# Dev
+pytest==9.2.0

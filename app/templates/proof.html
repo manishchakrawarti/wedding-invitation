@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Your proof · {{ o.public_id }}{% endblock %}
+{% block content %}
+<section style="padding-top:36px">
+<div class="wrap">
+  <p class="muted" style="margin:0">Order {{ o.public_id }} · Proof version {{ o.current_version }}</p>
+  <h1>Review your invitation</h1>
+  <p class="muted">This proof is watermarked and in lower resolution. Your final files will be clean and in full HD.</p>
+
+  <div class="proofs">
+    {% for a in proofs %}
+    <figure>
+      <img src="/o/{{ o.token }}/files/{{ a.id }}" alt="Proof: {{ (a.meta or {}).get('title', a.card_key) }}">
+      <figcaption>{{ (a.meta or {}).get('title', a.card_key) }}</figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+
+  {% if o.status == 'proof_sent' %}
+  <div class="narrow" style="margin-top:32px">
+    <div class="card">
+      <h2>Happy with it?</h2>
+      <p>Please check every spelling, date and venue carefully before approving.</p>
+      <form method="post" action="/o/{{ o.token }}/proof/approve" onsubmit="return confirm('Approve this design? Final files will be prepared.');">
+        <button class="btn btn-primary btn-block" type="submit">✓ Approve design</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Need changes?</h2>
+      {% if o.revisions_left > 0 %}
+        <p>You have <strong>{{ o.revisions_left }}</strong> free revision(s) left. Describe everything you'd like changed in one message.</p>
+        <form method="post" action="/o/{{ o.token }}/proof/changes">
+          <textarea name="notes" required placeholder="e.g. Make the background a bit lighter, correct the groom's father's name to 'Vikram'…" maxlength="1500"></textarea>
+          <button class="btn btn-block" type="submit" style="margin-top:10px">Request changes</button>
+        </form>
+      {% else %}
+        <p>You've used your free revisions. An extra revision is {{ inr(catalog.ADDONS['extra_revision'].price * 100) }}.</p>
+        <a class="btn" href="/o/{{ o.token }}/pay?purpose=revision">Buy an extra revision</a>
+      {% endif %}
+    </div>
+  </div>
+  {% elif o.status == 'changes_requested' %}
+    <div class="alert alert-info" style="margin-top:24px">We're working on your requested changes. You'll get a new proof soon.</div>
+  {% else %}
+    <div class="alert alert-ok" style="margin-top:24px">You approved this design. <a href="/o/{{ o.token }}">Go to your order</a>.</div>
+  {% endif %}
+</div>
+</section>
+{% endblock %}

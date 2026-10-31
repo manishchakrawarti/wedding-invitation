@@ -1,0 +1,47 @@
+
+
+**A. Business setup**
+1. **Brand:** name, logo, Instagram handle, WhatsApp Business number.
+2. **Policies:** photo-consent terms, privacy policy, refund/revision policy.
+3 **Price list:** Basic, Video, Premium packages plus add-ons.
+
+**B. Customer-facing applications**
+1. **Website/landing page:** samples gallery, packages, prices, "Order now" button.
+2. **Order form:** couple names, date, venue, functions, language, photos, and package choice.
+3. **Payment page:** pay before generation, or an advance plus balance.
+4. **Proof approval page:** the customer reviews the draft and approves or requests changes.
+5. **Delivery:** download link, plus automatic send over WhatsApp and email.
+6. **RSVP/event page (add-on):** a QR-linked page with map, schedule, and guest RSVP.
+7. **Self-serve web app (Phase 3):** customers upload photos, pick a template, pay, and get the invite automatically.
+
+**C. Backend generation pipeline (your core system)**
+1. **Order database:** Firestore or BigQuery tables for orders, customers, assets, and status.
+2. **Photo storage:** a Cloud Storage bucket with auto-delete after 30 days.
+3. **Image generation service:** calls Gemini or another image API with prompt templates for each style.
+4. **Prompt and template library:** styles such as North Indian, South Indian, Bengali, Muslim nikah, Christian, and haldi/mehndi themes.
+5. **Text overlay engine:** Python (Pillow) places names, date, and venue in correct Hindi or regional fonts.
+6. **Video generation service:** image-to-video API, then FFmpeg adds text animation and music.
+7. **Music library:** royalty-free shehnai and wedding tracks.
+8. **Orchestrator:** Airflow/Cloud Composer or Cloud Workflows runs intake → generate → QC → proof → final.
+9. **Quality check step:** automatic checks (face detection, text spelling match) plus manual approval.
+10. **Retry and monitoring:** failure alerts and auto-retry, reusing ideas from your self-healing monitoring project.
+
+**D. Admin and operations tools**
+1. **Admin dashboard:** see all orders, their status, regenerate, approve, and send.
+2. **Revision tracker:** limit free revisions to two per order.
+3. **Partner/reseller portal:** photographers and planners submit orders and track their commission.
+4. **Revenue dashboard:** a Power BI or Looker Studio view of orders, revenue, season trends, and cost per invite.
+5. **Cost tracker:** API spend per order, so your margins stay healthy.
+
+**E. Marketing and growth systems**
+1. **Content engine:** auto-create before/after reels from completed orders (with consent).
+2. **WhatsApp automation:** auto-replies, price list, and order link.
+3. **Referral system:** e.g., ₹100 off for every referral.
+4. **Reseller program:** onboarding kit and commission rates for wedding vendors.
+5. **Customer follow-ups:** offers for anniversaries, baby showers, birthdays, and griha pravesh.
+
+**F. Expansion products (same pipeline, new occasions)**
+1. Birthday, naamkaran, mundan, and griha pravesh invites.
+2. Anniversary videos and couple caricature gifts (prints, frames).
+3. Corporate event invites.
+4. NRI/international clients via Fiverr or Etsy.

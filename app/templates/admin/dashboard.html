@@ -1,0 +1,66 @@
+{% extends "admin/base.html" %}
+{% block title %}Orders{% endblock %}
+{% block content %}
+{% if to_confirm %}
+<div class="alert alert-info">
+  <strong>{{ to_confirm|length }} payment(s) to confirm.</strong> Check them in your Razorpay dashboard:
+  {% for o in to_confirm %}<a href="/admin/orders/{{ o.id }}">{{ o.public_id }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+<div class="stats">
+  <div class="stat"><div class="muted small">Paid orders</div><div class="v">{{ stats.orders }}</div><div class="small muted">{{ stats.this_month }} this month</div></div>
+  <div class="stat"><div class="muted small">Revenue collected</div><div class="v">{{ inr(stats.revenue) }}</div></div>
+  <div class="stat"><div class="muted small">AI / API spend</div><div class="v">{{ inr(stats.cost) }}</div><div class="small muted">≈ {{ inr(stats.avg_cost) }} per order</div></div>
+  <div class="stat"><div class="muted small">Gross margin</div><div class="v">{{ inr(stats.margin) }}</div></div>
+  <div class="stat"><div class="muted small">Needs your review</div><div class="v" style="color:#8a5a00">{{ stats.status_counts.get('qc_review', 0) + stats.status_counts.get('changes_requested', 0) + stats.status_counts.get('failed', 0) }}</div></div>
+</div>
+
+<div class="grid2" style="margin-bottom:22px">
+  <div class="card" style="margin:0">
+    <h3>Wedding season (by wedding month)</h3>
+    {% for month, vals in stats.by_month %}
+      <div style="display:grid;grid-template-columns:70px 1fr 110px;gap:10px;align-items:center;margin:6px 0" class="small">
+        <span>{{ month }}</span><div class="bar" style="width:{{ (vals[1] / stats.max_month * 100)|round }}%"></div><span>{{ vals[0] }} · {{ inr(vals[1]) }}</span>
+      </div>
+    {% else %}<p class="muted">No paid orders yet.</p>{% endfor %}
+  </div>
+  <div class="card" style="margin:0">
+    <h3>Packages sold</h3>
+    {% for key, p in catalog.PACKAGES.items() %}<div class="small" style="margin:6px 0">{{ p.name }}: <strong>{{ stats.packages.get(key, 0) }}</strong></div>{% endfor %}
+    <form method="post" action="/admin/cleanup" style="margin-top:16px"><button class="btn btn-sm btn-ghost" type="submit">Run retention cleanup now</button></form>
+    <p class="small muted">Photos are auto-deleted after {{ settings.photo_retention_days }} days; delivered files after {{ settings.final_retention_days }}. For Looker Studio / Power BI, connect the <a href="/admin/export/orders.csv">orders CSV</a>.</p>
+  </div>
+</div>
+
+<form class="filters" method="get" style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search order ID, names, phone" style="max-width:280px">
+  <select name="status" style="max-width:220px" onchange="this.form.submit()">
+    <option value="">All statuses</option>
+    {% for s in OrderStatus %}<option value="{{ s.value }}" {% if status == s.value %}selected{% endif %}>{{ STATUS_LABELS[s] }} ({{ stats.status_counts.get(s.value, 0) }})</option>{% endfor %}
+  </select>
+  <button class="btn btn-sm" type="submit">Filter</button>
+</form>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Order</th><th>Couple</th><th>Wedding</th><th>Package</th><th>Status</th><th>Paid</th><th>API cost</th><th>Placed</th></tr></thead>
+  <tbody>
+  {% for o in rows %}
+    <tr>
+      <td><a href="/admin/orders/{{ o.id }}"><strong>{{ o.public_id }}</strong></a>{% if o.source in ['test', 'demo'] %} <span class="pill warn">{{ o.source|upper }}</span>{% endif %}<br><span class="small muted">{{ o.customer_name }} · +{{ o.phone }}</span></td>
+      <td>{{ o.bride_name }} &amp; {{ o.groom_name }}<br><span class="small muted">{{ catalog.STYLES[o.style].name }} · {{ catalog.LANGUAGES[o.language].name }}</span></td>
+      <td>{{ o.wedding_date.strftime('%d %b %Y') }}<br><span class="small muted">{{ o.city }}</span></td>
+      <td>{{ catalog.PACKAGES[o.package].name }}{% if o.addons %}<br><span class="small muted">+{{ o.addons|join(', ') }}</span>{% endif %}
+        {% if catalog.PACKAGES[o.package].video and not o.live_assets('video') and o.amount_paid %}<br><span class="pill warn">video pending</span>{% endif %}</td>
+      <td><span class="pill {{ o.status }}">{{ o.status_label }}</span></td>
+      <td>{{ inr(o.amount_paid) }} / {{ inr(o.total) }}</td>
+      <td>₹{{ o.api_cost_inr }}</td>
+      <td class="small">{{ o.created_at.strftime('%d %b %H:%M') }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="center muted">No orders yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

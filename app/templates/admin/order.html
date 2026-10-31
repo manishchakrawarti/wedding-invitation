@@ -1,0 +1,152 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ o.public_id }}{% endblock %}
+{% block content %}
+<p><a href="/admin">← All orders</a></p>
+<h1 style="margin-bottom:4px">{{ o.public_id }} <span class="pill {{ o.status }}" style="vertical-align:middle">{{ o.status_label }}</span></h1>
+<p class="muted">{{ o.bride_name }} &amp; {{ o.groom_name }} · {{ catalog.PACKAGES[o.package].name }}{% for a in o.addons %} + {{ catalog.ADDONS[a].name }}{% endfor %} ·
+  customer page: <a href="/o/{{ o.token }}" target="_blank">open ↗</a>{% if o.rsvp_slug %} · event page: <a href="/e/{{ o.rsvp_slug }}" target="_blank">/e/{{ o.rsvp_slug }}</a>{% endif %}</p>
+
+<div class="card actions">
+  <h3>Actions</h3>
+  {% if o.status in ['qc_review', 'changes_requested', 'failed'] and o.live_assets('proof') %}
+  <form method="post" action="/admin/orders/{{ o.id }}/send-proof"><button class="btn btn-primary btn-sm" type="submit">✓ Approve draft &amp; send proof to customer</button></form>
+  {% endif %}
+  {% if o.status in ['balance_due', 'proof_sent', 'qc_review'] and o.live_assets('final') %}
+  <form method="post" action="/admin/orders/{{ o.id }}/deliver" onsubmit="return confirm('Deliver final files now (even if balance is unpaid)?')"><button class="btn btn-sm" type="submit">Deliver finals now</button></form>
+  {% endif %}
+  <form method="post" action="/admin/orders/{{ o.id }}/resend"><button class="btn btn-sm btn-ghost" type="submit">✉ Resend message to customer</button></form>
+  <form method="post" action="/admin/orders/{{ o.id }}/grant-revision"><button class="btn btn-sm btn-ghost" type="submit">Grant +1 revision ({{ o.revisions_left }} left)</button></form>
+  {% if o.status != 'cancelled' %}
+  <form method="post" action="/admin/orders/{{ o.id }}/cancel" onsubmit="return confirm('Cancel this order?')"><button class="btn btn-sm btn-ghost" style="color:var(--red)" type="submit">Cancel order</button></form>
+  {% endif %}
+
+  <form method="post" action="/admin/orders/{{ o.id }}/regenerate" style="display:block;margin-top:12px">
+    <label for="notes">Regenerate design with notes <span class="hint">(appended to the AI prompt; doesn't use a customer revision)</span></label>
+    <textarea id="notes" name="notes" placeholder="e.g. lighter background, more marigolds">{{ last_revision }}</textarea>
+    <button class="btn btn-sm" type="submit" style="margin-top:6px">↻ Regenerate</button>
+  </form>
+</div>
+
+{% for v in versions[:3] %}
+<div class="card">
+  <h3>Draft v{{ v }} {% if v == o.current_version %}<span class="pill pass">current</span>{% endif %}</h3>
+  <div class="thumbs">
+    {% for a in o.assets if a.kind == 'final' and a.version == v and not a.deleted_at %}
+    <figure>
+      <a href="/admin/assets/{{ a.id }}" target="_blank"><img src="/admin/assets/{{ a.id }}" alt="{{ a.card_key }}"></a>
+      <figcaption>
+        <strong>{{ (a.meta or {}).get('title', a.card_key) }}</strong> · {{ (a.meta or {}).get('provider', '') }}
+        {% if a.qc %}
+        <ul class="qc">{% for c in a.qc.checks %}<li><span class="pill {{ c.status }}">{{ c.status }}</span> {{ c.name }}<br><span class="muted">{{ c.detail }}</span></li>{% endfor %}</ul>
+        {% endif %}
+        {% if (a.meta or {}).get('prompt') %}<details style="padding:6px;margin-top:6px"><summary class="small">Prompt</summary><p class="small">{{ a.meta.prompt }}</p></details>{% endif %}
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="card"><p class="muted">No drafts generated yet.</p></div>
+{% endfor %}
+
+<div class="grid3">
+  <div>
+    {% if o.revisions %}
+    <div class="card">
+      <h3>Revision requests ({{ o.revisions_used }} used, {{ o.revisions_left }} left)</h3>
+      {% for r in o.revisions %}<p><strong>#{{ r.number }}</strong> <span class="small muted">{{ r.created_at.strftime('%d %b %H:%M') }}</span><br>{{ r.notes }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <h3>Edit details</h3>
+      <form method="post" action="/admin/orders/{{ o.id }}/edit">
+        <div class="form-grid">
+          <div><label>Bride</label><input type="text" name="bride_name" value="{{ o.bride_name }}"></div>
+          <div><label>Groom</label><input type="text" name="groom_name" value="{{ o.groom_name }}"></div>
+          <div><label>Bride (local script)</label><input type="text" name="bride_name_local" value="{{ o.bride_name_local }}"></div>
+          <div><label>Groom (local script)</label><input type="text" name="groom_name_local" value="{{ o.groom_name_local }}"></div>
+          <div><label>Bride's parents</label><input type="text" name="bride_family" value="{{ o.bride_family }}"></div>
+          <div><label>Groom's parents</label><input type="text" name="groom_family" value="{{ o.groom_family }}"></div>
+          <div><label>Wedding date</label><input type="date" name="wedding_date" value="{{ o.wedding_date.isoformat() }}"></div>
+          <div><label>City</label><input type="text" name="city" value="{{ o.city }}"></div>
+          <div class="full"><label>Venue</label><input type="text" name="venue_name" value="{{ o.venue_name }}"></div>
+          <div class="full"><label>Venue address</label><input type="text" name="venue_address" value="{{ o.venue_address }}"></div>
+          <div><label>Style</label><select name="style">{% for s in styles.values() %}<option value="{{ s.key }}" {% if s.key == o.style %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+          <div><label>Language</label><select name="language">{% for l in languages.values() %}<option value="{{ l.code }}" {% if l.code == o.language %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></div>
+          <div class="full"><label>Internal notes</label><textarea name="admin_notes">{{ o.admin_notes }}</textarea></div>
+        </div>
+        <button class="btn btn-sm" type="submit" style="margin-top:10px">Save</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Upload video / manual file</h3>
+      <form method="post" action="/admin/orders/{{ o.id }}/upload" enctype="multipart/form-data">
+        <div class="form-grid">
+          <div><label>Type</label><select name="kind"><option value="video">Video invite</option><option value="final">Extra final image / PDF</option></select></div>
+          <div><label>Label</label><input type="text" name="card_key" placeholder="e.g. video, print-pdf"></div>
+          <div class="full"><input type="file" name="file" accept=".mp4,.mov,.png,.jpg,.jpeg,.pdf"></div>
+        </div>
+        <button class="btn btn-sm" type="submit" style="margin-top:10px">Upload</button>
+      </form>
+      {% for a in videos %}<p class="small">🎬 <a href="/admin/assets/{{ a.id }}" target="_blank">{{ a.card_key }}</a> · {{ a.created_at.strftime('%d %b') }}</p>{% endfor %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>Customer</h3>
+      <dl class="kv small">
+        <dt>Name</dt><dd>{{ o.customer_name }}</dd>
+        <dt>WhatsApp</dt><dd><a href="https://wa.me/{{ o.phone }}" target="_blank">+{{ o.phone }}</a></dd>
+        <dt>Email</dt><dd>{{ o.email or '—' }}</dd>
+        <dt>Language</dt><dd>{{ catalog.LANGUAGES[o.language].name }}</dd>
+        <dt>Wedding</dt><dd>{{ pretty_date(o.wedding_date) }}</dd>
+        <dt>Venue</dt><dd>{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</dd>
+        <dt>Photo consent</dt><dd>{{ 'Yes' if o.photo_consent else 'No' }}</dd>
+        <dt>Marketing OK</dt><dd>{{ 'Yes' if o.marketing_consent else 'No' }}</dd>
+        <dt>Referral</dt><dd>own {{ o.referral_code }}{% if o.referred_by_code %} · used {{ o.referred_by_code }}{% endif %}</dd>
+      </dl>
+      {% if o.functions %}<p class="small"><strong>Functions:</strong><br>{% for f in o.functions %}{{ functions[f.key] }}: {{ f.date }} {{ f.time }} {{ f.venue }}<br>{% endfor %}</p>{% endif %}
+      {% if o.customer_notes %}<p class="small"><strong>Customer notes:</strong><br>{{ o.customer_notes }}</p>{% endif %}
+      {% if photos %}<div class="thumbs" style="grid-template-columns:repeat(3,1fr)">{% for a in photos %}<a href="/admin/assets/{{ a.id }}" target="_blank"><img src="/admin/assets/{{ a.id }}" alt="customer photo" style="aspect-ratio:1;object-fit:cover;border-radius:8px"></a>{% endfor %}</div>{% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Money</h3>
+      <dl class="kv small">
+        <dt>Subtotal</dt><dd>{{ inr(o.subtotal) }}</dd>
+        <dt>Discount</dt><dd>{{ inr(o.discount) }}</dd>
+        <dt>Total</dt><dd>{{ inr(o.total) }}</dd>
+        <dt>Paid</dt><dd>{{ inr(o.amount_paid) }}</dd>
+        <dt>API cost</dt><dd>₹{{ o.api_cost_inr }}</dd>
+        <dt>Margin</dt><dd>{{ inr(o.amount_paid - o.api_cost_inr * 100) }}</dd>
+      </dl>
+      {% for p in o.payments %}
+        <div class="small" style="margin:4px 0">{{ p.created_at.strftime('%d %b') }} · {{ p.purpose }} · {{ inr(p.amount) }} · {{ p.provider }} · <strong>{{ p.status }}</strong>
+          {% if p.status == 'claimed' %}
+            <br>Customer ref: <strong>{{ p.provider_payment_id }}</strong>. Check your Razorpay dashboard first.
+            <form method="post" action="/admin/payments/{{ p.id }}/confirm" style="display:inline" onsubmit="return confirm('Confirm you received {{ inr(p.amount) }} in Razorpay?')"><button class="btn btn-sm btn-primary" type="submit">Confirm received</button></form>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <form method="post" action="/admin/orders/{{ o.id }}/offline-payment" style="margin-top:12px">
+        <label class="small">Record UPI / cash payment (₹)</label>
+        <div style="display:flex;gap:6px"><input type="number" name="amount" min="1" placeholder="Amount"><input type="text" name="note" placeholder="UPI ref"></div>
+        <button class="btn btn-sm" type="submit" style="margin-top:6px">Record</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Timeline</h3>
+      <div class="events">{% for e in o.events|reverse %}<div class="{{ e.level }}"><span class="muted">{{ e.created_at.strftime('%d %b %H:%M') }}</span> {{ e.message }}</div>{% endfor %}</div>
+    </div>
+
+    <div class="card">
+      <h3>Messages sent</h3>
+      <div class="events">{% for n in notes %}<div><span class="pill {{ 'pass' if n.status == 'sent' else 'fail' if n.status == 'failed' else 'skip' }}">{{ n.status }}</span> {{ n.channel }} → {{ n.recipient or '—' }}<br><span class="muted">{{ n.body[:140] }}</span></div>{% else %}<p class="muted">None</p>{% endfor %}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

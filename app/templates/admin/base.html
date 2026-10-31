@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% block title %}Admin{% endblock %} · {{ settings.brand_name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Great+Vibes&family=Mukta:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    body { font-size: 15px; background: #f7f1e8; }
+    .admin-main { padding: 24px 0 60px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .stat { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+    .stat .v { font-size: 1.6rem; font-weight: 700; color: var(--maroon-dark); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+    .bar { height: 10px; background: var(--gold); border-radius: 6px; }
+    .filters a { margin-right: 6px; text-decoration: none; }
+    .actions form { display: inline-block; margin: 0 6px 8px 0; }
+    .events { max-height: 380px; overflow: auto; font-size: .88rem; }
+    .events div { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+    .events .warn { color: #8a5a00; } .events .error { color: var(--red); }
+    .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+    .thumbs figure { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .thumbs figcaption { padding: 8px 10px; font-size: .85rem; }
+    .qc { list-style: none; padding: 0; margin: 6px 0 0; }
+    .qc li { margin: 3px 0; }
+  </style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/admin" style="font-size:1.5rem">{{ settings.brand_name }} · Admin</a>
+    <nav class="nav">
+      <a href="/admin">Orders</a>
+      <a href="/admin/notifications">Messages</a>
+      <a href="/admin/export/orders.csv">Export CSV</a>
+      <a href="/" target="_blank">Website ↗</a>
+    </nav>
+  </div>
+</header>
+<main class="admin-main"><div class="wrap">
+  {% if msg %}<div class="alert alert-info">{{ msg }}</div>{% endif %}
+  {% block content %}{% endblock %}
+</div></main>
+</body>
+</html>

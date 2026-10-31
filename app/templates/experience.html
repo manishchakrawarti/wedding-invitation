@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% set st = catalog.STYLES[o.style] %}
+{% set hi = o.language == 'hi' %}
+{% set bride = (o.bride_name_local if hi and o.bride_name_local else o.bride_name) %}
+{% set groom = (o.groom_name_local if hi and o.groom_name_local else o.groom_name) %}
+{% block title %}{{ o.bride_name }} &amp; {{ o.groom_name }}{% if inv %} · Invitation for {{ inv.name }}{% endif %}{% endblock %}
+{% block head %}
+<meta property="og:title" content="{{ o.bride_name }} & {{ o.groom_name }} — Wedding Invitation{% if inv %} for {{ inv.name }}{% endif %}">
+<meta property="og:description" content="{{ pretty_date(o.wedding_date) }} · {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}. Tap to open your invitation 💌">
+{% if hero %}<meta property="og:image" content="{{ settings.base_url }}/e/{{ o.rsvp_slug }}/invite">{% endif %}
+<meta name="theme-color" content="rgb{{ st.bg_bottom }}">
+<style>
+  :root {
+    --bg1: rgb{{ st.bg_top }}; --bg2: rgb{{ st.bg_bottom }}; --acc: rgb{{ st.accent }};
+    --t1: rgb{{ st.text_primary }}; --t2: rgb{{ st.text_secondary }};
+  }
+  body { background: var(--cream); overflow-x: hidden; }
+  body.locked { overflow: hidden; height: 100vh; }
+
+  /* ---------- palace doors ---------- */
+  .doors { position: fixed; inset: 0; z-index: 100; perspective: 1600px; display: flex; }
+  .door { width: 50%; height: 100%; position: relative; transition: transform 1.8s cubic-bezier(.7, 0, .3, 1); backface-visibility: hidden;
+    background:
+      radial-gradient(circle at 50% 50%, transparent 0 38px, rgba(255,255,255,.05) 39px 41px, transparent 42px) 0 0 / 84px 84px,
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,.06) 0 3px, transparent 4px) 0 0 / 28px 28px,
+      linear-gradient(160deg, var(--bg1), var(--bg2)); }
+  .door::before { content: ""; position: absolute; inset: 22px; border: 3px solid var(--acc); border-radius: 4px; opacity: .9; }
+  .door::after { content: ""; position: absolute; inset: 36px; border: 1px solid var(--acc); opacity: .5;
+    border-radius: 50% 50% 4px 4px / 22% 22% 4px 4px; }
+  .door.left { transform-origin: left center; box-shadow: inset -12px 0 30px rgba(0,0,0,.35); }
+  .door.right { transform-origin: right center; box-shadow: inset 12px 0 30px rgba(0,0,0,.35); }
+  .doors.open .door.left { transform: rotateY(-108deg); }
+  .doors.open .door.right { transform: rotateY(108deg); }
+  .doors.gone { display: none; }
+  .knocker { position: absolute; top: 50%; width: 18px; height: 70px; margin-top: -35px; border-radius: 9px; background: linear-gradient(var(--acc), #8a6a2a); }
+  .door.left .knocker { right: 26px; } .door.right .knocker { left: 26px; }
+  .door-ui { position: fixed; inset: 0; z-index: 101; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; text-align: center; color: var(--t2); transition: opacity .6s; pointer-events: none; padding: 16px; }
+  .door-ui > * { pointer-events: auto; }
+  .doors.open + .door-ui { opacity: 0; pointer-events: none; }
+  .door-ui .for { font-family: var(--serif); font-size: 1.15rem; letter-spacing: 3px; text-transform: uppercase; color: var(--acc); }
+  .door-ui .guest { font-family: var(--script); font-size: clamp(2.4rem, 9vw, 3.6rem); color: var(--t1); line-height: 1.1; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+  .seal { width: 128px; height: 128px; border-radius: 50%; border: 0; cursor: pointer; color: #5a1010;
+    background: radial-gradient(circle at 35% 30%, #fff3c4, #e2b65a 45%, #a4752a 100%);
+    box-shadow: 0 0 0 6px rgba(255,255,255,.12), 0 14px 40px rgba(0,0,0,.5); font: 400 2.6rem var(--script); animation: pulse 2.2s infinite; }
+  .seal small { font-size: .55em; margin: 0 2px; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 6px rgba(255,255,255,.12), 0 14px 40px rgba(0,0,0,.5); } 50% { box-shadow: 0 0 0 18px rgba(255,255,255,.04), 0 14px 40px rgba(0,0,0,.5); } }
+  .tap { font-size: .95rem; letter-spacing: 2px; text-transform: uppercase; opacity: .85; }
+  #petals { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
+
+  /* ---------- page ---------- */
+  .x-hero { min-height: min(100vh, 980px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 16px;
+    background: radial-gradient(ellipse at top, var(--bg1), var(--bg2) 75%); color: var(--t2); position: relative; overflow: hidden; }
+  .x-hero::before { content: ""; position: absolute; inset: 18px; border: 2px solid var(--acc); opacity: .6; border-radius: 6px; pointer-events: none; }
+  .invocation { font-family: var(--serif); color: var(--acc); letter-spacing: 2px; font-size: 1.1rem; margin-bottom: 18px; }
+  .x-hero .pre { letter-spacing: 5px; text-transform: uppercase; font-size: .85rem; color: var(--acc); }
+  .x-names { font-family: var(--script); font-weight: 400; color: var(--t1); font-size: clamp(3.4rem, 13vw, 7rem); line-height: 1; margin: 18px 0; text-shadow: 0 4px 20px rgba(0,0,0,.25); }
+  .x-names .amp { display: block; font-size: .45em; color: var(--acc); margin: 6px 0; }
+  .x-date { font-family: var(--serif); font-size: clamp(1.3rem, 4vw, 1.8rem); letter-spacing: 2px; }
+  .countdown { display: flex; gap: 12px; justify-content: center; margin: 30px 0 10px; flex-wrap: wrap; }
+  .countdown div { min-width: 78px; padding: 12px 8px; border: 1px solid var(--acc); border-radius: 12px; background: rgba(0,0,0,.12); backdrop-filter: blur(4px); }
+  .countdown b { display: block; font: 700 2rem var(--serif); color: var(--t1); }
+  .countdown span { font-size: .75rem; letter-spacing: 2px; text-transform: uppercase; }
+  .hashtag { margin-top: 14px; color: var(--acc); font-weight: 600; letter-spacing: 1px; }
+  .scroll-hint { position: absolute; bottom: 34px; font-size: .8rem; letter-spacing: 3px; text-transform: uppercase; opacity: .7; animation: bob 2s infinite; }
+  @keyframes bob { 50% { transform: translateY(8px); } }
+
+  .x-section { padding: 72px 0; }
+  .x-title { text-align: center; margin-bottom: 34px; }
+  .x-title .script { display: block; font-size: 1.6rem; }
+  .personal { background: var(--paper); border: 1px solid var(--gold-soft); border-radius: 18px; padding: 38px 30px; text-align: center; box-shadow: var(--shadow); position: relative; }
+  .personal::before, .personal::after { content: "❁"; position: absolute; top: 14px; color: var(--gold); font-size: 1.4rem; }
+  .personal::before { left: 18px; } .personal::after { right: 18px; }
+  .personal .dear { font-family: var(--script); font-size: 2.6rem; color: var(--maroon); }
+  .personal p { font-size: 1.12rem; }
+  .card-img { max-width: 420px; margin: 0 auto; border-radius: 14px; box-shadow: 0 24px 60px rgba(77,15,27,.3); }
+
+  .timeline-x { position: relative; max-width: 760px; margin: 0 auto; }
+  .timeline-x::before { content: ""; position: absolute; left: 31px; top: 10px; bottom: 10px; width: 2px; background: linear-gradient(var(--gold), var(--gold-soft)); }
+  .ev { position: relative; padding-left: 84px; margin-bottom: 26px; }
+  .ev .icon { position: absolute; left: 0; top: 4px; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 1.8rem;
+    background: var(--paper); border: 2px solid var(--gold); box-shadow: 0 6px 16px rgba(201,154,60,.25); }
+  .ev .body { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: 0 4px 14px rgba(77,15,27,.05); }
+  .ev h3 { margin: 0; font-size: 1.6rem; }
+  .ev .hi { font-family: var(--sans); color: var(--muted); font-size: 1rem; margin-left: 6px; }
+  .ev .when { color: var(--maroon); font-weight: 600; margin: 4px 0; }
+  .ev .dress { display: inline-block; background: #fff4dc; color: #6b4e12; border-radius: 99px; padding: 2px 12px; font-size: .88rem; margin: 6px 0; }
+  .ev .links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  .story { font-size: 1.15rem; white-space: pre-line; text-align: center; font-family: var(--serif); }
+  .rsvp-card { background: var(--paper); border: 1px solid var(--gold-soft); border-radius: 18px; padding: 28px; box-shadow: var(--shadow); }
+  .attend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 16px; }
+  .attend label { margin: 0; cursor: pointer; }
+  .attend input { position: absolute; opacity: 0; }
+  .attend span { display: block; text-align: center; padding: 14px 6px; border: 2px solid var(--line); border-radius: 12px; background: #fff; font-weight: 600; }
+  .attend input:checked + span { border-color: var(--maroon); background: #fbeff1; color: var(--maroon); }
+  .attend input:focus-visible + span { outline: 2px solid var(--gold); }
+  .shagun { text-align: center; background: linear-gradient(135deg, #fff8e6, #fdebd3); border: 1px solid var(--gold-soft); border-radius: 18px; padding: 30px; }
+  .shagun img { width: 180px; margin: 12px auto; border-radius: 12px; background: #fff; padding: 8px; }
+  .wall { columns: 2 260px; column-gap: 16px; }
+  .wish { break-inside: avoid; background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--gold); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+  .wish b { display: block; color: var(--maroon); margin-top: 6px; font-family: var(--serif); font-size: 1.1rem; }
+  .reveal { opacity: 0; transform: translateY(34px); transition: opacity .9s ease, transform .9s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  .music-btn { position: fixed; left: 16px; bottom: 18px; z-index: 40; width: 50px; height: 50px; border-radius: 50%; border: 0; background: var(--maroon); color: #fff; font-size: 1.3rem; box-shadow: 0 8px 20px rgba(0,0,0,.25); cursor: pointer; }
+  .music-btn.playing { animation: spin 4s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .preview-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 120; background: #2b1d1a; color: #fff; text-align: center; font-size: .85rem; padding: 6px; }
+  @media (prefers-reduced-motion: reduce) { .door { transition: none; } .reveal { opacity: 1; transform: none; } .seal { animation: none; } }
+</style>
+{% endblock %}
+{% block header %}{% endblock %}
+{% block content %}
+{% if preview %}<div class="preview-bar">👀 Preview of {{ inv.name }}'s invitation. Your visit isn't counted as "opened".</div>{% endif %}
+
+<div class="doors" id="doors" aria-hidden="true">
+  <div class="door left"><span class="knocker"></span></div>
+  <div class="door right"><span class="knocker"></span></div>
+</div>
+<div class="door-ui" id="door-ui">
+  <div class="for">{% if inv %}{{ 'विशेष निमंत्रण' if hi else 'A special invitation for' }}{% else %}{{ 'आप आमंत्रित हैं' if hi else "You're invited" }}{% endif %}</div>
+  {% if inv %}<div class="guest">{{ inv.name }}</div>{% endif %}
+  <button class="seal" id="open-btn" type="button" aria-label="Open invitation">{{ o.bride_name[:1] }}<small>&amp;</small>{{ o.groom_name[:1] }}</button>
+  <div class="tap">Tap to open</div>
+</div>
+<canvas id="petals"></canvas>
+{% if music %}<audio id="music" src="/e/{{ o.rsvp_slug }}/music" loop preload="auto"></audio>
+<button class="music-btn" id="music-btn" type="button" aria-label="Play or pause music" hidden>♫</button>{% endif %}
+
+<section class="x-hero">
+  {% if o.style == 'muslim_nikah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
+  {% elif o.style != 'christian' %}<div class="invocation">॥ श्री गणेशाय नमः ॥</div>{% endif %}
+  <div class="pre">{{ 'शुभ विवाह' if hi else ('Nikah' if o.style == 'muslim_nikah' else 'Together with their families') }}</div>
+  <h1 class="x-names">{{ bride }}<span class="amp">{{ 'संग' if hi else '&' }}</span>{{ groom }}</h1>
+  <div class="x-date">{{ pretty_date(o.wedding_date) }}</div>
+  <div>{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
+  <div class="countdown" id="countdown" data-to="{{ countdown_to }}">
+    <div><b data-u="d">0</b><span>Days</span></div><div><b data-u="h">0</b><span>Hours</span></div>
+    <div><b data-u="m">0</b><span>Mins</span></div><div><b data-u="s">0</b><span>Secs</span></div>
+  </div>
+  {% if ev and ev.hashtag %}<div class="hashtag">{{ ev.hashtag }}</div>{% endif %}
+  <div class="scroll-hint">Scroll ↓</div>
+</section>
+<div class="toran"></div>
+
+<section class="x-section">
+  <div class="narrow reveal">
+    <div class="personal">
+      {% if inv %}<div class="dear">{{ ('आदरणीय ' ~ inv.name ~ ' जी') if hi else ('Dear ' ~ inv.name) }},</div>{% endif %}
+      {% if ev and ev.blessing_line %}<p class="muted" style="font-style:italic">{{ ev.blessing_line }}</p>{% endif %}
+      <p>{% if hi %}{{ bride }} संग {{ groom }} के शुभ विवाह के पावन अवसर पर आप सपरिवार सादर आमंत्रित हैं। आपकी उपस्थिति हमारे लिए आशीर्वाद होगी।
+         {% else %}{{ (ev.hosts if ev and ev.hosts else 'Our families') }} joyfully request the pleasure of your presence to bless and celebrate the wedding of <strong>{{ o.bride_name }}</strong> &amp; <strong>{{ o.groom_name }}</strong>. Your presence will make our celebrations complete.{% endif %}</p>
+      {% if o.bride_family or o.groom_family %}
+      <p class="small muted">{% if o.bride_family %}{{ o.bride_name }}, daughter of {{ o.bride_family }}{% endif %}{% if o.bride_family and o.groom_family %} · {% endif %}{% if o.groom_family %}{{ o.groom_name }}, son of {{ o.groom_family }}{% endif %}</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if hero %}
+<section class="x-section" style="padding-top:0">
+  <div class="wrap center reveal">
+    <img class="card-img" src="/e/{{ o.rsvp_slug }}/invite" alt="Wedding invitation card of {{ o.bride_name }} and {{ o.groom_name }}">
+    <p style="margin-top:18px"><a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/invite" download="invitation.png">Save the card</a></p>
+  </div>
+</section>
+{% endif %}
+
+{% if schedule %}
+<section class="x-section" style="background:var(--paper)">
+  <div class="wrap">
+    <h2 class="x-title reveal"><span class="script">the celebrations</span>{{ 'Your invitation includes' if inv and inv.functions else 'Wedding Festivities' }}</h2>
+    <div class="timeline-x">
+      {% for s in schedule %}
+      <div class="ev reveal">
+        <div class="icon" aria-hidden="true">{{ s.icon }}</div>
+        <div class="body">
+          <h3>{{ s.label }}{% if hi and s.label_hi %}<span class="hi">{{ s.label_hi }}</span>{% endif %}</h3>
+          <div class="when">{{ s.pretty_date }}{% if s.pretty_time %} · {{ s.pretty_time }}{% endif %}</div>
+          <div class="muted">{{ s.place }}</div>
+          {% if s.dress %}<span class="dress">👗 Dress code: {{ s.dress }}</span>{% endif %}
+          <div class="links">
+            <a class="btn btn-sm btn-ghost" href="{{ s.map }}" target="_blank" rel="noopener">📍 Directions</a>
+            <a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/calendar/{{ s.key }}.ics">📅 Add to calendar</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if ev and ev.story %}
+<section class="x-section">
+  <div class="narrow reveal">
+    <h2 class="x-title"><span class="script">how it all began</span>Our Story</h2>
+    <p class="story">{{ ev.story }}</p>
+  </div>
+</section>
+{% endif %}
+
+<section class="x-section" style="padding-top:{{ '72px' if ev and ev.story else '72px' }}">
+  <div class="narrow reveal">
+    <h2 class="x-title"><span class="script">find your way</span>The Venue</h2>
+    <iframe class="map" src="{{ map_embed }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Map to {{ o.venue_name }}"></iframe>
+    <p class="center"><a class="btn" href="{{ map_link }}" target="_blank" rel="noopener">Open in Google Maps</a></p>
+  </div>
+</section>
+
+<section class="x-section" id="rsvp" style="background:var(--paper)">
+  <div class="narrow reveal">
+    <h2 class="x-title"><span class="script">kindly respond</span>Will you join us?</h2>
+    {% if thanks %}<div class="alert alert-ok center">🙏 Thank you! The family has received your response.{% if inv and inv.attending in ['yes', 'maybe'] %} We can't wait to celebrate with you!{% endif %}</div>{% endif %}
+    {% if inv and inv.attending and not thanks %}<div class="alert alert-info center">You replied <strong>{{ {'yes': 'Joyfully attending', 'maybe': 'Maybe', 'no': "Can't make it"}[inv.attending] }}</strong>{% if inv.headcount %} for {{ inv.headcount }} {{ 'person' if inv.headcount == 1 else 'people' }}{% endif %}. You can update it below.</div>{% endif %}
+    <form class="rsvp-card" method="post" action="{{ action }}">
+      {% if not inv %}
+      <div class="form-grid" style="margin-bottom:12px">
+        <div><label for="name">Your name *</label><input id="name" name="name" type="text" required maxlength="120"></div>
+        <div><label for="phone">Phone</label><input id="phone" name="phone" type="tel" maxlength="20"></div>
+      </div>
+      {% endif %}
+      <label>Will you attend?</label>
+      <div class="attend">
+        {% set cur = inv.attending if inv and inv.attending else 'yes' %}
+        <label><input type="radio" name="attending" value="yes" {% if cur == 'yes' %}checked{% endif %}><span>🎉 Yes!</span></label>
+        <label><input type="radio" name="attending" value="maybe" {% if cur == 'maybe' %}checked{% endif %}><span>🤔 Maybe</span></label>
+        <label><input type="radio" name="attending" value="no" {% if cur == 'no' %}checked{% endif %}><span>🙏 Can't</span></label>
+      </div>
+      <div class="form-grid">
+        <div><label for="headcount">How many people?</label><input id="headcount" name="headcount" type="number" min="1" max="30" value="{{ inv.headcount if inv and inv.headcount else 1 }}"></div>
+        {% if inv %}
+        <div><label for="food">Food preference</label>
+          <select id="food" name="food"><option value="">No preference</option>
+            {% for k, v in food_choices.items() %}<option value="{{ k }}" {% if inv.food == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+          </select></div>
+        {% endif %}
+        {% if schedule|length > 1 %}
+        <div class="full"><label>Which functions will you attend?</label>
+          {% for s in schedule %}<label class="check"><input type="checkbox" name="functions" value="{{ s.key }}" {% if not inv or not inv.attending or s.key in (inv.attending_functions or []) %}checked{% endif %}> <span>{{ s.icon }} {{ s.label }} <span class="hint">{{ s.pretty_date }}</span></span></label>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% if inv %}
+      <details style="margin-top:14px" {% if inv.arrival_date %}open{% endif %}>
+        <summary>🚆 Travelling from out of town?</summary>
+        <div class="form-grid" style="margin-top:12px">
+          <div><label for="arrival_date">Arrival date</label><input id="arrival_date" name="arrival_date" type="date" value="{{ inv.arrival_date }}"></div>
+          <div><label for="arrival_mode">Arriving by</label>
+            <select id="arrival_mode" name="arrival_mode">{% for m in ['train', 'flight', 'road'] %}<option value="{{ m }}" {% if inv.arrival_mode == m %}selected{% endif %}>{{ m|capitalize }}</option>{% endfor %}</select></div>
+          <label class="check full"><input type="checkbox" name="needs_pickup" {% if inv.needs_pickup %}checked{% endif %}> <span>Please arrange pickup from the station / airport</span></label>
+        </div>
+      </details>
+      {% endif %}
+      <label for="message" style="margin-top:14px">Blessings for the couple 💌</label>
+      <textarea id="message" name="message" maxlength="1000" placeholder="Wishing you a lifetime of love…">{{ inv.message if inv else '' }}</textarea>
+      <button class="btn btn-primary btn-block" type="submit" style="margin-top:14px">{{ 'Update my response' if inv and inv.attending else 'Send my RSVP' }}</button>
+    </form>
+  </div>
+</section>
+
+{% if upi_link or (ev and ev.livestream_url) %}
+<section class="x-section">
+  <div class="narrow reveal" style="display:grid;gap:20px">
+    {% if upi_link %}
+    <div class="shagun">
+      <h2 style="margin:0">Send your blessings 🪙</h2>
+      <p class="muted">Can't be there in person? Send shagun to the couple via UPI.</p>
+      <img src="/e/{{ o.rsvp_slug }}/shagun.png" alt="UPI QR code for shagun">
+      <p><a class="btn btn-primary" href="{{ upi_link }}">Pay shagun with any UPI app</a></p>
+      <p class="small muted">UPI ID: {{ ev.upi_id }}</p>
+    </div>
+    {% endif %}
+    {% if ev and ev.livestream_url %}
+    <div class="card center"><h3>📺 Watch live</h3><p>Join the ceremony from anywhere in the world.</p><a class="btn" href="{{ ev.livestream_url }}" target="_blank" rel="noopener">Open live stream</a></div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if blessings %}
+<section class="x-section" style="background:var(--paper)">
+  <div class="wrap">
+    <h2 class="x-title reveal"><span class="script">with love</span>Blessings Wall</h2>
+    <div class="wall">{% for name, msg in blessings %}<div class="wish reveal">{{ msg }}<b>— {{ name }}</b></div>{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block footer %}
+<footer class="site-footer" style="padding-bottom:40px;text-align:center">
+  <div class="wrap" style="justify-content:center;flex-direction:column;align-items:center;gap:6px">
+    <div class="logo" style="font-size:1.6rem">{{ settings.brand_name }}</div>
+    <div>Loved this invitation? <a href="/?utm_source=invite&utm_medium={{ o.rsvp_slug }}">Create one for your family's wedding →</a></div>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const doors = document.getElementById('doors');
+  const ui = document.getElementById('door-ui');
+  const audio = document.getElementById('music');
+  const musicBtn = document.getElementById('music-btn');
+  const seen = (() => { try { return sessionStorage.getItem('opened-{{ o.rsvp_slug }}'); } catch (e) { return null; } })();
+  document.body.classList.add('locked');
+
+  function open() {
+    doors.classList.add('open');
+    try { sessionStorage.setItem('opened-{{ o.rsvp_slug }}', '1'); } catch (e) {}
+    setTimeout(() => { doors.classList.add('gone'); ui.style.display = 'none'; document.body.classList.remove('locked'); }, 1900);
+    petals(220);
+    if (audio) { audio.play().then(() => musicBtn.classList.add('playing')).catch(() => {}); musicBtn.hidden = false; }
+  }
+  document.getElementById('open-btn').addEventListener('click', open);
+  if (seen || location.hash) { doors.classList.add('open', 'gone'); ui.style.display = 'none'; document.body.classList.remove('locked'); if (musicBtn) musicBtn.hidden = false; }
+
+  if (musicBtn) musicBtn.addEventListener('click', () => {
+    if (audio.paused) { audio.play(); musicBtn.classList.add('playing'); } else { audio.pause(); musicBtn.classList.remove('playing'); }
+  });
+
+  // Falling marigold & rose petals
+  function petals(count) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const c = document.getElementById('petals'), ctx = c.getContext('2d');
+    const resize = () => { c.width = innerWidth * devicePixelRatio; c.height = innerHeight * devicePixelRatio; ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); };
+    resize(); addEventListener('resize', resize);
+    const colors = ['#f6a21a', '#ffb627', '#f07c1b', '#e94f64', '#ff8fa3', '#fff1c1'];
+    const ps = Array.from({ length: count }, (_, i) => ({
+      x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 1.2, r: 5 + Math.random() * 7,
+      vy: 1.2 + Math.random() * 2.2, sway: Math.random() * 2 * Math.PI, rot: Math.random() * 6, vr: (Math.random() - .5) * .08,
+      color: colors[i % colors.length],
+    }));
+    const start = performance.now();
+    (function frame(t) {
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      const fade = Math.max(0, 1 - Math.max(0, t - start - 6000) / 2500);
+      ps.forEach(p => {
+        p.y += p.vy; p.sway += .03; p.x += Math.sin(p.sway) * 1.1; p.rot += p.vr;
+        ctx.save(); ctx.globalAlpha = .9 * fade; ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.ellipse(0, 0, p.r, p.r * .55, 0, 0, 2 * Math.PI); ctx.fill(); ctx.restore();
+      });
+      if (fade > 0) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+    })(start);
+  }
+
+  // Countdown
+  const cd = document.getElementById('countdown');
+  const target = new Date(cd.dataset.to).getTime();
+  function tick() {
+    let s = Math.max(0, Math.floor((target - Date.now()) / 1000));
+    const v = { d: Math.floor(s / 86400), h: Math.floor(s % 86400 / 3600), m: Math.floor(s % 3600 / 60), s: s % 60 };
+    for (const k in v) cd.querySelector(`[data-u="${k}"]`).textContent = v[k];
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Reveal on scroll
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+})();
+</script>
+{% endblock %}

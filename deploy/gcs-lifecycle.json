@@ -1,0 +1,12 @@
+{
+  "rule": [
+    {
+      "action": { "type": "Delete" },
+      "condition": { "age": 30, "matchesPrefix": ["orders/"], "matchesSuffix": ["/photos/1.jpg", "/photos/2.jpg", "/photos/3.jpg"] }
+    },
+    {
+      "action": { "type": "Delete" },
+      "condition": { "age": 120, "matchesPrefix": ["orders/"] }
+    }
+  ]
+}

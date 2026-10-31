@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% set b = settings.brand_name %}
+{% block title %}{{ {'terms': 'Terms & photo consent', 'privacy': 'Privacy policy', 'refund': 'Refund & revision policy'}[page] }} · {{ b }}{% endblock %}
+{% block content %}
+<section class="legal" style="padding-top:36px">
+<div class="narrow">
+{% if page == 'terms' %}
+  <h1>Terms of service &amp; photo consent</h1>
+  <p class="muted">Last updated: {{ current_year }}</p>
+  <h2>1. The service</h2>
+  <p>{{ b }} creates digital invitations (images, videos and event pages) from the details and photos you provide. Designs are produced with the help of AI image tools and reviewed by our team before you receive a proof.</p>
+  <h2>2. Your details</h2>
+  <p>You are responsible for the accuracy of names, dates, venues and other text you submit. Please check every proof carefully. Once you approve a proof, errors in the approved text are not our responsibility, but we will still help you fix them as a paid revision.</p>
+  <h2 id="photos">3. Photo consent</h2>
+  <ul>
+    <li>You confirm that you are in the photos you upload, or that you have permission from every person in them.</li>
+    <li>You give us a limited licence to use the photos <strong>only to create your invitation</strong>, including sending them to our AI image provider for processing.</li>
+    <li>We do not use your photos to train AI models, and we do not sell or share them with anyone else.</li>
+    <li>Original photos are automatically deleted within {{ settings.photo_retention_days }} days of upload.</li>
+    <li>We will only feature your finished invitation in our marketing (Instagram, website, before/after reels) if you separately tick the marketing permission box. You can withdraw that permission at any time by messaging us.</li>
+  </ul>
+  <h2>4. AI-generated artwork</h2>
+  <p>AI artwork is unique and may vary in small details from your photos. We review every design but cannot guarantee a perfect likeness. If a likeness is not acceptable, use your revisions to ask for changes, or choose a design without your photo.</p>
+  <h2>5. Usage</h2>
+  <p>Final files are for your personal use: sharing with guests, social media and printing. Please do not resell our designs.</p>
+  <h2>6. Payments</h2>
+  <p>Prices are in Indian Rupees. Work starts after payment (full, or the advance). Final files are released after full payment. Payments are processed by Razorpay.</p>
+  <h2>7. Contact</h2>
+  <p>WhatsApp +{{ settings.whatsapp_number }} · {{ settings.support_email }}</p>
+
+{% elif page == 'privacy' %}
+  <h1>Privacy policy</h1>
+  <p class="muted">Last updated: {{ current_year }}. Written in line with India's Digital Personal Data Protection Act, 2023.</p>
+  <h2>What we collect</h2>
+  <ul>
+    <li>Contact details: your name, WhatsApp number and email.</li>
+    <li>Wedding details: couple and family names, dates, venues and functions.</li>
+    <li>Photos you choose to upload.</li>
+    <li>Payment status (we never see your card, UPI PIN or bank details; Razorpay processes payments).</li>
+    <li>RSVP responses submitted by guests on your event page.</li>
+  </ul>
+  <h2>Why we use it</h2>
+  <p>Only to create and deliver your invitation, contact you about your order on WhatsApp and email, provide support, and keep tax and accounting records.</p>
+  <h2>Who we share it with</h2>
+  <ul>
+    <li>Our AI image provider (e.g. Google Gemini) to generate your design.</li>
+    <li>Razorpay for payments; Meta (WhatsApp) and our email provider to message you.</li>
+    <li>Our cloud host for secure storage.</li>
+  </ul>
+  <p>We never sell your data.</p>
+  <h2>How long we keep it</h2>
+  <ul>
+    <li>Original photos: deleted automatically within {{ settings.photo_retention_days }} days.</li>
+    <li>Generated invitation files: deleted {{ settings.final_retention_days }} days after delivery. Please download your files.</li>
+    <li>Order and payment records: kept as required by Indian tax law.</li>
+  </ul>
+  <h2>Your rights</h2>
+  <p>You can ask us to access, correct or delete your personal data, or withdraw consent, by messaging +{{ settings.whatsapp_number }} or emailing {{ settings.support_email }}. We respond within 7 working days.</p>
+  <h2>Security</h2>
+  <p>Your order page is protected by a private link. Keep it to yourself. Photos are stored privately and never published.</p>
+
+{% elif page == 'refund' %}
+  <h1>Refund &amp; revision policy</h1>
+  <p class="muted">Last updated: {{ current_year }}</p>
+  <h2>Revisions</h2>
+  <ul>
+    <li>Every order includes <strong>{{ settings.max_free_revisions }} free revision rounds</strong>. Send all changes for a round in one message.</li>
+    <li>Extra revision rounds cost ₹{{ catalog.ADDONS['extra_revision'].price }} each.</li>
+    <li>Changing the style, package or language after the first proof counts as a new order.</li>
+  </ul>
+  <h2>Refunds</h2>
+  <ul>
+    <li><strong>Before design starts:</strong> full refund if you cancel before we begin designing.</li>
+    <li><strong>After the first proof:</strong> 50% refund if you're unhappy and haven't approved a proof, after you use at least one revision.</li>
+    <li><strong>After approval or delivery:</strong> no refunds, as digital files are delivered instantly.</li>
+    <li>If we miss our promised delivery time by more than 48 hours, you may cancel for a full refund, or keep the order and get the Express add-on refunded.</li>
+  </ul>
+  <p>Approved refunds are returned to the original payment method within 5–7 working days.</p>
+  <h2>How to request</h2>
+  <p>WhatsApp +{{ settings.whatsapp_number }} or email {{ settings.support_email }} with your order ID.</p>
+{% endif %}
+  {# Starter policy text — have it reviewed by a legal professional before launch. #}
+</div>
+</section>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Payment · {{ o.public_id }}{% endblock %}
+{% block content %}
+<section style="padding-top:36px">
+<div class="narrow">
+  <h1>Payment</h1>
+  <div class="card">
+    <dl class="kv">
+      <dt>Order</dt><dd>{{ o.public_id }}</dd>
+      <dt>Couple</dt><dd>{{ o.bride_name }} &amp; {{ o.groom_name }}</dd>
+      <dt>Package</dt><dd>{{ catalog.PACKAGES[o.package].name }}{% for a in o.addons %} + {{ catalog.ADDONS[a].name }}{% endfor %}</dd>
+      <dt>Order total</dt><dd>{{ inr(o.total) }}{% if o.source == 'test' %} <span class="muted small">(🧪 test order)</span>{% elif o.discount %} <span class="muted small">(after {{ inr(o.discount) }} referral discount)</span>{% endif %}</dd>
+      {% if o.amount_paid %}<dt>Already paid</dt><dd>{{ inr(o.amount_paid) }}</dd>{% endif %}
+    </dl>
+  </div>
+
+  {% if 'full' in allowed and 'advance' in allowed %}
+  <div class="card">
+    <strong>Choose how to pay</strong>
+    <p style="margin:10px 0 0">
+      <a class="btn btn-sm {% if p.purpose == 'full' %}btn-primary{% else %}btn-ghost{% endif %}" href="?purpose=full">Full: {{ inr(o.total) }}</a>
+      <a class="btn btn-sm {% if p.purpose == 'advance' %}btn-primary{% else %}btn-ghost{% endif %}" href="?purpose=advance">{{ settings.advance_percent }}% advance</a>
+    </p>
+  </div>
+  {% endif %}
+
+  <div class="card center">
+    <div class="muted">{{ {'full': 'Full payment', 'advance': 'Advance payment', 'balance': 'Balance payment', 'revision': 'Extra revision'}[p.purpose] }}</div>
+    <div style="font-family:var(--serif);font-size:3rem;color:var(--maroon);font-weight:700">{{ inr(p.amount) }}</div>
+    {% if p.provider == 'razorpay' %}
+      <button class="btn btn-primary" id="pay-btn" type="button">Pay securely · UPI / Card / Netbanking</button>
+      <form id="verify-form" method="post" action="/o/{{ o.token }}/pay/verify" hidden>
+        <input name="razorpay_order_id"><input name="razorpay_payment_id"><input name="razorpay_signature">
+      </form>
+      <p class="small muted" style="margin-top:12px">Payments are processed by Razorpay. We never see your card or UPI PIN.</p>
+    {% elif p.provider == 'manual' %}
+      {% if p.status == 'claimed' %}
+        <div class="alert alert-ok">Thank you! We received your payment reference <strong>{{ p.provider_payment_id }}</strong> and will confirm it shortly. Your design starts as soon as it's confirmed. We'll WhatsApp you.</div>
+      {% else %}
+        <ol style="text-align:left;max-width:30em;margin:0 auto 16px">
+          <li>Tap the button below to open our secure Razorpay payment page.</li>
+          <li>Enter exactly <strong>{{ inr(p.amount) }}</strong> and write <strong>{{ o.public_id }}</strong> in the note.</li>
+          <li>Pay by UPI, card or netbanking, then come back here and enter the payment ID or UPI reference.</li>
+        </ol>
+        <a class="btn btn-primary" href="{{ settings.razorpay_me_url }}" target="_blank" rel="noopener">Pay {{ inr(p.amount) }} on Razorpay ↗</a>
+        <form method="post" action="/o/{{ o.token }}/pay/claim/{{ p.id }}" style="max-width:26em;margin:22px auto 0;text-align:left">
+          <label for="reference">Payment ID / UPI reference *</label>
+          <input id="reference" name="reference" type="text" required maxlength="80" placeholder="e.g. pay_N3xY… or 4321 0987 6543">
+          <button class="btn btn-block" type="submit" style="margin-top:10px">I've paid, confirm my order</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <div class="alert alert-info small">Test mode: Razorpay keys are not configured, so this button simulates a successful payment.</div>
+      <form method="post" action="/o/{{ o.token }}/pay/simulate/{{ p.id }}"><button class="btn btn-primary" type="submit">Simulate payment</button></form>
+    {% endif %}
+  </div>
+  <p class="center"><a href="/o/{{ o.token }}">View order status</a></p>
+</div>
+</section>
+{% endblock %}
+{% block scripts %}
+{% if p.provider == 'razorpay' %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+document.getElementById('pay-btn').addEventListener('click', function () {
+  const rzp = new Razorpay({
+    key: {{ settings.razorpay_key_id|tojson }},
+    amount: {{ p.amount }},
+    currency: 'INR',
+    name: {{ settings.brand_name|tojson }},
+    description: {{ ('Order ' ~ o.public_id)|tojson }},
+    order_id: {{ p.provider_order_id|tojson }},
+    prefill: { name: {{ o.customer_name|tojson }}, email: {{ o.email|tojson }}, contact: {{ ('+' ~ o.phone)|tojson }} },
+    theme: { color: '#7a1a2b' },
+    handler: function (resp) {
+      const f = document.getElementById('verify-form');
+      f.razorpay_order_id.value = resp.razorpay_order_id;
+      f.razorpay_payment_id.value = resp.razorpay_payment_id;
+      f.razorpay_signature.value = resp.razorpay_signature;
+      f.submit();
+    }
+  });
+  rzp.open();
+});
+</script>
+{% endif %}
+{% endblock %}

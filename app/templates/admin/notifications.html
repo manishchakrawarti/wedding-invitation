@@ -1,0 +1,31 @@
+{% extends "admin/base.html" %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<h1>Messages</h1>
+<p class="muted">
+  WhatsApp: <strong>{{ 'live' if settings.whatsapp_enabled else 'log only (not configured)' }}</strong> ·
+  Email: <strong>{{ 'live' if settings.email_enabled else 'log only (not configured)' }}</strong>
+</p>
+<form method="post" action="/admin/notifications/test-email" class="card" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+  <div style="flex:1;min-width:240px"><label for="to">Send a test email to</label><input id="to" type="email" name="to" value="{{ settings.owner_email or settings.smtp_from }}" required></div>
+  <button class="btn btn-sm" type="submit">Send test email</button>
+</form>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>When</th><th>Channel</th><th>To</th><th>Status</th><th>Message</th></tr></thead>
+  <tbody>
+  {% for n in rows %}
+    <tr>
+      <td class="small">{{ n.created_at.strftime('%d %b %H:%M') }}</td>
+      <td>{{ n.channel }}</td>
+      <td>{{ n.recipient or '—' }}{% if n.order_id %}<br><a class="small" href="/admin/orders/{{ n.order_id }}">order</a>{% endif %}</td>
+      <td><span class="pill {{ 'pass' if n.status == 'sent' else 'fail' if n.status == 'failed' else 'skip' }}">{{ n.status }}</span>{% if n.error %}<br><span class="small" style="color:var(--red)">{{ n.error[:120] }}</span>{% endif %}</td>
+      <td class="small" style="white-space:pre-line">{{ n.body }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="center muted">No messages yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
