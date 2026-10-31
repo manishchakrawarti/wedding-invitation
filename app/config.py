@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     max_free_revisions: int = 2
     referral_discount_inr: int = 100
     chrome_path: str = ""  # e-invite PDF/image export; empty = auto-detect Chrome/Edge/Chromium
+    max_concurrent_renders: int = 1  # PDF/long-image renders at once (raise on big servers)
     instant_previews_per_hour: int = 6  # free ₹99-funnel previews per visitor (AI images cost money)
 
     # Tests run the pipeline synchronously instead of on a worker thread.

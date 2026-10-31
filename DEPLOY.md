@@ -1,92 +1,90 @@
-# Putting the site live on invite-all.com
+# Putting the site live on invite-all.com (cheapest setup)
 
-**How it fits together:** you keep working on the code on your PC and push to GitHub
-(`manishchakrawarti/wedding-invitation`). The host builds the site from GitHub and
-redeploys on every push. Don't run the live site from your PC: it must stay online 24/7.
+**How it fits together:** you keep working on the code on your PC and push to GitHub. The server
+pulls from GitHub. Don't run the live site from your PC: it must stay online 24/7.
 
-The app needs: Docker (Chromium for PDF/image exports, Hindi text shaping), a **persistent
-disk** for the database and photos, and **about 2 GB of RAM** for 2K/4K exports.
+## What it costs
 
----
-
-## Step 1: Buy the domain
-
-Buy **invite-all.com** from any registrar: Cloudflare, Namecheap, GoDaddy or Hostinger
-(roughly ₹800–1,200 per year). You'll only need its **DNS settings** page later.
-
----
-
-## Step 2 (recommended): Render.com, with no server to manage
-
-Cost: **Standard plan ≈ $25/month** (2 GB RAM) **+ 5 GB disk ≈ $1.25/month**.
-The free plan does **not** work (no persistent disk, it sleeps).
-
-1. Go to https://render.com and **sign up with GitHub**.
-2. **New → Blueprint**, then select the `wedding-invitation` repo. Render reads `render.yaml`.
-3. Fill in the values it asks for:
-   | Setting | What to put |
-   |---|---|
-   | `BRAND_NAME` | Your brand, e.g. `Invite All` |
-   | `WHATSAPP_NUMBER` | Business WhatsApp, digits only, e.g. `919876543210` |
-   | `SUPPORT_EMAIL`, `INSTAGRAM_HANDLE` | Shown in the site footer |
-   | `OWNER_EMAIL`, `OWNER_WHATSAPP` | Where you get order/payment alerts |
-   | `RAZORPAY_ME_URL` | Your Razorpay.me link (manual confirm) **or** leave empty and set the keys below |
-   | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay API keys, so customers unlock instantly |
-   | `GEMINI_API_KEY`, `SMTP_*` | Optional: AI artwork and email sending |
-   An **admin password** is generated automatically: Render → your service → **Environment** → `ADMIN_PASSWORD`.
-4. Click **Apply**. The first build takes ~5–10 minutes. The first start then builds the 36 live demos
-   in the background (a few minutes).
-5. Test it on the temporary address Render gives you (`https://invite-all.onrender.com`).
-
-### Connect invite-all.com
-Render → service → **Settings → Custom Domains** shows the exact DNS records. Typically:
-
-| Type | Name | Value |
+| Item | Cheapest choice | Cost |
 |---|---|---|
-| `A` | `@` | `216.24.57.1` |
-| `CNAME` | `www` | `invite-all.onrender.com` |
+| Domain `invite-all.com` | **Cloudflare Registrar** (sells at cost, no renewal mark-up) | **≈ ₹900 / year** |
+| Server | **Oracle Cloud Always Free** (ARM, up to 4 CPU / 24 GB RAM / 200 GB disk) | **₹0** |
+| HTTPS certificate | Let's Encrypt via Caddy (automatic) | ₹0 |
+| DNS + DDoS protection | Cloudflare free plan | ₹0 |
+| Code hosting | GitHub | ₹0 |
+| Email to customers | Gmail SMTP (500/day) or Brevo free (300/day) | ₹0 |
+| WhatsApp | wa.me share links (no API) | ₹0 |
+| Uptime alerts | UptimeRobot free | ₹0 |
+| AI artwork (Gemini) | Off: free built-in designs | ₹0 (≈ ₹3.5/image if you turn it on) |
+| Payments | Razorpay: no monthly fee | ≈ 2% + GST per payment (≈ ₹0.21 on ₹9) |
+| **Total** | | **≈ ₹900 per year** |
 
-Add them at your registrar's DNS page (delete any default "parking" records first). Render then issues
-the HTTPS certificate automatically (usually within an hour). **Use the values Render shows** if they differ.
+**Backup plan** if Oracle won't give you a free server (it sometimes runs out in Indian regions, or rejects
+some cards): **Hetzner CX22** (2 CPU, 4 GB) ≈ €3.79/month ≈ **₹380/month**. Same steps, just a different provider.
 
-### Updating the live site later
-```
-git add -A && git commit -m "what changed" && git push
-```
-Render redeploys automatically. Your data on the disk is kept. Render snapshots the disk daily.
-
----
-
-## Step 2 (cheaper alternative): your own server (VPS)
-
-Cost: ~₹400–700/month for a **4 GB** Ubuntu server (e.g. Hetzner CX22, DigitalOcean, AWS Lightsail).
-You manage updates and backups yourself.
-
-1. Create an **Ubuntu 24.04** server with 4 GB RAM. Note its IP address.
-2. At your registrar, add DNS records: `A @ → <server IP>` and `A www → <server IP>`.
-3. On the server:
-   ```bash
-   curl -fsSL https://get.docker.com | sh
-   git clone https://github.com/manishchakrawarti/wedding-invitation.git && cd wedding-invitation
-   cp .env.example .env && nano .env      # set BRAND_NAME, ADMIN_PASSWORD (strong!), Razorpay, etc.
-   docker compose up -d --build
-   ```
-   Caddy gets the HTTPS certificate for invite-all.com automatically.
-4. Daily database backup (keeps 14). Add with `crontab -e`:
-   ```
-   30 2 * * * cd ~/wedding-invitation && docker compose exec -T app python scripts/backup_sqlite.py
-   ```
-5. Update after pushing new code: `git pull && docker compose up -d --build`
+(`render.yaml` is also included: the easiest option with nothing to manage, but ≈ $26/month.)
 
 ---
 
-## Step 3: After the site is live
+## Step 1: Buy the domain (Cloudflare)
+1. Create a free account at https://dash.cloudflare.com, then **Domain Registration → Register Domains**.
+2. Search `invite-all.com` and buy it (≈ ₹900/yr, renews at the same price).
+3. You now manage DNS in Cloudflare (used in Step 3).
 
-- [ ] Open `https://invite-all.com/admin` and log in (check the password works).
-- [ ] Create a test invitation at `/create` and download the free version.
-- [ ] **Razorpay**: Dashboard → Webhooks → add `https://invite-all.com/webhooks/razorpay`
-      (events `payment.captured`, `order.paid`) and set `RAZORPAY_WEBHOOK_SECRET`.
-      Razorpay also asks for your website URL during KYC: give `https://invite-all.com`.
-- [ ] **Google Search Console**: add the site and submit `https://invite-all.com/sitemap.xml`.
-- [ ] Make sure `TEST_COUPON_CODE` / `TEST_ORDER_CODE` are **not** set in production.
-- [ ] Have your Terms, Privacy and Refund pages reviewed before taking real payments.
+## Step 2: Get the free server (Oracle Cloud)
+1. Sign up at https://www.oracle.com/cloud/free/ and pick **India West (Mumbai)** or **India South (Hyderabad)** as the
+   home region (it can't be changed later). A card is needed for verification only: a small hold is refunded.
+2. **Compute → Instances → Create instance**:
+   - Image: **Ubuntu 24.04**
+   - Shape: **Ampere (VM.Standard.A1.Flex)**, **2 OCPU, 12 GB** (free; up to 4/24 is free)
+   - Download the **SSH key** it offers, and note the **public IP** after it starts.
+   - "Out of capacity"? Try another availability domain, or try again later.
+3. **Networking → your VCN → Security List → Add Ingress Rules**: TCP **80** and **443** from `0.0.0.0/0`.
+4. Recommended: upgrade the account to **Pay As You Go**. It stays ₹0 within the free limits, and
+   Oracle won't reclaim "idle" free servers. Add a **budget alert of ₹100** so you're told if anything ever costs money.
+
+## Step 3: Point the domain at the server
+In Cloudflare → `invite-all.com` → **DNS**, add (proxy **off / grey cloud** at first, so HTTPS can be issued):
+
+| Type | Name | Content |
+|---|---|---|
+| `A` | `@` | your server's public IP |
+| `A` | `www` | your server's public IP |
+
+## Step 4: One command on the server
+Connect: `ssh -i <your-key> ubuntu@<server-ip>`, then run:
+```bash
+curl -fsSL https://raw.githubusercontent.com/manishchakrawarti/wedding-invitation/main/deploy/setup_server.sh | bash
+```
+It installs Docker, opens the firewall, adds swap on small machines, starts the site with automatic HTTPS,
+schedules daily database backups, and **prints your admin password** (also saved in `~/invite-all-admin.txt`).
+
+Then set your details:
+```bash
+nano ~/invite-all/.env      # BRAND_NAME, WHATSAPP_NUMBER, SUPPORT_EMAIL, OWNER_EMAIL, RAZORPAY_ME_URL or keys, SMTP_*
+cd ~/invite-all && sudo docker compose up -d
+```
+Open **https://invite-all.com**. (Once HTTPS works you may switch Cloudflare's proxy to orange for extra protection.)
+
+## Updating the site later
+On your PC: `git add -A && git commit -m "what changed" && git push`. Then on the server:
+```bash
+cd ~/invite-all && git pull && sudo docker compose up -d --build
+```
+
+## After launch (all free)
+- [ ] Log in at `/admin` and create a test invitation at `/create`.
+- [ ] **Free email**: Gmail app password → `SMTP_HOST=smtp.gmail.com`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`.
+- [ ] **Razorpay**: give `https://invite-all.com` during KYC. If using API keys, add webhook
+      `https://invite-all.com/webhooks/razorpay` (events `payment.captured`, `order.paid`).
+- [ ] **UptimeRobot** (free): monitor `https://invite-all.com/healthz` and get an email if the site goes down.
+- [ ] **Google Search Console** (free): submit `https://invite-all.com/sitemap.xml`.
+- [ ] Every month or so, download a backup: `scp -i <key> ubuntu@<ip>:~/invite-all-backups.tar .` (see below).
+- [ ] Keep `TEST_COUPON_CODE` / `TEST_ORDER_CODE` empty in production (the setup script does this).
+
+### Copying backups to your PC
+Backups are made daily inside the server's data volume. To download them:
+```bash
+# on the server
+cd ~/invite-all && sudo docker compose cp app:/data/backups ./backups && tar -cf ~/invite-all-backups.tar backups
+```

@@ -12,6 +12,7 @@ import platform
 import shutil
 import subprocess
 import tempfile
+import threading
 from functools import lru_cache
 from pathlib import Path
 
@@ -131,7 +132,16 @@ def _chrome(chrome: str, tmp: str, html: str, out: Path, extra: list[str]) -> No
         raise ExportUnavailable(f"Rendering failed: {proc.stderr.decode(errors='ignore')[-300:]}")
 
 
+# Chromium + big images are the heaviest thing the app does; on small/free servers render one at a time.
+_render_slots = threading.BoundedSemaphore(max(1, settings.max_concurrent_renders))
+
+
 def render(order: Order, fmt: str, tier: str = "1080") -> bytes:
+    with _render_slots:
+        return _render(order, fmt, tier)
+
+
+def _render(order: Order, fmt: str, tier: str = "1080") -> bytes:
     """fmt 'pdf': one page per section. fmt 'image': all pages stacked into one tall JPEG
     whose width matches the tier (720 / 1080 / 2048 / 3840 px)."""
     from PIL import Image
