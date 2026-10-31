@@ -1042,3 +1042,77 @@ def test_gift_qr_upload_reads_upi_id_and_can_be_changed(client):
     assert ev.upi_id == "" and ev.gift_phone == "9123456780"
     assert client.get(f"/e/{order.rsvp_slug}/gift-qr").status_code == 404
     assert "+91 91234 56780" in client.get(f"/e/{order.rsvp_slug}").text
+
+
+# --- photos are never silently lost ----------------------------------------------
+
+def _portrait_roles(order_id: int) -> set[str]:
+    with SessionLocal() as db:
+        return {a.card_key for a in db.get(Order, order_id).live_assets("portrait")}
+
+
+def test_photos_and_gift_qr_kept_after_a_form_error(client):
+    files = [("bride_photo", ("b.jpg", _photo((200, 150, 120)), "image/jpeg")),
+             ("groom_photo", ("g.jpg", _photo((90, 120, 160)), "image/jpeg")),
+             ("gift_qr", ("qr.png", _qr_png("upi://pay?pa=asha.vivek@okaxis&pn=Asha"), "image/png"))]
+    # The permission box is left unticked: the form comes back with an error...
+    first = client.post("/create", data=_instant_data(bride_name="Asha", groom_name="Vivek"), files=files)
+    assert first.status_code == 422 and "permission to use these photos" in first.text
+    token = re.search(r'name="photo_stash" value="([^"]+)"', first.text).group(1)
+    # ...but the photos stay chosen (shown as thumbnails) instead of being emptied by the browser.
+    for name in ("bride", "groom", "gift_qr"):
+        assert f"/create/kept/{token}/{name}" in first.text
+        assert client.get(f"/create/kept/{token}/{name}").status_code == 200
+    assert "/create/kept/" + token + "/family" not in first.text
+
+    # Ticking the box and submitting again (no files re-chosen) keeps every photo.
+    resp = client.post("/create", data=_instant_data(bride_name="Asha", groom_name="Vivek", photo_consent="on",
+                                                    photo_stash=token), follow_redirects=False)
+    assert resp.status_code == 303, resp.text[:800]
+    order = get(resp.headers["location"].split("/")[2])
+    assert _portrait_roles(order.id) == {"bride", "groom"} and order.photo_consent
+    assert _event_details(order.id).upi_id == "asha.vivek@okaxis"
+    assert client.get(f"/create/kept/{token}/bride").status_code == 404  # the temporary copy is gone
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert f"/e/{order.rsvp_slug}/portrait/bride" in page and f"/e/{order.rsvp_slug}/portrait/groom" in page
+
+    # Stash tokens can't reach outside the stash.
+    assert client.get("/create/kept/..%2F..%2Fapp.db/bride").status_code == 404
+
+
+def test_add_photos_after_creating_and_card_shown_in_preview(client):
+    order = create_instant(client)
+    preview = client.get(f"/o/{order.token}/preview").text
+    assert "Photos on your invitation" in preview and "no photos yet" in preview
+    # During the free preview the invite page still shows the (watermarked) card, never a bare page.
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert f'src="/e/{order.rsvp_slug}/invite"' in page and "Save the card" not in page
+    card = client.get(f"/e/{order.rsvp_slug}/invite")
+    proof = next(a for a in order.assets if a.kind == "proof" and a.card_key == "main")
+    from app.services.storage import storage
+    assert card.status_code == 200 and card.content == storage.read(proof.path)
+
+    photo = [("bride_photo", ("b.jpg", _photo((200, 150, 120)), "image/jpeg"))]
+    r = client.post(f"/o/{order.token}/photos", files=photo, follow_redirects=False)
+    assert "photo_error=" in r.headers["location"]  # permission needed
+    r = client.post(f"/o/{order.token}/photos", data={"photo_consent": "on"}, files=photo, follow_redirects=False)
+    assert r.headers["location"].endswith("/preview?photos=saved#photos")
+    assert _portrait_roles(order.id) == {"bride"}
+    assert f"/e/{order.rsvp_slug}/portrait/bride" in client.get(f"/e/{order.rsvp_slug}").text
+    preview = client.get(f"/o/{order.token}/preview").text
+    assert f"/o/{order.token}/portrait/bride" in preview and client.get(f"/o/{order.token}/portrait/bride").status_code == 200
+
+
+def test_stash_purge_removes_old_uploads(tmp_path):
+    import os
+    import time as _time
+
+    from app.services.storage import LocalStorage
+
+    store = LocalStorage(tmp_path)
+    store.save("stash/abc/bride", b"x")
+    store.save("stash/new/bride", b"y")
+    old = _time.time() - 7 * 3600
+    os.utime(tmp_path / "stash/abc/bride", (old, old))
+    assert store.purge("stash/", 6 * 3600) == 1
+    assert not (tmp_path / "stash/abc").exists() and store.exists("stash/new/bride")

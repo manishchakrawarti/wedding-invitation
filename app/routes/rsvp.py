@@ -44,10 +44,16 @@ def _shaping_failed(asset: Asset) -> bool:
 
 
 def _hero(order: Order):
-    """The main card, but never one whose Indian-script text failed shaping QC (broken matras)."""
-    if order.status != OrderStatus.DELIVERED.value:
+    """The main card shown on the invite page: the final once delivered, the watermarked proof during the
+    free preview. Never one whose Indian-script text failed shaping QC (broken matras)."""
+    final = next((a for a in order.live_assets("final") if a.card_key == "main"), None)
+    if final is None or _shaping_failed(final):
         return None
-    return next((a for a in order.live_assets("final") if a.card_key == "main" and not _shaping_failed(a)), None)
+    if order.status == OrderStatus.DELIVERED.value:
+        return final
+    if order.status == OrderStatus.PREVIEW.value:
+        return next((a for a in order.live_assets("proof") if a.card_key == "main"), None)
+    return None
 
 
 def _music(order: Order):

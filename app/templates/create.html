@@ -40,6 +40,8 @@
 <form class="narrow" method="post" action="/create" id="create-form" enctype="multipart/form-data">
   {% include "_occasion_picker.html" %}
   <input type="hidden" name="event_type" value="{{ current_event }}" id="event_type">
+  <input type="hidden" name="photo_stash" value="{{ v.photo_stash or '' }}">
+  {% set kept = v.kept or [] %}
 
   {% if errors %}<div class="alert alert-error"><strong>Almost there:</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 
@@ -78,21 +80,21 @@
     <p class="hint" style="margin-top:-6px">The main photos appear next to the names on the first page; the family photo appears with "<span class="hosts-echo">{{ c.hosts }}</span>".</p>
     <div class="photo-pickers">
       <label class="photo-pick"><input type="file" name="bride_photo" accept="image/jpeg,image/png,image/webp" data-preview="prev-bride">
-        <span class="ph" id="prev-bride"><span>＋</span></span><strong id="photo1-label">{{ c.photo1 }}</strong><span class="hint">Shown on the first page</span></label>
+        <span class="ph{{ ' has' if 'bride' in kept }}" id="prev-bride" {% if 'bride' in kept %}style="background-image:url('/create/kept/{{ v.photo_stash }}/bride')"{% endif %}><span>＋</span></span><strong id="photo1-label">{{ c.photo1 }}</strong><span class="hint">{{ '✓ Added. Tap to change' if 'bride' in kept else 'Shown on the first page' }}</span></label>
       <label class="photo-pick" id="photo2-field" {% if not c.secondary %}hidden{% endif %}><input type="file" name="groom_photo" accept="image/jpeg,image/png,image/webp" data-preview="prev-groom">
-        <span class="ph" id="prev-groom"><span>＋</span></span><strong id="photo2-label">{{ c.photo2 }}</strong><span class="hint">Shown on the first page</span></label>
+        <span class="ph{{ ' has' if 'groom' in kept }}" id="prev-groom" {% if 'groom' in kept %}style="background-image:url('/create/kept/{{ v.photo_stash }}/groom')"{% endif %}><span>＋</span></span><strong id="photo2-label">{{ c.photo2 }}</strong><span class="hint">{{ '✓ Added. Tap to change' if 'groom' in kept else 'Shown on the first page' }}</span></label>
       <label class="photo-pick wide"><input type="file" name="family_photo" accept="image/jpeg,image/png,image/webp" data-preview="prev-family">
-        <span class="ph" id="prev-family"><span>＋</span></span><strong id="photo3-label">{{ c.photo3 }}</strong><span class="hint">With "<span class="hosts-echo">{{ c.hosts }}</span>"</span></label>
+        <span class="ph{{ ' has' if 'family' in kept }}" id="prev-family" {% if 'family' in kept %}style="background-image:url('/create/kept/{{ v.photo_stash }}/family')"{% endif %}><span>＋</span></span><strong id="photo3-label">{{ c.photo3 }}</strong><span class="hint">{% if 'family' in kept %}✓ Added. Tap to change{% else %}With "<span class="hosts-echo">{{ c.hosts }}</span>"{% endif %}</span></label>
     </div>
     <input type="hidden" name="enhance_photos" value="off">
     <label class="check"><input type="checkbox" name="enhance_photos" value="on" {% if v.get('enhance_photos', 'on') != 'off' %}checked{% endif %}> <span><strong>✨ Enhance my photos</strong>: face-centred framing, studio lighting &amp; colour, crisp detail{% if settings.gemini_enabled %}, plus AI retouch{% endif %}. Your original is kept.</span></label>
-    <label class="check"><input type="checkbox" name="photo_consent" {% if v.photo_consent %}checked{% endif %}> <span>I have permission from everyone in these photos to show them on this invitation (<a href="/terms#photos" target="_blank">photo terms</a>).</span></label>
+    <label class="check"><input type="checkbox" name="photo_consent" id="photo_consent" {% if v.photo_consent %}checked{% endif %}> <span>I have permission from everyone in these photos to show them on this invitation (<a href="/terms#photos" target="_blank">photo terms</a>).</span></label>
   </div>
 
   <div class="card" id="card-gift">
     <h2 class="step-title"><b>🎁</b> Receive gifts &amp; shagun <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional</span></h2>
     <p class="hint" style="margin-top:-6px">Guests who can't come, or want to send their blessings, can pay you directly from the invitation with any UPI app. Add any one of these.</p>
-    {% with gv = {"upi": v.gift_upi, "phone": v.gift_phone, "name": v.gift_name}, gift_qr_src = "" %}{% include "_gift_fields.html" %}{% endwith %}
+    {% with gv = {"upi": v.gift_upi, "phone": v.gift_phone, "name": v.gift_name}, gift_qr_src = ("/create/kept/" ~ v.photo_stash ~ "/gift_qr") if "gift_qr" in kept else "" %}{% include "_gift_fields.html" %}{% endwith %}
   </div>
 
   <div class="card">
@@ -225,6 +227,10 @@
     reader.onload = e => { box.style.backgroundImage = `url(${e.target.result})`; box.classList.add('has'); };
     reader.readAsDataURL(file);
   }));
+  const photoInputs = [...form.querySelectorAll('.photo-pick input[type=file]')];
+  const keptPhotos = {{ ((v.kept or []) | reject('equalto', 'gift_qr') | list | length > 0) | tojson }};
+  const needConsent = () => { $('photo_consent').required = keptPhotos || photoInputs.some(i => !i.disabled && i.files.length > 0); };
+  photoInputs.forEach(i => i.addEventListener('change', needConsent)); needConsent();
   form.addEventListener('submit', () => { const b = form.querySelector('button[type=submit]'); b.disabled = true; b.textContent = '✨ Creating…'; });
   applyEvent({{ current_event|tojson }}, { initial: true });
 })();

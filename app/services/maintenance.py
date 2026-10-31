@@ -42,7 +42,9 @@ def cleanup_expired(db: Session) -> dict:
         asset.deleted_at = now
         removed += 1
     db.commit()
-    return {"photos": len(photos), "files_removed": removed}
+    from app.services import stash
+
+    return {"photos": len(photos), "files_removed": removed, "stash_removed": stash.purge()}
 
 
 def start_daily_cleanup() -> None:
@@ -53,7 +55,7 @@ def start_daily_cleanup() -> None:
             try:
                 with SessionLocal() as db:
                     result = cleanup_expired(db)
-                if result["files_removed"]:
+                if result["files_removed"] or result["stash_removed"]:
                     log.info("retention cleanup: %s", result)
             except Exception:  # noqa: BLE001
                 log.exception("cleanup failed")

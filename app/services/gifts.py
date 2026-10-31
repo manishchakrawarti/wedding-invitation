@@ -81,8 +81,9 @@ def _clean_qr_image(data: bytes) -> bytes:
     return buf.getvalue()
 
 
-async def read_gift_form(form, errors: list[str]) -> dict:
-    """Validate the gift fields (gift_upi, gift_phone, gift_name, gift_qr file, gift_qr_remove)."""
+async def read_gift_form(form, errors: list[str], kept_qr: bytes | None = None) -> dict:
+    """Validate the gift fields (gift_upi, gift_phone, gift_name, gift_qr file, gift_qr_remove). kept_qr: a QR
+    already accepted on an earlier try of the same form, used if no new file was chosen."""
     from PIL import UnidentifiedImageError
 
     upi = clean_upi(str(form.get("gift_upi") or ""))
@@ -95,8 +96,8 @@ async def read_gift_form(form, errors: list[str]) -> dict:
         errors.append("Please enter a 10-digit mobile number for gifts (the one linked to your UPI), or leave it empty.")
     qr = None
     upload = form.get("gift_qr")
-    if getattr(upload, "filename", ""):
-        data = await upload.read()
+    data = await upload.read() if getattr(upload, "filename", "") else kept_qr
+    if data:
         if len(data) > MAX_QR_BYTES:
             errors.append("The payment QR image is larger than 5 MB.")
         else:

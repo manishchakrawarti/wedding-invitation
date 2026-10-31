@@ -17,7 +17,7 @@ from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STY
 from app.config import settings
 from app.db import get_db
 from app.models import Asset, Order, OrderStatus
-from app.services import export, gifts, hires, invites, notify, orders, payments, pipeline
+from app.services import export, gifts, hires, invites, notify, orders, payments, pipeline, stash
 from app.services.cards import has_guest_console
 from app.services.maintenance import sample_event_image, sample_image
 from app.services.storage import storage
@@ -254,6 +254,7 @@ def order_status(request: Request, order: Order = Depends(get_order)):
         return redirect(f"/o/{order.token}/preview")
     return templates.TemplateResponse(request, "order_status.html", {
         "o": order, "visible": PROOF_VISIBLE, "console": has_guest_console(order), "gift": gifts.info(order),
+        "photos": invites.portraits(order), "photo_slots": photo_slots(order),
         "entitled": hires.entitled(order), "tiers": hires.TIERS,
     })
 
@@ -442,8 +443,10 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
 
     values = {k: f(k) for k in form.keys() if not k.endswith("_photo") and k != "gift_qr"}
     errors: list[str] = []
-    portrait_uploads = await invites.read_portrait_uploads(form, errors)
-    gift = await gifts.read_gift_form(form, errors)
+    stash_token = f("photo_stash") if stash.valid(f("photo_stash")) else ""
+    kept = stash.kept(stash_token)
+    portrait_uploads = await invites.read_portrait_uploads(form, errors, kept)
+    gift = await gifts.read_gift_form(form, errors, None if form.get("gift_qr_remove") else kept.get("gift_qr"))
     etype = events.TYPES.get(f("event_type"))
     required = [("bride_name", "Bride's name"), ("groom_name", "Groom's name"), ("venue_name", "Venue")]
     if etype:
@@ -479,6 +482,10 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     if not errors and _too_many_previews(request.client.host if request.client else "unknown"):
         errors.append("You've created several previews this hour. Please try again a little later, or message us on WhatsApp.")
     if errors:
+        # Browsers empty file inputs on a re-shown form: keep the photos so nobody has to choose them again.
+        stash_token = stash_token or stash.new_token()
+        stash.put(stash_token, {**portrait_uploads, "gift_qr": gift["qr"] or b""})
+        values["photo_stash"], values["kept"] = stash_token, list(stash.kept(stash_token))
         if etype:
             return templates.TemplateResponse(request, "create.html", _event_context(etype, values, errors), status_code=422)
         return templates.TemplateResponse(request, "create.html", _create_context(values, errors), status_code=422)
@@ -506,6 +513,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     for role, data in portrait_uploads.items():
         invites.save_portrait(db, order, role, data, enhance=enhance)
     order.photo_consent = bool(portrait_uploads)
+    stash.drop(stash_token)
     orders.log_event(db, order, f"Instant invitation created: {order.occasion_name}, {STYLES[style].name}, {LANGUAGES[language].name}")
     db.commit()
     pipeline.enqueue(order.id)
@@ -514,6 +522,16 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
 
         pipeline.run_background(ai_upgrade_portraits, order.id)
     return redirect(f"/o/{order.token}/preview")
+
+
+@router.get("/create/kept/{stash_token}/{name}")
+def kept_upload(stash_token: str, name: str):
+    """Thumbnail of a photo kept from an earlier try of the create form (the token is unguessable)."""
+    data = stash.get(stash_token, name)
+    if data is None:
+        raise HTTPException(404)
+    mime = "image/png" if data[:4] == b"\x89PNG" else "image/webp" if data[8:12] == b"WEBP" else "image/jpeg"
+    return Response(data, media_type=mime, headers={"Cache-Control": "private, no-store"})
 
 
 @router.get("/o/{token}/preview", response_class=HTMLResponse)
@@ -525,7 +543,7 @@ def preview(request: Request, order: Order = Depends(get_order)):
     finals = {a.card_key: a for a in order.live_assets("final")}
     return templates.TemplateResponse(request, "preview.html", {
         "o": order, "working": working, "items": [(p, finals.get(p.card_key)) for p in proofs],
-        "gift": gifts.info(order), "unlockable": orders.preview_unlockable(order), "pkg": PACKAGES[order.package], "tiers": hires.TIERS,
+        "gift": gifts.info(order), "photos": invites.portraits(order), "photo_slots": photo_slots(order), "unlockable": orders.preview_unlockable(order), "pkg": PACKAGES[order.package], "tiers": hires.TIERS,
         "free": RESOLUTIONS["free"],
     })
 
@@ -572,13 +590,62 @@ async def save_gift(request: Request, order: Order = Depends(get_order), db: Ses
         raise HTTPException(404)
     errors: list[str] = []
     gift = await gifts.read_gift_form(await request.form(), errors)
-    back = f"/o/{order.token}/preview" if order.source == "instant" and order.status != OrderStatus.DELIVERED.value else f"/o/{order.token}"
+    back = _back(order)
     if errors:
         return redirect(f"{back}?gift_error={quote(' '.join(errors))}#gift")
     gifts.save(db, order, gift)
     orders.log_event(db, order, "Gift details updated")
     db.commit()
     return redirect(f"{back}?gift=saved#gift")
+
+
+def photo_slots(order: Order) -> list[tuple[str, str]]:
+    """(role, label) of the photos this occasion shows: e.g. bride / groom / family for a wedding."""
+    cfg = occasion_form_config().get(order.event_type or "wedding") or occasion_form_config()["wedding"]
+    slots = [("bride", cfg["photo1"])]
+    if cfg["wedding"] or cfg["secondary"]:
+        slots.append(("groom", cfg["photo2"]))
+    return slots + [("family", cfg["photo3"])]
+
+
+def _back(order: Order) -> str:
+    """Where the customer manages this order: the preview page until an instant order is delivered."""
+    if order.source == "instant" and order.status != OrderStatus.DELIVERED.value:
+        return f"/o/{order.token}/preview"
+    return f"/o/{order.token}"
+
+
+@router.post("/o/{token}/photos")
+async def add_photos(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    """Add or replace the photos on the invitation after creating it."""
+    if order.status == OrderStatus.CANCELLED.value:
+        raise HTTPException(404)
+    form = await request.form()
+    errors: list[str] = []
+    photos = await invites.read_portrait_uploads(form, errors)
+    if not photos and not errors:
+        errors.append("Please choose at least one photo.")
+    if errors:
+        return redirect(f"{_back(order)}?photo_error={quote(' '.join(errors))}#photos")
+    enhance = str(form.get("enhance_photos", "on")) != "off"
+    for role, data in photos.items():
+        invites.save_portrait(db, order, role, data, enhance=enhance)
+    order.photo_consent = True
+    orders.log_event(db, order, f"Photos added: {', '.join(photos)}")
+    db.commit()
+    if enhance:
+        from app.services.photo_enhance import ai_upgrade_portraits
+
+        pipeline.run_background(ai_upgrade_portraits, order.id)
+    return redirect(f"{_back(order)}?photos=saved#photos")
+
+
+@router.get("/o/{token}/portrait/{role}")
+def order_portrait(role: str, order: Order = Depends(get_order)):
+    photo = invites.portraits(order).get(role)
+    if photo is None:
+        raise HTTPException(404)
+    return Response(storage.read(photo.path), media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/o/{token}/gift-qr")

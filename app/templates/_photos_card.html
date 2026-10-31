@@ -1,0 +1,43 @@
+{# "Photos on your invitation" card on the customer's preview / order page.
+   Expects o (order), photos (role -> asset) and photo_slots [(role, label)]. #}
+<div class="card" id="photos">
+  <h2 style="margin-bottom:4px">📸 Photos on your invitation</h2>
+  {% if request.query_params.get('photos') == 'saved' %}<div class="alert alert-ok">Photos added ✨ Your invitation page and e-invite now show them.</div>
+  {% elif request.query_params.get('photo_error') %}<div class="alert alert-error">{{ request.query_params.get('photo_error') }}</div>{% endif %}
+  <p class="muted" style="margin-top:0">{% if photos %}Tap a photo to replace it.{% else %}Your invitation has no photos yet. Add them to show by the names on the first page{{ ', and a family photo with "Invited by"' if o.is_wedding else '' }}.{% endif %}</p>
+  <form method="post" action="/o/{{ o.token }}/photos" enctype="multipart/form-data">
+    <div class="photo-slots">
+      {% for role, label in photo_slots %}
+      <label class="photo-slot{{ ' wide' if role == 'family' }}">
+        <input type="file" name="{{ role }}_photo" accept="image/jpeg,image/png,image/webp" data-slot-preview="slot-{{ role }}">
+        <span class="ph{{ ' has' if photos.get(role) }}" id="slot-{{ role }}" {% if photos.get(role) %}style="background-image:url('/o/{{ o.token }}/portrait/{{ role }}')"{% endif %}><span>＋</span></span>
+        <strong>{{ label }}</strong><span class="hint">{{ '✓ Added' if photos.get(role) else 'Add photo' }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="enhance_photos" value="off">
+    <label class="check"><input type="checkbox" name="enhance_photos" value="on" checked> <span><strong>✨ Enhance my photos</strong>: face-centred framing, studio lighting &amp; colour, crisp detail. Your original is kept.</span></label>
+    <label class="check"><input type="checkbox" name="photo_consent" required> <span>I have permission from everyone in these photos to show them on this invitation (<a href="/terms#photos" target="_blank">photo terms</a>).</span></label>
+    <button class="btn btn-primary" type="submit">Save photos</button>
+  </form>
+</div>
+<style>
+  .photo-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 10px 0; }
+  .photo-slot { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; cursor: pointer; font-weight: 400; margin: 0;
+    background: #fff; border: 1.5px dashed var(--gold); border-radius: 14px; padding: 12px 8px; }
+  .photo-slot input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .photo-slot input:focus-visible + .ph { outline: 3px solid var(--gold); }
+  .photo-slot .ph { width: 84px; height: 84px; border-radius: 50%; background: #fbf3e4 center / cover no-repeat; border: 3px solid var(--gold);
+    display: grid; place-items: center; color: var(--gold); font-size: 1.8rem; }
+  .photo-slot.wide .ph { width: 128px; border-radius: 12px; }
+  .photo-slot .ph.has span { display: none; }
+</style>
+<script>
+document.querySelectorAll('input[data-slot-preview]').forEach(input => input.addEventListener('change', () => {
+  const box = document.getElementById(input.dataset.slotPreview), file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { box.style.backgroundImage = `url(${e.target.result})`; box.classList.add('has'); };
+  reader.readAsDataURL(file);
+}));
+</script>

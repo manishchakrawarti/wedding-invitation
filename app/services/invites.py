@@ -74,14 +74,17 @@ def save_portrait(db: Session, order: Order, role: str, data: bytes, enhance: bo
                  content_type="image/jpeg", meta={"enhanced": enhance, **info, **(meta or {})}))
 
 
-async def read_portrait_uploads(form, errors: list[str]) -> dict[str, bytes]:
-    """Validate the bride/groom/family photo fields of a submitted form."""
+async def read_portrait_uploads(form, errors: list[str], kept: dict[str, bytes] | None = None) -> dict[str, bytes]:
+    """Validate the bride/groom/family photo fields of a submitted form. kept: photos already
+    validated on an earlier try of the same form (see services/stash.py), used where no new file was chosen."""
     from PIL import UnidentifiedImageError
 
     photos = {}
     for role, label in PORTRAIT_ROLES.items():
         upload = form.get(f"{role}_photo")
         if not getattr(upload, "filename", ""):
+            if kept and kept.get(role):
+                photos[role] = kept[role]
             continue
         data = await upload.read()
         if len(data) > MAX_PHOTO_BYTES:

@@ -245,7 +245,7 @@
 <section class="x-section" style="padding-top:0">
   <div class="wrap center reveal">
     <img class="card-img" src="/e/{{ o.rsvp_slug }}/invite" alt="{{ o.occasion_name }} invitation card for {{ o.display_names }}">
-    <p style="margin-top:18px"><a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/invite" download="invitation.png">{{ t.save_card }}</a></p>
+    {% if o.status == 'delivered' %}<p style="margin-top:18px"><a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/invite" download="invitation.png">{{ t.save_card }}</a></p>{% endif %}
   </div>
 </section>
 {% endif %}
