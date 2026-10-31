@@ -162,6 +162,45 @@ class OfflineGenerator:
             x, y, r = rnd.randint(80, w - 80), rnd.randint(h - 260, h - 90), rnd.randint(14, 34)
             d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 210, 60, 110))
 
+    def _motif_balloons(self, d, s, rnd):
+        w, h = CANVAS
+        colours = [(255, 99, 132), (54, 162, 235), (255, 206, 86), (75, 192, 120), (153, 102, 255), (255, 159, 64)]
+        for cx, cy in [(150, 230), (260, 160), (110, 380), (w - 150, 230), (w - 260, 160), (w - 110, 380)]:
+            col = rnd.choice(colours)
+            d.line([(cx, cy + 70), (cx + rnd.randint(-30, 30), cy + 260)], fill=(120, 90, 90, 160), width=2)
+            d.ellipse([cx - 52, cy - 70, cx + 52, cy + 70], fill=(*col, 235))
+            d.ellipse([cx - 30, cy - 50, cx - 10, cy - 20], fill=(255, 255, 255, 120))
+            d.polygon([(cx - 8, cy + 70), (cx + 8, cy + 70), (cx, cy + 82)], fill=(*col, 235))
+        for x in range(80, w - 60, 70):  # bunting
+            col = colours[(x // 70) % len(colours)]
+            d.polygon([(x, 60), (x + 56, 60), (x + 28, 110)], fill=(*col, 230))
+        for _ in range(70):  # confetti
+            x, y = rnd.randint(70, w - 70), rnd.randint(h - 300, h - 80)
+            d.rectangle([x, y, x + 10, y + 5], fill=(*rnd.choice(colours), 220))
+
+    def _motif_stars(self, d, s, rnd):
+        w, h = CANVAS
+        for i, x in enumerate(range(60, w - 40, 46)):  # string lights
+            y = 70 + int(30 * math.sin(math.pi * ((x - 60) % 330) / 330))
+            d.ellipse([x - 9, y - 9, x + 9, y + 9], fill=(255, 220, 120, 230))
+            d.ellipse([x - 18, y - 18, x + 18, y + 18], fill=(255, 220, 120, 45))
+        for _ in range(55):  # sparkles
+            x, y, r = rnd.randint(70, w - 70), rnd.randint(140, h - 80), rnd.randint(3, 9)
+            d.polygon([(x, y - r * 2), (x + r // 2, y), (x, y + r * 2), (x - r // 2, y)], fill=(*s.accent, 200))
+            d.polygon([(x - r * 2, y), (x, y - r // 2), (x + r * 2, y), (x, y + r // 2)], fill=(*s.accent, 200))
+        for _ in range(40):  # gold confetti
+            x, y = rnd.randint(70, w - 70), rnd.randint(h - 260, h - 70)
+            d.ellipse([x, y, x + 8, y + 8], fill=(*s.accent, 210))
+
+    def _motif_lines(self, d, s, rnd):
+        w, h = CANVAS
+        for i in range(6):
+            off = i * 26
+            d.line([(0, 220 - off), (w * 0.55, -40 - off)], fill=(*s.accent, 70 + i * 20), width=3)
+            d.line([(w, h - 220 + off), (w * 0.45, h + 40 + off)], fill=(*s.accent, 70 + i * 20), width=3)
+        d.polygon([(w - 220, 60), (w - 60, 60), (w - 60, 220)], fill=(212, 175, 55, 200))
+        d.polygon([(60, h - 220), (60, h - 60), (220, h - 60)], fill=(212, 175, 55, 200))
+
     def _motif_paisley(self, d, s, rnd):
         w, h = CANVAS
         for cx, cy, flip in [(160, 200, 1), (w - 160, 200, -1), (160, h - 200, 1), (w - 160, h - 200, -1)]:

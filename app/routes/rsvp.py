@@ -14,6 +14,7 @@ from app.catalog import FUNCTIONS
 from app.config import settings
 from app.db import SessionLocal, get_db
 from app.models import Asset, Guest, Invitee, Order, OrderStatus, utcnow
+from app import events
 from app.services import demo, invites
 from app.services.cards import has_guest_console
 from app.services.storage import storage
@@ -57,7 +58,7 @@ def _upi_link(order: Order) -> str:
     upi = order.event.upi_id if order.event else ""
     if not upi:
         return ""
-    names = f"{order.bride_name} & {order.groom_name}"
+    names = order.display_names
     return f"upi://pay?pa={quote(upi)}&pn={quote(names)}&cu=INR&tn={quote('Shagun for ' + names)}"
 
 
@@ -74,6 +75,7 @@ def _experience(request: Request, order: Order, invitee: Invitee | None, thanks:
             "music": _music(order), "map_embed": invites.map_embed(main_place), "map_link": invites.map_link(main_place),
             "countdown_to": invites.main_moment(order), "upi_link": _upi_link(order), "food_choices": invites.FOOD_CHOICES,
             "blessings": blessings[-40:][::-1], "thanks": thanks, "preview": preview, "photos": invites.portraits(order),
+            "occ": None if order.is_wedding else events.texts(order),
             "action": f"/i/{invitee.code}/rsvp" if invitee else f"/e/{order.rsvp_slug}/rsvp",
         },
     )

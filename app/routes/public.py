@@ -11,13 +11,14 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import events
 from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STYLES
 from app.config import settings
 from app.db import get_db
 from app.models import Asset, EventDetails, Order, OrderStatus
 from app.services import export, hires, invites, notify, orders, payments, pipeline
 from app.services.cards import has_guest_console
-from app.services.maintenance import sample_image
+from app.services.maintenance import sample_event_image, sample_image
 from app.services.storage import storage
 from app.templating import templates
 from app.utils import new_token, normalize_phone, slugify
@@ -48,7 +49,8 @@ def redirect(url: str) -> RedirectResponse:
 
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"packages": PACKAGES, "addons": ADDONS, "styles": STYLES})
+    return templates.TemplateResponse(request, "index.html", {"packages": PACKAGES, "addons": ADDONS, "styles": STYLES,
+                                                               "occasion_categories": events.CATEGORIES})
 
 
 @router.get("/samples/{style_key}.jpg")
@@ -56,6 +58,20 @@ def sample(style_key: str):
     if style_key not in STYLES:
         raise HTTPException(404)
     return Response(sample_image(style_key), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.get("/samples/event/{type_key}.jpg")
+def event_sample(type_key: str, style: str = ""):
+    if type_key not in events.TYPES or (style and style not in STYLES):
+        raise HTTPException(404)
+    return Response(sample_event_image(type_key, style or None), media_type="image/jpeg",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.get("/occasions", response_class=HTMLResponse)
+def occasions(request: Request):
+    return templates.TemplateResponse(request, "occasions.html", {"categories": events.CATEGORIES, "types": events.TYPES,
+                                                                   "styles": STYLES})
 
 
 @router.get("/terms", response_class=HTMLResponse)
@@ -356,8 +372,17 @@ def _create_context(values: dict, errors: list[str] | None = None) -> dict:
     }
 
 
+def _event_context(etype, values: dict, errors: list[str] | None = None) -> dict:
+    return {**_create_context(values, errors), "et": etype, "cat": events.CATEGORIES[etype.category],
+            "event_styles": [STYLES[k] for k in etype.styles]}
+
+
 @router.get("/create", response_class=HTMLResponse)
-def create_form(request: Request, style: str = "north_indian", lang: str = "en"):
+def create_form(request: Request, style: str = "north_indian", lang: str = "en", event: str = ""):
+    if event in events.TYPES:
+        etype = events.TYPES[event]
+        values = {"style": style if style in etype.styles else etype.styles[0], "language": lang if lang in LANGUAGES else "en"}
+        return templates.TemplateResponse(request, "create_event.html", _event_context(etype, values))
     values = {"style": style if style in STYLES else "north_indian", "language": lang if lang in LANGUAGES else "en", "fn_wedding": "on"}
     return templates.TemplateResponse(request, "create.html", _create_context(values))
 
@@ -372,7 +397,13 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     values = {k: f(k) for k in form.keys() if not k.endswith("_photo")}
     errors: list[str] = []
     portrait_uploads = await invites.read_portrait_uploads(form, errors)
-    for key, label in [("bride_name", "Bride's name"), ("groom_name", "Groom's name"), ("venue_name", "Venue")]:
+    etype = events.TYPES.get(f("event_type"))
+    required = [("bride_name", "Bride's name"), ("groom_name", "Groom's name"), ("venue_name", "Venue")]
+    if etype:
+        required = [("bride_name", etype.primary_label), ("venue_name", "Venue")]
+        if etype.secondary_required:
+            required.append(("groom_name", etype.secondary_label))
+    for key, label in required:
         if not f(key):
             errors.append(f"{label} is required.")
     try:
@@ -383,12 +414,15 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
         wedding_date = None
         errors.append("Please choose the wedding date.")
     style, language = f("style"), f("language")
-    if style not in STYLES or language not in LANGUAGES:
+    if style not in STYLES or language not in LANGUAGES or (etype and style not in etype.styles):
         errors.append("Please choose a style and language.")
     if f("email") and "@" not in f("email"):
         errors.append("Please enter a valid email address or leave it empty.")
-    functions = _parse_functions(form, wedding_date, errors)
-    if not any(fn["key"] in ("wedding", "nikah") for fn in functions) and wedding_date:
+    functions = [] if etype else _parse_functions(form, wedding_date, errors)
+    if etype and wedding_date:
+        functions = [{"key": etype.key, "label": etype.headline, "label_hi": etype.headline_hi,
+                      "date": wedding_date.isoformat(), "time": f("wedding_time"), "venue": ""}]
+    if not etype and not any(fn["key"] in ("wedding", "nikah") for fn in functions) and wedding_date:
         functions.append({"key": "nikah" if style == "muslim_nikah" else "wedding", "date": wedding_date.isoformat(),
                           "time": f("wedding_time"), "venue": ""})
     else:
@@ -398,6 +432,8 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     if not errors and _too_many_previews(request.client.host if request.client else "unknown"):
         errors.append("You've created several previews this hour. Please try again a little later, or message us on WhatsApp.")
     if errors:
+        if etype:
+            return templates.TemplateResponse(request, "create_event.html", _event_context(etype, values, errors), status_code=422)
         return templates.TemplateResponse(request, "create.html", _create_context(values, errors), status_code=422)
 
     price = PACKAGES["instant"].price * 100
@@ -412,6 +448,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
         language=language, style=style, package="instant", addons=[], functions=sorted(functions, key=lambda x: x["date"]),
         referral_code=orders.new_referral_code(db, f("bride_name")), payment_option="full",
         subtotal=price, discount=0, total=price,
+        event_type=etype.key if etype else "wedding", occasion_detail=f("occasion_detail")[:120] if etype else "",
     )
     db.add(order)
     db.flush()
@@ -421,7 +458,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     for role, data in portrait_uploads.items():
         invites.save_portrait(db, order, role, data, enhance=enhance)
     order.photo_consent = bool(portrait_uploads)
-    orders.log_event(db, order, f"Instant invitation created: {STYLES[style].name}, {LANGUAGES[language].name}")
+    orders.log_event(db, order, f"Instant invitation created: {order.occasion_name}, {STYLES[style].name}, {LANGUAGES[language].name}")
     db.commit()
     pipeline.enqueue(order.id)
     if portrait_uploads and enhance:
@@ -529,11 +566,11 @@ async def email_invite(request: Request, order: Order = Depends(get_order), db: 
         pass
     page = f"\nYour invitation page to share with guests: {settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug else ""
     body = (
-        f"Namaste! 🙏\n\nHere is your wedding invitation for {order.bride_name} & {order.groom_name}: "
+        f"Namaste! 🙏\n\nHere is your {order.occasion_name.lower()} invitation for {order.display_names}: "
         f"the complete e-invite (PDF) and {sum(1 for a in attachments if a[2] == 'image/png')} card(s) are attached.\n\n"
         f"Download anytime: {notify.order_url(order)}{page}\n\n"
         f"Wishing you a beautiful wedding,\n{settings.brand_name}"
     )
-    note = notify.send(db, "email", email, body, subject=f"Your wedding invitation: {order.bride_name} & {order.groom_name}",
+    note = notify.send(db, "email", email, body, subject=f"Your {order.occasion_name.lower()} invitation: {order.display_names}",
                        order=order, attachments=attachments)
     return redirect(f"/o/{order.token}?emailed={note.status}#email")

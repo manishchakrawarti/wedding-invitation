@@ -3,7 +3,7 @@
 {% block content %}
 <p><a href="/admin">← All orders</a></p>
 <h1 style="margin-bottom:4px">{{ o.public_id }} <span class="pill {{ o.status }}" style="vertical-align:middle">{{ o.status_label }}</span></h1>
-<p class="muted">{{ o.bride_name }} &amp; {{ o.groom_name }} · {{ catalog.PACKAGES[o.package].name }}{% for a in o.addons %} + {{ catalog.ADDONS[a].name }}{% endfor %} ·
+<p class="muted">{{ o.display_names }} · {{ catalog.PACKAGES[o.package].name }}{% for a in o.addons %} + {{ catalog.ADDONS[a].name }}{% endfor %} ·
   customer page: <a href="/o/{{ o.token }}" target="_blank">open ↗</a>{% if o.rsvp_slug %} · event page: <a href="/e/{{ o.rsvp_slug }}" target="_blank">/e/{{ o.rsvp_slug }}</a>{% endif %}</p>
 
 <div class="card actions">

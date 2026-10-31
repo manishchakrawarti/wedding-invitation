@@ -17,7 +17,7 @@ from pathlib import Path
 
 import qrcode
 
-from app import i18n
+from app import events, i18n
 from app.catalog import LANGUAGES, STYLES
 from app.config import settings
 from app.models import Order
@@ -110,7 +110,7 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
         local=order.language != "en", fonts=fonts, card_pages=card_pages, schedule=schedule, ev=order.event,
         qr=_qr_uri(rsvp_url) if rsvp_url else "", rsvp_url=rsvp_url, invocation=i18n.INVOCATIONS.get(order.language, ""),
         W=PAGE_W, H=PAGE_H, settings=settings, credit=f"Made with love · {settings.brand_name}" if free else "",
-        pages_range=pages_range, photos=photos,
+        pages_range=pages_range, photos=photos, occ=None if order.is_wedding else events.texts(order),
     )
     return html, pages
 

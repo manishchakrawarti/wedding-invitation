@@ -779,3 +779,71 @@ def test_demo_cast_generator_with_stub_ai(tmp_path, monkeypatch):
     assert {p.stem for p in (tmp_path / "cast").iterdir()} == set(cast.CAST)
     assert calls[0][1] == 1 and calls[-1][1] == len(cast.CAST)  # bride styled on the old photo; family uses everyone
     assert (tmp_path / "previous" / "bride.jpg").exists()  # old photos kept
+
+
+def create_event(client, event, **overrides):
+    from app import events
+
+    t = events.TYPES[event]
+    data = {"event_type": event, "bride_name": t.demo[0], "groom_name": t.demo[1], "occasion_detail": t.demo[2],
+            "language": "en", "style": t.styles[0], "wedding_date": WEDDING, "wedding_time": "18:00",
+            "venue_name": "Grand Banquet", "city": "Pune", **overrides}
+    return client.post("/create", data=data, follow_redirects=False)
+
+
+def test_occasions_catalogue_pages(client):
+    from app import events
+
+    page = client.get("/occasions").text
+    for c in events.CATEGORIES.values():
+        assert c.name.replace("&", "&amp;") in page
+    for key in events.TYPES:
+        assert f"/create?event={key}" in page
+    assert client.get("/samples/event/kids_birthday.jpg").headers["content-type"] == "image/jpeg"
+    assert client.get("/samples/event/nope.jpg").status_code == 404
+    form = client.get("/create?event=wedding_anniversary").text
+    assert "Partner&#39;s name" in form and 'name="event_type" value="wedding_anniversary"' in form
+    assert "Balloon Party" not in client.get("/create").text  # wedding style picker stays wedding-only
+    assert "every occasion" in client.get("/").text
+
+
+def test_kids_birthday_end_to_end(client):
+    resp = create_event(client, "kids_birthday")
+    assert resp.status_code == 303, resp.text[:800]
+    order = get(resp.headers["location"].split("/")[2])
+    assert order.event_type == "kids_birthday" and order.occasion_detail == "5" and order.groom_name == ""
+    assert order.status == OrderStatus.PREVIEW.value and order.rsvp_slug.startswith("aarav-kids-birthday")
+    final = next(a for a in order.assets if a.kind == "final")
+    assert final.qc["passed"], final.qc
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert "Birthday Party" in page and "turns 5!" in page and "Event Details" in page
+    assert "wedding of" not in page and "Wedding Invitation" not in page
+    preview = client.get(f"/o/{order.token}/preview").text
+    assert "Your invitation is ready" in preview and "Aarav &amp;" not in preview
+
+
+def test_event_rules_jubilee_hindi_and_required_partner(client):
+    resp = create_event(client, "wedding_anniversary", groom_name="")
+    assert resp.status_code == 422 and "Partner&#39;s name is required" in resp.text
+    order = get(create_event(client, "milestone_anniversary", occasion_detail="25").headers["location"].split("/")[2])
+    assert "Silver Jubilee" in client.get(f"/e/{order.rsvp_slug}").text
+    order = get(create_event(client, "satyanarayan_puja", language="hi").headers["location"].split("/")[2])
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert "श्री सत्यनारायण पूजा" in page and "श्री गणेशाय नमः" in page and "प्रभु की असीम कृपा से" in page
+
+
+def test_every_event_type_creates_a_working_invitation(client):
+    from app import events
+    from app.services import export
+
+    for key, t in events.TYPES.items():
+        resp = create_event(client, key)
+        assert resp.status_code == 303, (key, resp.text[:600])
+        order = get(resp.headers["location"].split("/")[2])
+        final = next(a for a in order.assets if a.kind == "final")
+        assert final.qc["passed"], (key, final.qc)
+        page = client.get(f"/e/{order.rsvp_slug}")
+        assert page.status_code == 200 and t.demo[0].replace("'", "&#39;") in page.text, key
+        with SessionLocal() as db:
+            html, _ = export.build_html(db.get(Order, order.id), "free")
+        assert "event-headline" in html, key

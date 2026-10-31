@@ -5,7 +5,7 @@
 <section style="padding-top:36px">
 <div class="narrow">
   <p class="muted" style="margin:0">Order {{ o.public_id }}</p>
-  <h1><span class="script" style="font-size:1.2em">{{ o.bride_name }} &amp; {{ o.groom_name }}</span></h1>
+  <h1><span class="script" style="font-size:1.2em">{{ o.display_names }}</span></h1>
 
   {% if request.query_params.get('coupon') %}<div class="alert alert-ok">Coupon applied. Your invitation is unlocked! 🎉</div>{% endif %}
   {% if request.query_params.get('paid') %}<div class="alert alert-ok">Payment received, thank you! 🙏</div>{% endif %}
@@ -151,7 +151,7 @@
     <h2>💌 Your invite page</h2>
     <p>Share this link in WhatsApp groups. Guests see the palace doors, every function with maps, and can RSVP.</p>
     <p><a class="btn btn-primary" href="/e/{{ o.rsvp_slug }}" target="_blank">Open invite page ↗</a>
-       <a class="btn btn-wa" href="https://wa.me/?text={{ ('You are invited to the wedding of ' ~ o.bride_name ~ ' & ' ~ o.groom_name ~ ' 💌 ' ~ settings.base_url ~ '/e/' ~ o.rsvp_slug)|urlencode }}">Share on WhatsApp</a></p>
+       <a class="btn btn-wa" href="https://wa.me/?text={{ (('You are invited to the wedding of ' if o.is_wedding else 'You are invited: ' ~ o.occasion_name ~ ', ') ~ o.display_names ~ ' 💌 ' ~ settings.base_url ~ '/e/' ~ o.rsvp_slug)|urlencode }}">Share on WhatsApp</a></p>
     <p class="small muted">{{ settings.base_url }}/e/{{ o.rsvp_slug }} · Want a personal link for each guest and live RSVP tracking? <a href="{{ wa_link('Hi, I want to upgrade order ' ~ o.public_id ~ ' to Smart Guest Invites') }}">Upgrade on WhatsApp</a></p>
   </div>
   {% endif %}

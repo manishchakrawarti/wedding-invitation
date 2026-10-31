@@ -75,7 +75,7 @@ def send(db: Session, channel: str, recipient: str, body: str, subject: str = ""
 
 def _messages(order: Order, kind: str) -> tuple[str, str]:
     b = settings.brand_name
-    names = f"{order.bride_name} & {order.groom_name}"
+    names = order.display_names
     if kind == "order_received":
         return (
             f"Order {order.public_id} received",

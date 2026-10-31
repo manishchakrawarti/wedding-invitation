@@ -87,6 +87,13 @@ section { padding: 64px 0; }
 .sample strong { font-family: var(--serif); font-size: 1.2rem; color: var(--maroon-dark); display: block; }
 .sample span { font-size: .88rem; color: var(--muted); }
 
+/* occasions */
+.occ-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; text-align: left; }
+.occ-card { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; text-decoration: none; color: inherit; transition: transform .15s, box-shadow .15s; }
+.occ-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.occ-card strong { font-family: var(--serif); font-size: 1.25rem; color: var(--maroon-dark); }
+.occ-icon { font-size: 1.8rem; }
+
 /* steps */
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 22px; counter-reset: step; }
 .step { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; position: relative; }

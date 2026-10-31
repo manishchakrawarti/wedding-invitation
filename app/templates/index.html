@@ -53,6 +53,19 @@
   </div>
 </section>
 
+<section id="occasions" style="background:var(--paper)">
+  <div class="wrap center">
+    <h2>Not just weddings: <span class="script">every occasion</span></h2>
+    <p class="muted" style="max-width:44em;margin:0 auto 24px">Birthdays, anniversaries, pujas, baby ceremonies, festivals and business events, with the same live invite page, RSVP and WhatsApp-ready designs.</p>
+    <div class="occ-grid">
+      {% for c in occasion_categories.values() %}
+      <a class="occ-card" href="/occasions#{{ c.key }}"><span class="occ-icon">{{ c.icon }}</span><strong>{{ c.name }}</strong><span class="small muted">{{ c.blurb }}</span></a>
+      {% endfor %}
+    </div>
+    <p style="margin-top:22px"><a class="btn btn-primary" href="/occasions">Browse all occasions</a></p>
+  </div>
+</section>
+
 <section id="languages">
   <div class="wrap center">
     <h2>In your language, from your tradition</h2>
@@ -94,7 +107,7 @@
     <h2 class="center">Choose your style</h2>
     <p class="center muted">Each design is created for your couple. Your names, dates and venue are typeset in real fonts, so spellings are always perfect.</p>
     <div class="gallery">
-      {% for s in styles.values() %}
+      {% for s in styles.values() if 'wedding' in s.occasions %}
       <a class="sample" href="/order?style={{ s.key }}">
         <img src="/samples/{{ s.key }}.jpg" alt="{{ s.name }} invitation sample" loading="lazy">
         <div><strong>{{ s.name }}</strong><span>{{ s.description }}</span></div>

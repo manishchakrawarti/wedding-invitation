@@ -53,7 +53,7 @@
   <div>
     <div class="mandala-spin" aria-hidden="true"></div>
     <h1>Creating your invitation…</h1>
-    <p class="steps-text">Painting the {{ catalog.STYLES[o.style].name }} design · setting {{ o.bride_name }} &amp; {{ o.groom_name }} in beautiful type · preparing your invite page</p>
+    <p class="steps-text">Painting the {{ catalog.STYLES[o.style].name }} design · setting {{ o.display_names }} in beautiful type · preparing your invite page</p>
     <p class="small muted">This usually takes a few seconds. The page refreshes by itself.</p>
   </div>
 </section>
@@ -66,7 +66,7 @@
 {% else %}
 <section class="reveal-head">
   <div class="wrap">
-    <h1>Your invitation is ready <span class="script">{{ o.bride_name }} &amp; {{ o.groom_name }}</span></h1>
+    <h1>Your invitation is ready <span class="script">{{ o.display_names }}</span></h1>
     <p class="muted">Tap the seal on the phone to open your live invitation, then download it below.</p>
   </div>
 </section>

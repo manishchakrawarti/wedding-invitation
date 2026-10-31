@@ -103,7 +103,7 @@ def run_order(order_id: int, notes: str = "") -> None:
             style = STYLES[card.style_key]
             use_photo = card.with_photo and bool(photos)
             layout = LAYOUT_PHOTO if use_photo else LAYOUT_PLAIN
-            prompt = build_prompt(card.style_key, card.key, use_photo, notes)
+            prompt = build_prompt(card.style_key, card.key, use_photo, notes, "" if order.is_wedding else order.occasion_name)
             seed = zlib.crc32(f"{order.id}:{version}:{card.key}".encode())
             result = _generate_with_retry(db, order, generator, prompt, style, layout, photos if use_photo else [], seed)
 

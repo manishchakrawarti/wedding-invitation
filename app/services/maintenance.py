@@ -92,3 +92,29 @@ def sample_image(style_key: str) -> bytes:
     SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
     cached.write_bytes(data)
     return data
+
+
+def sample_event_image(type_key: str, style_key: str | None = None) -> bytes:
+    """Gallery card for an event type (demo names), generated once and cached."""
+    from app.events import TYPES
+    from app.services.cards import event_card
+
+    t = TYPES[type_key]
+    style_key = style_key or t.styles[0]
+    cached = SAMPLE_DIR / f"event_{type_key}_{style_key}.jpg"
+    if cached.exists():
+        return cached.read_bytes()
+    primary, secondary, detail = t.demo
+    demo = SimpleNamespace(
+        language="en", style=style_key, event_type=type_key, is_wedding=False, bride_name=primary, groom_name=secondary,
+        bride_name_local="", groom_name_local="", occasion_detail=detail, event=None,
+        wedding_date=date(2026, 12, 12), venue_name="The Grand Banquet", venue_address="", city="Jaipur",
+        functions=[{"key": type_key, "time": "19:00"}],
+    )
+    style = STYLES[style_key]
+    bg = offline_generator().generate("", style, LAYOUT_PLAIN, [], seed=11).image
+    img, _ = compose_card(bg, event_card(demo).items, style, LAYOUT_PLAIN)
+    data = to_bytes(img.resize((720, 900)), "JPEG", 85)
+    SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
+    cached.write_bytes(data)
+    return data

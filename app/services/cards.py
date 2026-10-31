@@ -93,7 +93,38 @@ def function_card(order, fn: dict) -> CardSpec:
     return CardSpec(key, FUNCTIONS[key], card_style_for(order.style, key), items, with_photo=False)
 
 
+def event_card(order) -> CardSpec:
+    from app import events
+
+    e = events.texts(order)
+    t = e["type"]
+    name_size = 112 if t.name_role == "names" else 64
+    items: list = [
+        Line(e["kicker"], "invite", 34, "secondary"),
+        Line(e["headline"], "headline", 52, "accent", max_lines=2, gap_before=8),
+        Divider(gap_before=12),
+        Line(e["primary"], t.name_role, name_size, "primary", max_lines=2 if t.name_role == "brand" else 1, gap_before=22),
+    ]
+    if e["secondary"]:
+        items.append(Line("&", "connector", 60, "accent", gap_before=4))
+        items.append(Line(e["secondary"], t.name_role, name_size, "primary", gap_before=4))
+    if e["detail"]:
+        items.append(Line(e["detail"], "detail", 36, "secondary", max_lines=2, gap_before=14))
+    items.append(Divider(gap_before=24))
+    items.append(Line(pretty_date(order.wedding_date), "date", 38, "accent", gap_before=14))
+    main = next(iter(order.functions or []), {})
+    if main.get("time"):
+        items.append(Line(f"at {pretty_time(main['time'])}", "detail", 32, gap_before=4))
+    items.append(Line(order.venue_name, "detail", 36, "primary", max_lines=2, gap_before=16))
+    address = ", ".join(p for p in (order.venue_address, order.city) if p)
+    if address:
+        items.append(Line(address, "small", 28, max_lines=2, gap_before=4))
+    return CardSpec("main", t.name, order.style, items, with_photo=False)
+
+
 def cards_for_order(order) -> list[CardSpec]:
+    if not getattr(order, "is_wedding", True):
+        return [event_card(order)]
     cards = [main_card(order)]
     if has_function_cards(order):
         for fn in order.functions or []:

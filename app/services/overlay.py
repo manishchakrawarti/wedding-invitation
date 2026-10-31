@@ -49,6 +49,7 @@ ROLE_FAMILY = {
     "headline": "heading",
     "title": "display",
     "names": "display",
+    "brand": "heading",
     "connector": "display",
     "invite": "body",
     "family": "body",
@@ -56,7 +57,7 @@ ROLE_FAMILY = {
     "detail": "body",
     "small": "body",
 }
-ROLE_WEIGHT = {"headline": "Bold", "date": "Bold", "names": "Bold", "title": "Bold", "detail": "SemiBold", "invite": "Medium"}
+ROLE_WEIGHT = {"brand": "Bold", "headline": "Bold", "date": "Bold", "names": "Bold", "title": "Bold", "detail": "SemiBold", "invite": "Medium"}
 _SYSTEM_FALLBACKS = (
     ["C:/Windows/Fonts/Nirmala.ttc", "C:/Windows/Fonts/georgia.ttf"]
     if platform.system() == "Windows"

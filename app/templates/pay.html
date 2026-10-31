@@ -7,7 +7,7 @@
   <div class="card">
     <dl class="kv">
       <dt>Order</dt><dd>{{ o.public_id }}</dd>
-      <dt>Couple</dt><dd>{{ o.bride_name }} &amp; {{ o.groom_name }}</dd>
+      <dt>{{ 'Couple' if o.is_wedding else 'For' }}</dt><dd>{{ o.display_names }}</dd>
       <dt>Package</dt><dd>{{ catalog.PACKAGES[o.package].name }}{% for a in o.addons %} + {{ catalog.ADDONS[a].name }}{% endfor %}</dd>
       <dt>Order total</dt><dd>{{ inr(o.total) }}{% if o.source == 'test' %} <span class="muted small">(🧪 test order)</span>{% elif o.discount %} <span class="muted small">(after {{ inr(o.discount) }} referral discount)</span>{% endif %}</dd>
       {% if o.amount_paid %}<dt>Already paid</dt><dd>{{ inr(o.amount_paid) }}</dd>{% endif %}

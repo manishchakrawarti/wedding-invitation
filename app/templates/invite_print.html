@@ -2,10 +2,10 @@
 <html lang="{{ o.language }}">
 <head>
 <meta charset="utf-8">
-<title>{{ o.bride_name }} &amp; {{ o.groom_name }} · Wedding Invitation</title>
+<title>{{ o.display_names }} · {{ o.occasion_name }} Invitation</title>
 {% set bride = o.bride_name_local if local and o.bride_name_local else o.bride_name %}
 {% set groom = o.groom_name_local if local and o.groom_name_local else o.groom_name %}
-{% set hosts = ev.hosts if ev and ev.hosts else t.our_families %}
+{% set hosts = occ.hosts if occ else (ev.hosts if ev and ev.hosts else t.our_families) %}
 <style>
   @font-face { font-family: "GreatVibes"; src: url("{{ fonts.GreatVibes }}"); }
   @font-face { font-family: "Cinzel"; src: url("{{ fonts.Cinzel }}"); font-weight: 400 900; }
@@ -91,6 +91,9 @@
   .family img { max-width: 620px; max-height: 400px; width: auto; height: auto; border-radius: 22px; border: 6px solid var(--acc); box-shadow: 0 16px 40px rgba(0,0,0,.3); display: block; }
   .family-cap { margin-top: 14px; font-size: 30px; }
   .para.tight { font-size: 30px; }
+  .event-headline { font: 700 64px var(--heading); color: var(--acc); margin: 14px 0 0; letter-spacing: 2px; }
+  .event-detail { font-size: 38px; font-style: italic; margin-top: -6px; }
+  .names.brand { font-family: var(--heading); font-weight: 700; font-size: 92px; letter-spacing: 3px; }
   .credit { position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.85); color: #5a2828;
     font: 600 22px var(--serif); padding: 6px 22px; border-radius: 30px; white-space: nowrap; }
   {% if pages_range %}{% set sel = ':nth-of-type(n+' ~ pages_range[0] ~ '):nth-of-type(-n+' ~ pages_range[1] ~ ')' %}
@@ -104,9 +107,17 @@
   <div class="frame"></div><div class="arch"></div>
   <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
   <div class="toran"></div>
+  {% if occ %}
+  {% if occ.type.invocation == 'bismillah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
+  {% elif occ.type.invocation == 'ganesh' and invocation %}<div class="invocation">{{ invocation }}</div>{% endif %}
+  <div class="pre">{{ occ.kicker }}</div>
+  <div class="event-headline">{{ occ.headline }}</div>
+  {% set bride, groom = occ.primary, occ.secondary %}
+  {% else %}
   {% if o.style == 'muslim_nikah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
   {% elif o.style != 'christian' and invocation %}<div class="invocation">{{ invocation }}</div>{% endif %}
   <div class="pre">{{ 'Nikah' if o.style == 'muslim_nikah' and not local else t.pre }}</div>
+  {% endif %}
   {% if photos.bride or photos.groom %}
   <div class="couple">
     <div class="person">
@@ -119,9 +130,12 @@
       <div class="names couple-name">{{ groom }}</div>
     </div>
   </div>
+  {% elif occ %}
+  <div class="names {{ 'brand' if occ.type.name_role == 'brand' else '' }}">{{ bride }}{% if groom %}<span class="amp">&amp;</span>{{ groom }}{% endif %}</div>
   {% else %}
   <div class="names">{{ bride }}<span class="amp">{{ lang.connector }}</span>{{ groom }}</div>
   {% endif %}
+  {% if occ and occ.detail %}<div class="event-detail">{{ occ.detail }}</div>{% endif %}
   <div class="divider"></div>
   <div class="date">{{ pretty_date(o.wedding_date) }}</div>
   <div class="place">{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
@@ -138,7 +152,7 @@
 {# 3 — Celebrations #}
 {% if schedule %}
 <section class="page sched {% if schedule|length > 4 %}compact{% elif schedule|length <= 2 %}few{% endif %}">
-  <h2>{{ t.celebrations }}</h2>
+  <h2>{{ occ.schedule_title if occ else t.celebrations }}</h2>
   <div class="sub">{{ bride }} {{ lang.connector }} {{ groom }}</div>
   {% for s in schedule %}
   <div class="item">
@@ -162,7 +176,7 @@
   {% if photos.family %}
   <div class="family"><img src="{{ photos.family }}" alt=""><div class="family-cap">{{ t.invited_by }}: <b>{{ hosts }}</b></div></div>
   {% endif %}
-  <div class="para{{ ' tight' if photos.family else '' }}">{{ t.invite_para.format(hosts=hosts, bride=bride, groom=groom) }}</div>
+  <div class="para{{ ' tight' if photos.family else '' }}">{{ occ.para if occ else t.invite_para.format(hosts=hosts, bride=bride, groom=groom) }}</div>
   <div class="divider"></div>
   <div style="font-family:var(--heading);font-size:30px;color:var(--acc)">{{ t.venue }}</div>
   <div class="venue-name">{{ o.venue_name }}</div>

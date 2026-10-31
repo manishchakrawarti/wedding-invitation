@@ -98,6 +98,12 @@ async def read_portrait_uploads(form, errors: list[str]) -> dict[str, bytes]:
     return photos
 
 
+def _event_icon(key: str) -> str:
+    from app.events import TYPES
+
+    return TYPES[key].icon if key in TYPES else "✨"
+
+
 def place_for(order: Order, fn: dict) -> str:
     if fn.get("venue"):
         return f"{fn['venue']}, {order.city}" if order.city else fn["venue"]
@@ -124,9 +130,10 @@ def schedule(order: Order, only: list[str] | None = None) -> list[dict]:
         items.append({
             **fn,
             "date": when,
-            "label": FUNCTIONS.get(fn["key"], fn["key"]),
-            "label_local": i18n.function_name(order.language, fn["key"], "") if order.language != "en" else "",
-            "icon": FUNCTION_ICONS.get(fn["key"], "✨"),
+            "label": fn.get("label") or FUNCTIONS.get(fn["key"], fn["key"]),
+            "label_local": (fn.get("label_hi", "") if order.language == "hi" else "") if fn.get("label")
+            else (i18n.function_name(order.language, fn["key"], "") if order.language != "en" else ""),
+            "icon": FUNCTION_ICONS.get(fn["key"]) or _event_icon(fn["key"]),
             "place": place,
             "map": map_link(place),
             "dress": dress.get(fn["key"], ""),
@@ -238,7 +245,7 @@ def ics(order: Order, fn: dict) -> str:
     start = datetime.fromisoformat(f"{fn['date']}T{fn.get('time') or '18:00'}")
     end = start + timedelta(hours=4)
     stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    title = f"{fn['label']}: {order.bride_name} & {order.groom_name}"
+    title = f"{fn['label']}: {order.display_names}"
 
     def esc(s: str) -> str:
         return s.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")

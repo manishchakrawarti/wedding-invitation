@@ -16,9 +16,12 @@ COUPLE_RULES = (
 )
 
 
-def build_prompt(style_key: str, card_key: str, with_photo: bool, revision_notes: str = "") -> str:
+def build_prompt(style_key: str, card_key: str, with_photo: bool, revision_notes: str = "", occasion_name: str = "") -> str:
     style = STYLES[style_key]
-    occasion = "wedding invitation" if card_key == "main" else f"{FUNCTIONS.get(card_key, card_key)} ceremony invitation"
+    if occasion_name:
+        occasion = f"{occasion_name} invitation"
+    else:
+        occasion = "wedding invitation" if card_key == "main" else f"{FUNCTIONS.get(card_key, card_key)} ceremony invitation"
     parts = [f"Create {style.prompt}. This is a {occasion} background.", BASE_RULES]
     if with_photo:
         parts.append(COUPLE_RULES)

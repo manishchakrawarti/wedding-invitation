@@ -6,11 +6,11 @@
 {% set groom = (o.groom_name_local if local and o.groom_name_local else o.groom_name) %}
 {% set lf = i18n.WEB_FONTS.get(o.language) %}
 {% set preview_mode = o.source == 'instant' and o.status != 'delivered' %}
-{% block title %}{{ o.bride_name }} &amp; {{ o.groom_name }}{% if inv %} · Invitation for {{ inv.name }}{% endif %}{% endblock %}
+{% block title %}{{ o.display_names }}{% if not o.is_wedding %} · {{ o.occasion_name }}{% endif %}{% if inv %} · Invitation for {{ inv.name }}{% endif %}{% endblock %}
 {% block lang %}{{ o.language }}{% endblock %}
 {% block head %}
 {% if lf %}<link href="https://fonts.googleapis.com/css2?family={{ lf|replace(' ', '+') }}:wght@400;600;700&display=swap" rel="stylesheet">{% endif %}
-<meta property="og:title" content="{{ o.bride_name }} & {{ o.groom_name }} — Wedding Invitation{% if inv %} for {{ inv.name }}{% endif %}">
+<meta property="og:title" content="{{ o.display_names }} — {{ o.occasion_name }} Invitation{% if inv %} for {{ inv.name }}{% endif %}">
 <meta property="og:description" content="{{ pretty_date(o.wedding_date) }} · {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}. {{ t.tap }} 💌">
 {% if hero %}<meta property="og:image" content="{{ settings.base_url }}/e/{{ o.rsvp_slug }}/invite">{% endif %}
 <meta name="theme-color" content="rgb{{ st.bg_bottom }}">
@@ -77,6 +77,10 @@
   .family { margin: 6px auto 18px; max-width: 520px; }
   .family img { width: 100%; height: auto; max-height: 460px; object-fit: contain; border-radius: 16px; border: 4px solid var(--gold-soft); box-shadow: var(--shadow); }
   .family figcaption { margin-top: 10px; color: var(--muted); }
+  .event-headline { font: 700 clamp(1.7rem, 6vw, 3rem) var(--heading, "Cinzel"), var(--serif); color: var(--acc); margin: 10px 0 4px; letter-spacing: 1px; }
+  .event-detail { font-size: clamp(1.15rem, 4vw, 1.5rem); color: var(--t2); margin: -4px 0 14px; font-style: italic; }
+  body .brand-name { font-family: var(--serif); font-weight: 700; letter-spacing: 2px; font-size: clamp(2.2rem, 8vw, 4.2rem); }
+  .seal:not(:has(small)) { font-size: 3rem; }
   .x-names .amp { display: block; font-size: .45em; color: var(--acc); margin: 6px 0; }
   .x-date { font-family: var(--serif); font-size: clamp(1.3rem, 4vw, 1.8rem); letter-spacing: 2px; }
   .countdown { display: flex; gap: 12px; justify-content: center; margin: 30px 0 10px; flex-wrap: wrap; }
@@ -143,7 +147,8 @@
 <div class="door-ui" id="door-ui">
   <div class="for">{% if inv %}{{ t.special_for }}{% else %}{{ t.invited }}{% endif %}</div>
   {% if inv %}<div class="guest">{{ inv.name }}</div>{% endif %}
-  <button class="seal" id="open-btn" type="button" aria-label="Open invitation">{{ o.bride_name[:1] }}<small>&amp;</small>{{ o.groom_name[:1] }}</button>
+  {% if occ %}<button class="seal" id="open-btn" type="button" aria-label="Open invitation">{{ occ.type.icon }}</button>
+  {% else %}<button class="seal" id="open-btn" type="button" aria-label="Open invitation">{{ o.bride_name[:1] }}<small>&amp;</small>{{ o.groom_name[:1] }}</button>{% endif %}
   <div class="tap">{{ t.tap }}</div>
 </div>
 <canvas id="petals"></canvas>
@@ -151,6 +156,30 @@
 <button class="music-btn" id="music-btn" type="button" aria-label="Play or pause music" hidden>♫</button>{% endif %}
 
 <section class="x-hero">
+  {% if occ %}
+  {% if occ.type.invocation == 'bismillah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
+  {% elif occ.type.invocation == 'ganesh' %}<div class="invocation">{{ i18n.INVOCATIONS.get(o.language, i18n.INVOCATIONS['en']) }}</div>{% endif %}
+  <div class="pre">{{ occ.kicker }}</div>
+  <div class="event-headline">{{ occ.headline }}</div>
+  {% if photos.bride or photos.groom %}
+  <div class="couple">
+    <div class="person">
+      {% if photos.bride %}<img class="portrait" src="/e/{{ o.rsvp_slug }}/portrait/bride" alt="{{ occ.primary }}">{% else %}<span class="portrait mono">{{ occ.primary[:1] }}</span>{% endif %}
+      <h1 class="x-names couple-name {{ 'brand-name' if occ.type.name_role == 'brand' else '' }}">{{ occ.primary }}</h1>
+    </div>
+    {% if occ.secondary %}
+    <span class="couple-amp">&amp;</span>
+    <div class="person">
+      {% if photos.groom %}<img class="portrait" src="/e/{{ o.rsvp_slug }}/portrait/groom" alt="{{ occ.secondary }}">{% else %}<span class="portrait mono">{{ occ.secondary[:1] }}</span>{% endif %}
+      <div class="x-names couple-name">{{ occ.secondary }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <h1 class="x-names {{ 'brand-name' if occ.type.name_role == 'brand' else '' }}">{{ occ.primary }}{% if occ.secondary %}<span class="amp">&amp;</span>{{ occ.secondary }}{% endif %}</h1>
+  {% endif %}
+  {% if occ.detail %}<div class="event-detail">{{ occ.detail }}</div>{% endif %}
+  {% else %}
   {% if o.style == 'muslim_nikah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
   {% elif o.style != 'christian' %}<div class="invocation">{{ i18n.INVOCATIONS.get(o.language, i18n.INVOCATIONS['en']) }}</div>{% endif %}
   <div class="pre">{{ 'Nikah' if o.style == 'muslim_nikah' and not local else t.pre }}</div>
@@ -168,6 +197,7 @@
   </div>
   {% else %}
   <h1 class="x-names">{{ bride }}<span class="amp">{{ catalog.LANGUAGES[o.language].connector }}</span>{{ groom }}</h1>
+  {% endif %}
   {% endif %}
   <div class="x-date">{{ pretty_date(o.wedding_date) }}</div>
   <div>{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
@@ -187,10 +217,11 @@
       {% if ev and ev.blessing_line %}<p class="muted" style="font-style:italic">{{ ev.blessing_line }}</p>{% endif %}
       {% if photos.family %}
       <figure class="family"><img src="/e/{{ o.rsvp_slug }}/portrait/family" alt="{{ ev.hosts if ev and ev.hosts else 'Family' }}">
-        <figcaption>{{ t.invited_by }}: <strong>{{ ev.hosts if ev and ev.hosts else t.our_families }}</strong></figcaption></figure>
+        <figcaption>{{ t.invited_by }}: <strong>{{ occ.hosts if occ else (ev.hosts if ev and ev.hosts else t.our_families) }}</strong></figcaption></figure>
       {% endif %}
-      <p>{{ t.invite_para.format(hosts=(ev.hosts if ev and ev.hosts else t.our_families), bride=bride, groom=groom) }}</p>
-      {% if o.bride_family or o.groom_family %}
+      <p>{{ occ.para if occ else t.invite_para.format(hosts=(ev.hosts if ev and ev.hosts else t.our_families), bride=bride, groom=groom) }}</p>
+      {% if occ and ev and ev.hosts and not photos.family and ev.hosts not in occ.para %}<p class="muted">{{ t.invited_by }}: <strong>{{ ev.hosts }}</strong></p>{% endif %}
+      {% if o.is_wedding and (o.bride_family or o.groom_family) %}
       <p class="small muted">{% if o.bride_family %}{{ bride }}, {{ t.daughter_of }} {{ o.bride_family }}{% endif %}{% if o.bride_family and o.groom_family %} · {% endif %}{% if o.groom_family %}{{ groom }}, {{ t.son_of }} {{ o.groom_family }}{% endif %}</p>
       {% endif %}
     </div>
@@ -209,7 +240,7 @@
 {% if schedule %}
 <section class="x-section" style="background:var(--paper)">
   <div class="wrap">
-    <h2 class="x-title reveal">{% if not local %}<span class="script">the celebrations</span>{% endif %}{{ t.your_invitation if inv and inv.functions else t.celebrations }}</h2>
+    <h2 class="x-title reveal">{% if not local %}<span class="script">the celebrations</span>{% endif %}{{ occ.schedule_title if occ else (t.your_invitation if inv and inv.functions else t.celebrations) }}</h2>
     <div class="timeline-x">
       {% for s in schedule %}
       <div class="ev reveal">

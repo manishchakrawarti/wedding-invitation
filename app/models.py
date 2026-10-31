@@ -83,7 +83,9 @@ class Order(Base):
     source: Mapped[str] = mapped_column(String(40), default="website")  # website | whatsapp | partner
 
     payment_option: Mapped[str] = mapped_column(String(10), default="full")  # full | advance
-    resolution: Mapped[str] = mapped_column(String(8), default="")  # instant orders: tier being bought (1080 | 2k | 4k)
+    resolution: Mapped[str] = mapped_column(String(8), default="")
+    event_type: Mapped[str] = mapped_column(String(40), default="wedding", index=True)  # see app/events.py
+    occasion_detail: Mapped[str] = mapped_column(String(120), default="")  # age, years, theme, product…  # instant orders: tier being bought (1080 | 2k | 4k)
     subtotal: Mapped[int] = mapped_column(Integer, default=0)
     discount: Mapped[int] = mapped_column(Integer, default=0)
     total: Mapped[int] = mapped_column(Integer, default=0)
@@ -115,6 +117,21 @@ class Order(Base):
     @property
     def status_label(self) -> str:
         return STATUS_LABELS[self.status_enum]
+
+    @property
+    def is_wedding(self) -> bool:
+        return (self.event_type or "wedding") == "wedding"
+
+    @property
+    def display_names(self) -> str:
+        """'Ananya & Arjun' for weddings and couples, just the name for single-honoree events."""
+        return f"{self.bride_name} & {self.groom_name}" if self.groom_name else self.bride_name
+
+    @property
+    def occasion_name(self) -> str:
+        from app.events import TYPES
+
+        return "Wedding" if self.is_wedding else TYPES[self.event_type].name
 
     @property
     def balance_due(self) -> int:

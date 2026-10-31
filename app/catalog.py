@@ -185,6 +185,7 @@ class Style:
     text_secondary: tuple[int, int, int]
     panel: tuple[int, int, int, int]  # translucent panel behind the text
     suits: tuple[str, ...] = field(default_factory=tuple)
+    occasions: tuple[str, ...] = ("wedding",)  # wedding pickers only list styles made for weddings
 
 
 STYLES: dict[str, Style] = {
@@ -273,6 +274,41 @@ STYLES: dict[str, Style] = {
             "floral",
             (252, 236, 232), (244, 218, 214), (196, 150, 90), (122, 60, 70), (110, 80, 80), (255, 255, 255, 140),
             ("wedding", "engagement", "sangeet", "reception"),
+        ),
+        Style(
+            "kids_party", "Balloon Party", "Bright balloons, confetti and bunting for kids' parties.",
+            "a joyful kids' birthday party invitation background with colourful balloons, confetti, bunting flags and "
+            "a cute cake, bright happy pastel colours, playful and fun",
+            "balloons", (255, 240, 200), (255, 196, 210), (214, 51, 132), (92, 30, 110), (80, 50, 90), (255, 255, 255, 165),
+            occasions=("event",),
+        ),
+        Style(
+            "golden_celebration", "Golden Gala", "Deep navy with gold confetti and sparkles.",
+            "an elegant celebration invitation background, deep navy blue and gold, gold confetti, sparkles and "
+            "bokeh lights, champagne glow, luxurious and festive",
+            "stars", (22, 32, 72), (8, 12, 32), (226, 186, 92), (246, 214, 138), (240, 236, 226), (4, 8, 24, 120),
+            occasions=("event",),
+        ),
+        Style(
+            "divine_puja", "Divine Puja", "Saffron and gold with diyas, marigolds and temple bells.",
+            "a sacred Hindu puja invitation background, saffron and maroon with gold, brass diyas, marigold garlands, "
+            "kalash with mango leaves, temple bells, om motif, soft divine glow",
+            "arch", (214, 96, 24), (128, 30, 14), (255, 214, 102), (255, 236, 170), (255, 244, 224), (80, 16, 4, 120),
+            occasions=("event",),
+        ),
+        Style(
+            "festive_lights", "Festive Lights", "Purple night sky, string lights and glowing diyas.",
+            "a festive celebration invitation background with glowing string lights, diyas, lanterns and fireworks, "
+            "deep purple night sky with gold sparkle",
+            "stars", (70, 28, 96), (22, 8, 44), (255, 200, 80), (255, 222, 140), (245, 236, 255), (16, 4, 32, 120),
+            occasions=("event",),
+        ),
+        Style(
+            "corporate_classic", "Corporate Classic", "Clean white with navy and gold lines.",
+            "a clean modern corporate event invitation background, white with navy blue and gold geometric lines and a "
+            "subtle ribbon, premium and minimal, plenty of empty space",
+            "lines", (250, 251, 253), (226, 232, 242), (30, 64, 124), (20, 40, 90), (55, 65, 85), (255, 255, 255, 175),
+            occasions=("event",),
         ),
     ]
 }

@@ -67,7 +67,10 @@ def new_referral_code(db: Session, bride: str) -> str:
 def ensure_rsvp_slug(db: Session, order: Order) -> None:
     if order.rsvp_slug or not has_rsvp(order):
         return
-    base = slugify(f"{order.bride_name}-weds-{order.groom_name}")[:60] or "wedding"
+    if order.is_wedding:
+        base = slugify(f"{order.bride_name}-weds-{order.groom_name}")[:60] or "wedding"
+    else:
+        base = slugify(f"{order.bride_name}-{order.event_type.replace('_', '-')}")[:60] or "invitation"
     slug, n = base, 1
     while db.scalar(select(Order.id).where(Order.rsvp_slug == slug)):
         n += 1

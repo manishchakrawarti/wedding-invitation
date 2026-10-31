@@ -39,7 +39,7 @@
   <div class="card">
     <h2>2. Design style</h2>
     <div class="choice-grid">
-      {% for s in styles.values() %}
+      {% for s in styles.values() if 'wedding' in s.occasions %}
       <label class="choice">
         <input type="radio" name="style" value="{{ s.key }}" {% if v.style == s.key %}checked{% endif %} required>
         <span class="face"><img src="/samples/{{ s.key }}.jpg" alt="" loading="lazy"><div>{{ s.name }}</div></span>

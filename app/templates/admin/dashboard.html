@@ -48,7 +48,7 @@
   {% for o in rows %}
     <tr>
       <td><a href="/admin/orders/{{ o.id }}"><strong>{{ o.public_id }}</strong></a>{% if o.source in ['test', 'demo'] %} <span class="pill warn">{{ o.source|upper }}</span>{% endif %}<br><span class="small muted">{{ o.customer_name }} · +{{ o.phone }}</span></td>
-      <td>{{ o.bride_name }} &amp; {{ o.groom_name }}<br><span class="small muted">{{ catalog.STYLES[o.style].name }} · {{ catalog.LANGUAGES[o.language].name }}</span></td>
+      <td>{{ o.display_names }}<br><span class="small muted">{% if not o.is_wedding %}{{ o.occasion_name }} · {% endif %}{{ catalog.STYLES[o.style].name }} · {{ catalog.LANGUAGES[o.language].name }}</span></td>
       <td>{{ o.wedding_date.strftime('%d %b %Y') }}<br><span class="small muted">{{ o.city }}</span></td>
       <td>{{ catalog.PACKAGES[o.package].name }}{% if o.addons %}<br><span class="small muted">+{{ o.addons|join(', ') }}</span>{% endif %}
         {% if catalog.PACKAGES[o.package].video and not o.live_assets('video') and o.amount_paid %}<br><span class="pill warn">video pending</span>{% endif %}</td>

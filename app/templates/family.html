@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Family console · {{ o.bride_name }} &amp; {{ o.groom_name }}{% endblock %}
+{% block title %}Family console · {{ o.display_names }}{% endblock %}
 {% block head %}
 <meta name="robots" content="noindex">
 <style>
@@ -24,7 +24,7 @@
 <section style="padding-top:30px">
 <div class="wrap">
   <p class="muted" style="margin:0">Family console · private link, share only with family</p>
-  <h1 style="margin-bottom:6px"><span class="script" style="font-size:1.15em">{{ o.bride_name }} &amp; {{ o.groom_name }}</span></h1>
+  <h1 style="margin-bottom:6px"><span class="script" style="font-size:1.15em">{{ o.display_names }}</span></h1>
   <p class="muted">{{ pretty_date(o.wedding_date) }} · {% if days > 0 %}<strong>{{ days }} days to go</strong>{% elif days == 0 %}<strong>Today is the day! 🎉</strong>{% else %}Married {{ -days }} days ago 💕{% endif %}
      · <a href="/e/{{ o.rsvp_slug }}" target="_blank">General invite page ↗</a> · <a href="/e/{{ o.rsvp_slug }}/qr.png" download>QR code</a> · <a href="/e/{{ o.rsvp_slug }}/guests.csv?key={{ key }}">Download Excel/CSV</a></p>
   {% if msg %}<div class="alert alert-ok">{{ msg }}</div>{% endif %}
