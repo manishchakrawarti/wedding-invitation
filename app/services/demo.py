@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 from sqlalchemy import select
 
+from app.config import APP_DIR
 from app.db import SessionLocal
 from app.models import EventDetails, Invitee, Order, OrderStatus, utcnow
 from app.services import invites, orders, pipeline
@@ -156,6 +157,39 @@ def _create(lang: str, cfg: dict) -> int:
         return order.id
 
 
+CUSTOM_PHOTO_DIR = APP_DIR / "static" / "demo"  # optional: static/demo/<lang>/<role>.jpg or static/demo/<role>.jpg
+
+
+def _demo_photo(lang: str, role: str) -> bytes | None:
+    """Your own licensed photo if present, else an illustrated regional portrait."""
+    from app.services import demo_art
+
+    for path in (CUSTOM_PHOTO_DIR / lang / f"{role}.jpg", CUSTOM_PHOTO_DIR / f"{role}.jpg"):
+        if path.exists():
+            return path.read_bytes()
+    svg, w, h = demo_art.portrait_svg(demo_art.LANG_REGION.get(lang, "north"), role)
+    return demo_art.render_png(svg, w, h)
+
+
+def ensure_demo_portraits() -> None:
+    """Give every demo wedding bride, groom and family portraits (once)."""
+    for lang in DEMOS:
+        order_ref = demo_order(lang)
+        if order_ref is None:
+            continue
+        with SessionLocal() as db:
+            order = db.get(Order, order_ref.id)
+            have = set(invites.portraits(order))
+            missing = [r for r in ("bride", "groom", "family") if r not in have]
+            for role in missing:
+                data = _demo_photo(lang, role)
+                if data:
+                    invites.save_portrait(db, order, role, data, enhance=False)
+            if missing:
+                db.commit()
+                log.info("demo portraits added: %s %s", lang, missing)
+
+
 def ensure_demo() -> None:
     """Create any missing demo weddings (one per language), with real generated cards."""
     for lang, cfg in DEMOS.items():
@@ -169,3 +203,4 @@ def ensure_demo() -> None:
             order.delivered_at = utcnow()
             db.commit()
         log.info("demo wedding created: %s", lang)
+    ensure_demo_portraits()

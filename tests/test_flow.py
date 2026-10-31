@@ -711,3 +711,24 @@ def test_ai_photo_retouch_used_and_costed_but_rejected_if_face_lost(client, monk
     monkeypatch.setattr(photo_enhance, "detect_faces", faces)
     _, info = photo_enhance.enhance(_photo((200, 150, 120)), "bride", use_ai=True)
     assert info["ai"] is False and "face not found" in info["ai_error"]
+
+
+def test_demo_weddings_have_regional_portraits(client):
+    import pytest
+
+    from app.services import demo, demo_art, export
+
+    if not export.chrome_binary():
+        pytest.skip("Chrome/Chromium not installed")
+    demo.ensure_demo()
+    for lang in demo.DEMOS:
+        order = demo.demo_order(lang)
+        page = client.get(f"/demo/{lang}").text
+        for role in ("bride", "groom", "family"):
+            assert f"/e/{order.rsvp_slug}/portrait/{role}" in page, (lang, role)
+    # Christian brides are drawn without bindi/sindoor.
+    assert demo_art.REGIONS["kerala_christian"]["bride"].bindi is False
+    demo.ensure_demo_portraits()  # idempotent: nothing duplicated
+    with SessionLocal() as db:
+        o = db.get(Order, demo.demo_order("hi").id)
+        assert len([a for a in o.assets if a.kind == "portrait" and not a.deleted_at]) == 3
