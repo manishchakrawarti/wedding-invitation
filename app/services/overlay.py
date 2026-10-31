@@ -146,17 +146,18 @@ def _wrap(text: str, font: ImageFont.FreeTypeFont, width: int) -> list[str]:
     return lines
 
 
-def _fit_line(line: Line, scale: float, width: int) -> tuple[ImageFont.FreeTypeFont, list[str], int]:
+def _fit_line(line: Line, scale: float, width: int, k: float = 1.0) -> tuple[ImageFont.FreeTypeFont, list[str], int]:
     """Largest font (≤ scaled size) where the text fits in `max_lines` lines."""
     script = detect_script(line.text)
-    size = max(int(line.size * scale), 12)
-    floor = max(int(line.size * 0.45), 12)
+    size = max(int(line.size * scale * k), 12)
+    floor = max(int(line.size * 0.45 * k), 12)
+    step = max(2, int(2 * k))
     while True:
         font = load_font(line.role, script, size)
         rows = _wrap(line.text, font, width) if line.max_lines > 1 else [line.text]
         if (len(rows) <= line.max_lines and all(font.getlength(r) <= width for r in rows)) or size <= floor:
             return font, rows, size
-        size -= 2
+        size -= step
 
 
 def _row_height(font: ImageFont.FreeTypeFont, role: str) -> int:
@@ -165,15 +166,15 @@ def _row_height(font: ImageFont.FreeTypeFont, role: str) -> int:
     return int((ascent + descent) * factor)
 
 
-def _measure(items: list, scale: float, width: int):
+def _measure(items: list, scale: float, width: int, k: float = 1.0):
     plan, total = [], 0
     for item in items:
         if isinstance(item, Divider):
-            h = int(item.gap_before * scale) + 18
+            h = int(item.gap_before * scale * k) + int(18 * k)
             plan.append((item, None, None, h))
         else:
-            font, rows, size = _fit_line(item, scale, width)
-            h = int(item.gap_before * scale) + _row_height(font, item.role) * len(rows)
+            font, rows, size = _fit_line(item, scale, width, k)
+            h = int(item.gap_before * scale * k) + _row_height(font, item.role) * len(rows)
             plan.append((item, font, rows, h))
         total += h
     return plan, total
@@ -193,27 +194,39 @@ def contrast_ratio(a: tuple[int, ...], b: tuple[int, ...]) -> float:
     return (la + 0.05) / (lb + 0.05)
 
 
-def _draw_divider(draw: ImageDraw.ImageDraw, cx: int, y: int, width: int, color) -> None:
-    half = width // 2
-    draw.line([(cx - half, y), (cx - 14, y)], fill=color, width=2)
-    draw.line([(cx + 14, y), (cx + half, y)], fill=color, width=2)
-    draw.polygon([(cx, y - 8), (cx + 8, y), (cx, y + 8), (cx - 8, y)], fill=color)
-    for dx in (-half - 6, half + 6):
-        draw.ellipse([cx + dx - 3, y - 3, cx + dx + 3, y + 3], fill=color)
+def _draw_divider(draw: ImageDraw.ImageDraw, cx: int, y: int, width: int, color, k: float = 1.0) -> None:
+    half, gap, d, dot, lw = width // 2, int(14 * k), int(8 * k), max(int(3 * k), 2), max(int(2 * k), 1)
+    draw.line([(cx - half, y), (cx - gap, y)], fill=color, width=lw)
+    draw.line([(cx + gap, y), (cx + half, y)], fill=color, width=lw)
+    draw.polygon([(cx, y - d), (cx + d, y), (cx, y + d), (cx - d, y)], fill=color)
+    for dx in (-half - 2 * dot, half + 2 * dot):
+        draw.ellipse([cx + dx - dot, y - dot, cx + dx + dot, y + dot], fill=color)
 
 
-def compose_card(background: Image.Image, items: list, style: Style, layout: Layout) -> tuple[Image.Image, OverlayReport]:
-    """Typeset `items` (Line / Divider) onto the background inside layout.box."""
-    img = background.convert("RGBA").resize(CANVAS)
-    x0, y0, x1, y1 = layout.box
+def _soft(layer: Image.Image, radius: float) -> Image.Image:
+    """Gaussian blur done at base resolution: identical look at 4K, a fraction of the cost."""
+    if layer.size == CANVAS:
+        return layer.filter(ImageFilter.GaussianBlur(radius))
+    small = layer.resize(CANVAS, Image.BILINEAR).filter(ImageFilter.GaussianBlur(radius))
+    return small.resize(layer.size, Image.BILINEAR)
+
+
+def compose_card(background: Image.Image, items: list, style: Style, layout: Layout, k: float = 1.0) -> tuple[Image.Image, OverlayReport]:
+    """Typeset `items` (Line / Divider) onto the background inside layout.box.
+
+    k scales the output: 1 = 1080×1350, 2 ≈ 2K, 3.56 = 4K. Text is rendered natively at that size, so it stays sharp.
+    """
+    size = (round(CANVAS[0] * k), round(CANVAS[1] * k))
+    img = background.convert("RGBA").resize(size, Image.LANCZOS)
+    x0, y0, x1, y1 = (round(v * k) for v in layout.box)
     width, height = x1 - x0, y1 - y0
     report = OverlayReport()
 
     scale = 1.0
-    plan, total = _measure(items, scale, width)
+    plan, total = _measure(items, scale, width, k)
     while total > height and scale > 0.5:
         scale = round(scale - 0.04, 2)
-        plan, total = _measure(items, scale, width)
+        plan, total = _measure(items, scale, width, k)
     report.scale = scale
     report.overflow = total > height
 
@@ -227,41 +240,42 @@ def compose_card(background: Image.Image, items: list, style: Style, layout: Lay
         if font:
             widest = max(widest, *(int(font.getlength(r)) for r in rows))
         else:
-            widest = max(widest, item.width)
-    pad_x, pad_y = 56, 44
+            widest = max(widest, int(item.width * k))
+    pad_x, pad_y, margin = int(56 * k), int(44 * k), int(70 * k)
     panel_box = (cx - widest // 2 - pad_x, top - pad_y, cx + widest // 2 + pad_x, top + total + pad_y)
-    panel_box = (max(panel_box[0], 70), max(panel_box[1], 70), min(panel_box[2], CANVAS[0] - 70), min(panel_box[3], CANVAS[1] - 70))
+    panel_box = (max(panel_box[0], margin), max(panel_box[1], margin), min(panel_box[2], size[0] - margin), min(panel_box[3], size[1] - margin))
     report.text_bbox = panel_box
 
-    panel = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
-    ImageDraw.Draw(panel).rounded_rectangle(panel_box, radius=36, fill=style.panel)
-    img = Image.alpha_composite(img, panel.filter(ImageFilter.GaussianBlur(10)))
+    panel = Image.new("RGBA", size, (0, 0, 0, 0))
+    ImageDraw.Draw(panel).rounded_rectangle(panel_box, radius=int(36 * k), fill=style.panel)
+    img = Image.alpha_composite(img, _soft(panel, 10))
 
     text_dark = _luminance(style.text_secondary) < 0.3
     shadow_rgba = (255, 255, 255, 170) if text_dark else (0, 0, 0, 150)
-    shadow = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
-    text_layer = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
+    shadow = Image.new("RGBA", size, (0, 0, 0, 0))
+    text_layer = Image.new("RGBA", size, (0, 0, 0, 0))
     sdraw, tdraw = ImageDraw.Draw(shadow), ImageDraw.Draw(text_layer)
+    sx, sy = max(int(2 * k), 1), max(int(3 * k), 1)
 
     y = top
     scripts = set()
     for item, font, rows, h in plan:
         if isinstance(item, Divider):
-            yy = y + int(item.gap_before * scale) + 9
-            _draw_divider(tdraw, cx, yy, int(item.width * min(scale + 0.1, 1)), style.accent)
+            yy = y + int(item.gap_before * scale * k) + int(9 * k)
+            _draw_divider(tdraw, cx, yy, int(item.width * k * min(scale + 0.1, 1)), style.accent, k)
             y += h
             continue
-        y += int(item.gap_before * scale)
+        y += int(item.gap_before * scale * k)
         scripts.add(detect_script(item.text))
-        if font.size < 22 or font.size < item.size * 0.5:
+        if font.size < 22 * k or font.size < item.size * k * 0.5:
             report.min_size_ok = False
         for row in rows:
-            sdraw.text((cx + 2, y + 3), row, font=font, fill=shadow_rgba, anchor="ma")
+            sdraw.text((cx + sx, y + sy), row, font=font, fill=shadow_rgba, anchor="ma")
             tdraw.text((cx, y), row, font=font, fill=colors[item.color], anchor="ma")
             y += _row_height(font, item.role)
         report.rendered.append(item.text)
 
-    img = Image.alpha_composite(img, shadow.filter(ImageFilter.GaussianBlur(3)))
+    img = Image.alpha_composite(img, _soft(shadow, 3))
     img = Image.alpha_composite(img, text_layer)
     report.scripts = sorted(scripts)
     report.shaping_ok = RAQM or scripts <= {"latin"}
@@ -269,17 +283,34 @@ def compose_card(background: Image.Image, items: list, style: Style, layout: Lay
 
 
 def add_qr(img: Image.Image, url: str, style: Style, label: str = "Scan to RSVP") -> Image.Image:
+    k = img.width / CANVAS[0]
     qr = qrcode.QRCode(border=1, box_size=10)
     qr.add_data(url)
     qr.make(fit=True)
-    code = qr.make_image(fill_color="black", back_color="white").convert("RGB").resize((140, 140), Image.NEAREST)
+    side = int(140 * k)
+    code = qr.make_image(fill_color="black", back_color="white").convert("RGB").resize((side, side), Image.NEAREST)
     img = img.copy()
     draw = ImageDraw.Draw(img)
-    x, y = CANVAS[0] - 140 - 96, CANVAS[1] - 140 - 120
-    draw.rounded_rectangle([x - 10, y - 10, x + 150, y + 180], radius=14, fill=(255, 255, 255))
+    x, y = img.width - side - int(96 * k), img.height - side - int(120 * k)
+    pad = int(10 * k)
+    draw.rounded_rectangle([x - pad, y - pad, x + side + pad, y + side + int(40 * k)], radius=int(14 * k), fill=(255, 255, 255))
     img.paste(code, (x, y))
-    draw.text((x + 70, y + 146), label, font=load_font("detail", "latin", 22), fill=(40, 30, 30), anchor="ma")
+    draw.text((x + side // 2, y + side + int(6 * k)), label, font=load_font("detail", "latin", int(22 * k)), fill=(40, 30, 30), anchor="ma")
     return img
+
+
+def credit_stamp(img: Image.Image, text: str) -> Image.Image:
+    """Small, tasteful credit on the free Standard image (not a watermark over the design)."""
+    img = img.convert("RGBA")
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    font = load_font("detail", "latin", max(int(img.width * 0.022), 12))
+    w = int(font.getlength(text))
+    h = int(font.size * 1.6)
+    x, y = (img.width - w) // 2, img.height - h - int(img.height * 0.012)
+    draw.rounded_rectangle([x - h // 2, y, x + w + h // 2, y + h], radius=h // 2, fill=(255, 255, 255, 200))
+    draw.text((img.width // 2, y + h // 2), text, font=font, fill=(90, 40, 40, 255), anchor="mm")
+    return Image.alpha_composite(img, layer).convert("RGB")
 
 
 def watermark(img: Image.Image, text: str) -> Image.Image:

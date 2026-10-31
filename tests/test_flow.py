@@ -1,3 +1,4 @@
+import io
 import hashlib
 import hmac
 import json
@@ -459,32 +460,56 @@ def create_instant(client, **overrides) -> Order:
     return get(resp.headers["location"].split("/")[2])
 
 
-def test_instant_99_free_preview_then_unlock(client):
+def _image_size(resp):
+    from PIL import Image
+
+    return Image.open(io.BytesIO(resp.content)).size
+
+
+def test_instant_free_download_then_paid_sizes(client):
     assert client.get("/create").status_code == 200
     order = create_instant(client, fn_haldi="on", fn_haldi_date=WEDDING, hosts="The Kapoor family")
-    assert order.status == OrderStatus.PREVIEW.value and order.total == 9900 and order.amount_paid == 0
+    assert order.status == OrderStatus.PREVIEW.value and order.total == 900 and order.amount_paid == 0
     assert sorted(a.card_key for a in order.assets if a.kind == "final") == ["haldi", "main"]
     wedding = next(f for f in order.functions if f["key"] == "wedding")
     assert wedding["time"] == "19:30"  # the quick "time" field lands on the ceremony
+    final = next(a for a in order.assets if a.kind == "final" and a.card_key == "main")
+    dl = f"/o/{order.token}/download/{final.id}"
 
-    # Free preview: watermarked proofs visible, HD finals locked, order page redirects to the preview.
-    page = client.get(f"/o/{order.token}/preview")
-    assert "Unlock for ₹99" in page.text
-    proof = next(a for a in order.assets if a.kind == "proof")
-    final = next(a for a in order.assets if a.kind == "final")
-    assert client.get(f"/o/{order.token}/files/{proof.id}").status_code == 200
+    # Preview: Standard image is free; paid sizes and the HD final are locked.
+    page = client.get(f"/o/{order.token}/preview").text
+    assert "Get Full HD" in page and "Get 4K" in page and "⬇ Free" in page
+    free = client.get(f"{dl}/free")
+    assert free.status_code == 200 and _image_size(free) == (720, 900)
+    assert client.get(f"{dl}/1080").status_code == 403
     assert client.get(f"/o/{order.token}/files/{final.id}").status_code == 403
     assert client.get(f"/o/{order.token}", follow_redirects=False).headers["location"].endswith("/preview")
-
-    # Invite page works as a preview (banner, RSVP disabled); no guest console at ₹99.
     event = client.get(f"/e/{order.rsvp_slug}").text
     assert "Free preview" in event and 'disabled title="Available after unlocking"' in event
     assert client.get(f"/e/{order.rsvp_slug}/guests?key={order.token}").status_code == 403
 
-    # Pay ₹99 → delivered instantly, HD unlocked, send-to-email offered.
-    order = pay(client, order)
-    assert order.status == OrderStatus.DELIVERED.value and order.amount_paid == 9900
-    assert client.get(f"/o/{order.token}/files/{final.id}?download=1").status_code == 200
+    # Buy 2K (₹49): delivered; 2K and below unlocked, 4K still locked.
+    resp = client.post(f"/o/{order.token}/unlock", data={"res": "2k"}, follow_redirects=False)
+    assert resp.headers["location"].endswith("/pay?purpose=full")
+    assert get(order.token).total == 4900
+    order = pay(client, get(order.token))
+    assert order.status == OrderStatus.DELIVERED.value and order.amount_paid == 4900
+    two_k = client.get(f"{dl}/2k")
+    assert two_k.status_code == 200 and _image_size(two_k) == (2048, 2560)
+    assert _image_size(client.get(f"{dl}/1080")) == (1080, 1350)
+    assert client.get(f"{dl}/4k").status_code == 403
+    assert "+₹50" in client.get(f"/o/{order.token}").text  # upgrade offer shows only the difference
+
+    # Upgrade to 4K: pay only the ₹50 difference.
+    resp = client.post(f"/o/{order.token}/unlock", data={"res": "4k"}, follow_redirects=False)
+    assert resp.headers["location"].endswith("/pay?purpose=balance")
+    order = pay(client, get(order.token), "balance")
+    assert order.amount_paid == 9900 and order.status == OrderStatus.DELIVERED.value
+    four_k = client.get(f"{dl}/4k")
+    assert four_k.status_code == 200 and _image_size(four_k) == (3840, 4800)
+    assert four_k.headers["content-type"] == "image/jpeg"
+
+    # Send to email after unlocking.
     status = client.get(f"/o/{order.token}").text
     assert "Send to email" in status and "Your invite page" in status
     resp = client.post(f"/o/{order.token}/email", data={"email": "priya@example.com"}, follow_redirects=False)
@@ -492,7 +517,6 @@ def test_instant_99_free_preview_then_unlock(client):
     with SessionLocal() as db:
         note = db.scalars(select(Notification).where(Notification.recipient == "priya@example.com")).first()
     assert "2 card(s) attached" in note.body and f"/e/{order.rsvp_slug}" in note.body
-    assert get(order.token).email == "priya@example.com"
 
 
 def test_instant_validation_rate_limit_and_hidden_package(client, monkeypatch):

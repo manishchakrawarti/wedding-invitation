@@ -11,11 +11,11 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, STYLES
+from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STYLES
 from app.config import settings
 from app.db import get_db
 from app.models import Asset, EventDetails, Order, OrderStatus
-from app.services import notify, orders, payments, pipeline
+from app.services import hires, notify, orders, payments, pipeline
 from app.services.cards import has_guest_console
 from app.services.maintenance import sample_image
 from app.services.storage import storage
@@ -217,9 +217,10 @@ async def submit_order(request: Request, db: Session = Depends(get_db)):
 def order_status(request: Request, order: Order = Depends(get_order)):
     if order.source == "instant" and order.status != OrderStatus.DELIVERED.value:
         return redirect(f"/o/{order.token}/preview")
-    return templates.TemplateResponse(
-        request, "order_status.html", {"o": order, "visible": PROOF_VISIBLE, "console": has_guest_console(order)}
-    )
+    return templates.TemplateResponse(request, "order_status.html", {
+        "o": order, "visible": PROOF_VISIBLE, "console": has_guest_console(order),
+        "entitled": hires.entitled(order) if order.source == "instant" else None, "tiers": hires.TIERS,
+    })
 
 
 def _allowed_purposes(order: Order) -> list[str]:
@@ -426,10 +427,48 @@ def preview(request: Request, order: Order = Depends(get_order)):
     if order.status == OrderStatus.DELIVERED.value:
         return redirect(f"/o/{order.token}")
     working = order.status in (OrderStatus.QUEUED.value, OrderStatus.GENERATING.value)
+    proofs = order.live_assets("proof")
+    finals = {a.card_key: a for a in order.live_assets("final")}
     return templates.TemplateResponse(request, "preview.html", {
-        "o": order, "working": working, "proofs": order.live_assets("proof"),
-        "unlockable": orders.preview_unlockable(order), "pkg": PACKAGES[order.package],
+        "o": order, "working": working, "items": [(p, finals.get(p.card_key)) for p in proofs],
+        "unlockable": orders.preview_unlockable(order), "pkg": PACKAGES[order.package], "tiers": hires.TIERS,
+        "free": RESOLUTIONS["free"],
     })
+
+
+@router.post("/o/{token}/unlock")
+async def unlock(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    """Pick (or upgrade to) a download size; the customer pays only the difference."""
+    res = str((await request.form()).get("res", ""))
+    tier = RESOLUTIONS.get(res)
+    can_buy = orders.preview_unlockable(order) or (order.source == "instant" and order.status == OrderStatus.DELIVERED.value)
+    if tier is None or tier.price == 0 or not can_buy:
+        return redirect(f"/o/{order.token}")
+    price = tier.price * 100
+    if order.amount_paid + order.discount >= price:
+        return redirect(f"/o/{order.token}")
+    order.resolution = res
+    order.total = price - order.discount
+    orders.log_event(db, order, f"Chose {tier.name} ({tier.width}×{tier.height}) for ₹{tier.price}")
+    db.commit()
+    return redirect(f"/o/{order.token}/pay?purpose={'balance' if order.amount_paid else 'full'}")
+
+
+@router.get("/o/{token}/download/{asset_id}/{res}")
+def download(asset_id: int, res: str, order: Order = Depends(get_order)):
+    final = next((a for a in order.live_assets("final") if a.id == asset_id), None)
+    if final is None or res not in RESOLUTIONS:
+        raise HTTPException(404)
+    delivered = order.status == OrderStatus.DELIVERED.value
+    if res == "free":
+        if not (delivered or orders.preview_unlockable(order)):
+            raise HTTPException(403, "Available once your preview is ready")
+    elif not (delivered and hires.allowed(order, res)):
+        raise HTTPException(403, "Unlock this size to download it")
+    ext, content_type = hires.file_info(res)
+    name = f"{slugify(f'{order.bride_name}-{order.groom_name}-{final.card_key}-{res}') or 'invitation'}.{ext}"
+    return Response(hires.render(order, final, res), media_type=content_type,
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @router.post("/o/{token}/coupon")

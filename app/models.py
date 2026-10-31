@@ -83,6 +83,7 @@ class Order(Base):
     source: Mapped[str] = mapped_column(String(40), default="website")  # website | whatsapp | partner
 
     payment_option: Mapped[str] = mapped_column(String(10), default="full")  # full | advance
+    resolution: Mapped[str] = mapped_column(String(8), default="")  # instant orders: tier being bought (1080 | 2k | 4k)
     subtotal: Mapped[int] = mapped_column(Integer, default=0)
     discount: Mapped[int] = mapped_column(Integer, default=0)
     total: Mapped[int] = mapped_column(Integer, default=0)

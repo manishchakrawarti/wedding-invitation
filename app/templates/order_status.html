@@ -44,7 +44,39 @@
     {% endif %}
   </div>
 
-  {% if o.status == 'delivered' %}
+  {% if o.status == 'delivered' and o.source == 'instant' %}
+  {% set best = catalog.RESOLUTIONS[entitled].price if entitled else 0 %}
+  <div class="card">
+    <h2>Downloads</h2>
+    <p class="muted" style="margin-top:0">You have <strong>{{ catalog.RESOLUTIONS[entitled].name if entitled else 'Standard' }}</strong>{% if entitled %} ({{ catalog.RESOLUTIONS[entitled].width }}×{{ catalog.RESOLUTIONS[entitled].height }}){% endif %}. Every size below it is included.</p>
+    <div class="files">
+      {% for a in o.live_assets('final') %}
+      <div class="file">
+        <img src="/o/{{ o.token }}/files/{{ a.id }}" alt="{{ (a.meta or {}).get('title', a.card_key) }}">
+        <div style="padding:10px 12px">
+          <strong>{{ (a.meta or {}).get('title', a.card_key) }}</strong>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+            {% for t in tiers if t.price <= best %}<a class="btn btn-sm {% if t.key == entitled %}btn-primary{% else %}btn-ghost{% endif %}" href="/o/{{ o.token }}/download/{{ a.id }}/{{ t.key }}">⬇ {{ t.name }}</a>{% endfor %}
+            <a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/download/{{ a.id }}/free">⬇ Standard</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% set upgrades = tiers|selectattr('price', 'gt', best)|list %}
+    {% if upgrades %}
+    <div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--line)">
+      <strong>Need it bigger?</strong> <span class="muted small">Pay only the difference.</span>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        {% for t in upgrades %}
+        <form method="post" action="/o/{{ o.token }}/unlock" style="margin:0"><input type="hidden" name="res" value="{{ t.key }}">
+          <button class="btn btn-sm" type="submit">{{ t.name }} {{ t.width }}×{{ t.height }} · +₹{{ ((t.price * 100 - o.amount_paid - o.discount) / 100)|int }}</button></form>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% elif o.status == 'delivered' %}
   <div class="card">
     <h2>Downloads</h2>
     <div class="files">

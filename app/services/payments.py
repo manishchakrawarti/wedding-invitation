@@ -110,9 +110,13 @@ def apply_test_coupon(db: Session, order: Order, code: str) -> bool:
         return False
     if not orders.preview_unlockable(order):
         return False
-    order.discount += order.balance_due
+    from app.catalog import RESOLUTIONS
+
+    top = max(RESOLUTIONS.values(), key=lambda r: r.price)
+    order.resolution = top.key
+    order.discount = max(top.price * 100 - order.amount_paid, 0)
     order.total = order.amount_paid
-    orders.log_event(db, order, "Test coupon applied: unlocked for free")
+    orders.log_event(db, order, f"Test coupon applied: {top.name} unlocked for free")
     orders.deliver(db, order)
     return True
 

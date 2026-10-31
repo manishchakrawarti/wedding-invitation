@@ -102,7 +102,8 @@ def run_order(order_id: int, notes: str = "") -> None:
             composed, report = compose_card(result.image, card.items, style, layout)
             qc = run_qc(card, composed, report, style, use_photo)
             final = add_qr(composed, rsvp_url, style) if rsvp_url and card.key == "main" else composed
-            meta = {"title": card.title, "style": card.style_key, "provider": result.provider, "prompt": prompt}
+            meta = {"title": card.title, "style": card.style_key, "provider": result.provider, "prompt": prompt,
+                    "layout": "photo" if use_photo else "plain"}
 
             _save(db, order, "background", card.key, version, to_bytes(result.image, "JPEG"), "jpg", meta=meta)
             _save(db, order, "proof", card.key, version, to_bytes(watermark(final, f"PROOF · {settings.brand_name}"), "JPEG", 82), "jpg", qc, meta)

@@ -23,6 +23,28 @@ class Package:
 
 
 @dataclass(frozen=True)
+class Resolution:
+    key: str
+    name: str
+    width: int
+    height: int
+    price: int  # INR; 0 = free
+    use: str
+
+
+# Instant invitations: download size tiers. Edit prices here.
+RESOLUTIONS: dict[str, Resolution] = {
+    r.key: r
+    for r in [
+        Resolution("free", "Standard", 720, 900, 0, "Quick sharing, with a small credit"),
+        Resolution("1080", "Full HD", 1080, 1350, 9, "Perfect for WhatsApp & Instagram"),
+        Resolution("2k", "2K", 2048, 2560, 49, "Extra crisp on any phone or TV"),
+        Resolution("4k", "4K", 3840, 4800, 99, "Print-ready for cards & banners"),
+    ]
+}
+
+
+@dataclass(frozen=True)
 class Addon:
     key: str
     name: str
@@ -37,11 +59,11 @@ PACKAGES: dict[str, Package] = {
         Package(
             "instant",
             "Instant",
-            99,
+            9,
             "Create it yourself in 60 seconds",
             (
-                "Free preview before you pay",
-                "HD card for the wedding and every function, no watermark",
+                "Free Standard download, HD from ₹9",
+                "A card for the wedding and every function, no watermark",
                 "Cinematic invite page to share on WhatsApp, with RSVP",
                 "Your language, your style",
                 "Sent to your email",
