@@ -44,6 +44,18 @@
   </div>
 </section>
 
+<section id="languages">
+  <div class="wrap center">
+    <h2>In your language, from your tradition</h2>
+    <p class="muted" style="max-width:42em;margin:0 auto 26px">Each family's invite speaks their language, from the opening blessing to the RSVP button. Open a live demo:</p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
+      {% for code, lang in catalog.LANGUAGES.items() %}
+      <a class="btn {% if loop.first %}btn-primary{% else %}btn-ghost{% endif %}" href="/demo/{{ code }}" target="_blank" lang="{{ code }}">{{ lang.native }}{% if code != 'en' %} <span class="small" style="opacity:.7">· {{ lang.name }}</span>{% endif %}</a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
 <section id="compare">
   <div class="narrow">
     <h2 class="center">"Can't I just make a card with a free AI tool?"</h2>

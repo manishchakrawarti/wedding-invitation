@@ -31,6 +31,8 @@ SCRIPT_RANGES = {
     "gujarati": (0x0A80, 0x0AFF),
     "tamil": (0x0B80, 0x0BFF),
     "telugu": (0x0C00, 0x0C7F),
+    "kannada": (0x0C80, 0x0CFF),
+    "malayalam": (0x0D00, 0x0D7F),
 }
 SCRIPT_FONTS = {
     "devanagari": "NotoSerifDevanagari.ttf",
@@ -39,6 +41,8 @@ SCRIPT_FONTS = {
     "gujarati": "NotoSerifGujarati.ttf",
     "tamil": "NotoSerifTamil.ttf",
     "telugu": "NotoSerifTelugu.ttf",
+    "kannada": "NotoSerifKannada.ttf",
+    "malayalam": "NotoSerifMalayalam.ttf",
 }
 LATIN_FONTS = {"display": "GreatVibes-Regular.ttf", "heading": "Cinzel.ttf", "body": "CormorantGaramond.ttf"}
 ROLE_FAMILY = {

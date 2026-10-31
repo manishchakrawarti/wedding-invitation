@@ -102,19 +102,6 @@ FUNCTIONS: dict[str, str] = {
     "reception": "Reception",
 }
 
-# Hindi names for functions (used on Hindi cards).
-FUNCTIONS_HI: dict[str, str] = {
-    "engagement": "सगाई",
-    "tilak": "तिलक",
-    "haldi": "हल्दी",
-    "mehndi": "मेहंदी",
-    "sangeet": "संगीत",
-    "wedding": "शुभ विवाह",
-    "nikah": "निकाह",
-    "reception": "स्वागत समारोह",
-}
-
-
 @dataclass(frozen=True)
 class Language:
     code: str
@@ -136,6 +123,8 @@ LANGUAGES: dict[str, Language] = {
         Language("pa", "Punjabi", "ਪੰਜਾਬੀ", "ਸ਼ੁਭ ਵਿਆਹ", None),
         Language("ta", "Tamil", "தமிழ்", "திருமண அழைப்பிதழ்", None),
         Language("te", "Telugu", "తెలుగు", "వివాహ ఆహ్వానం", None),
+        Language("kn", "Kannada", "ಕನ್ನಡ", "ಶುಭ ವಿವಾಹ", None),
+        Language("ml", "Malayalam", "മലയാളം", "വിവാഹ ക്ഷണം", None),
     ]
 }
 

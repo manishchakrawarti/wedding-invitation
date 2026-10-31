@@ -19,6 +19,8 @@ FONTS = {
     "NotoSerifTelugu.ttf": "notoseriftelugu/NotoSerifTelugu%5Bwght%5D.ttf",
     "NotoSerifGujarati.ttf": "notoserifgujarati/NotoSerifGujarati%5Bwght%5D.ttf",
     "NotoSerifGurmukhi.ttf": "notoserifgurmukhi/NotoSerifGurmukhi%5Bwght%5D.ttf",
+    "NotoSerifKannada.ttf": "notoserifkannada/NotoSerifKannada%5Bwght%5D.ttf",
+    "NotoSerifMalayalam.ttf": "notoserifmalayalam/NotoSerifMalayalam%5Bwght%5D.ttf",
 }
 
 

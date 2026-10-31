@@ -1,19 +1,31 @@
 {% extends "base.html" %}
 {% set st = catalog.STYLES[o.style] %}
-{% set hi = o.language == 'hi' %}
-{% set bride = (o.bride_name_local if hi and o.bride_name_local else o.bride_name) %}
-{% set groom = (o.groom_name_local if hi and o.groom_name_local else o.groom_name) %}
+{% set t = i18n.texts(o.language) %}
+{% set local = o.language != 'en' %}
+{% set bride = (o.bride_name_local if local and o.bride_name_local else o.bride_name) %}
+{% set groom = (o.groom_name_local if local and o.groom_name_local else o.groom_name) %}
+{% set lf = i18n.WEB_FONTS.get(o.language) %}
 {% block title %}{{ o.bride_name }} &amp; {{ o.groom_name }}{% if inv %} · Invitation for {{ inv.name }}{% endif %}{% endblock %}
+{% block lang %}{{ o.language }}{% endblock %}
 {% block head %}
+{% if lf %}<link href="https://fonts.googleapis.com/css2?family={{ lf|replace(' ', '+') }}:wght@400;600;700&display=swap" rel="stylesheet">{% endif %}
 <meta property="og:title" content="{{ o.bride_name }} & {{ o.groom_name }} — Wedding Invitation{% if inv %} for {{ inv.name }}{% endif %}">
-<meta property="og:description" content="{{ pretty_date(o.wedding_date) }} · {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}. Tap to open your invitation 💌">
+<meta property="og:description" content="{{ pretty_date(o.wedding_date) }} · {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}. {{ t.tap }} 💌">
 {% if hero %}<meta property="og:image" content="{{ settings.base_url }}/e/{{ o.rsvp_slug }}/invite">{% endif %}
 <meta name="theme-color" content="rgb{{ st.bg_bottom }}">
 <style>
   :root {
     --bg1: rgb{{ st.bg_top }}; --bg2: rgb{{ st.bg_bottom }}; --acc: rgb{{ st.accent }};
     --t1: rgb{{ st.text_primary }}; --t2: rgb{{ st.text_secondary }};
+    {% if lf %}--serif: "Cormorant Garamond", "{{ lf }}", Georgia, serif; --script: "Great Vibes", "{{ lf }}", cursive;
+    --sans: "Mukta", "{{ lf }}", system-ui, sans-serif;{% endif %}
   }
+  /* "body" prefix: these must beat the base rules defined further down. */
+  {% if lf %}body .x-names { font-family: "{{ lf }}", serif; font-weight: 700; font-size: clamp(2.6rem, 10vw, 5.2rem); line-height: 1.25; }
+  body .door-ui .guest, body .personal .dear { font-family: "{{ lf }}", serif; font-weight: 700; font-size: clamp(1.6rem, 6vw, 2.4rem); }
+  /* Letter-spacing and uppercase are Latin-only effects: they break matras and conjuncts in Indian scripts. */
+  body .door-ui .for, body .tap, body .x-hero .pre, body .countdown span, body .scroll-hint, body .invocation { letter-spacing: normal; text-transform: none; }{% endif %}
+  body .door-ui .guest { max-width: 100%; overflow-wrap: anywhere; }
   body { background: var(--cream); overflow-x: hidden; }
   body.locked { overflow: hidden; height: 100vh; }
 
@@ -117,10 +129,10 @@
   <div class="door right"><span class="knocker"></span></div>
 </div>
 <div class="door-ui" id="door-ui">
-  <div class="for">{% if inv %}{{ 'विशेष निमंत्रण' if hi else 'A special invitation for' }}{% else %}{{ 'आप आमंत्रित हैं' if hi else "You're invited" }}{% endif %}</div>
+  <div class="for">{% if inv %}{{ t.special_for }}{% else %}{{ t.invited }}{% endif %}</div>
   {% if inv %}<div class="guest">{{ inv.name }}</div>{% endif %}
   <button class="seal" id="open-btn" type="button" aria-label="Open invitation">{{ o.bride_name[:1] }}<small>&amp;</small>{{ o.groom_name[:1] }}</button>
-  <div class="tap">Tap to open</div>
+  <div class="tap">{{ t.tap }}</div>
 </div>
 <canvas id="petals"></canvas>
 {% if music %}<audio id="music" src="/e/{{ o.rsvp_slug }}/music" loop preload="auto"></audio>
@@ -128,29 +140,28 @@
 
 <section class="x-hero">
   {% if o.style == 'muslim_nikah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
-  {% elif o.style != 'christian' %}<div class="invocation">॥ श्री गणेशाय नमः ॥</div>{% endif %}
-  <div class="pre">{{ 'शुभ विवाह' if hi else ('Nikah' if o.style == 'muslim_nikah' else 'Together with their families') }}</div>
-  <h1 class="x-names">{{ bride }}<span class="amp">{{ 'संग' if hi else '&' }}</span>{{ groom }}</h1>
+  {% elif o.style != 'christian' %}<div class="invocation">{{ i18n.INVOCATIONS.get(o.language, i18n.INVOCATIONS['en']) }}</div>{% endif %}
+  <div class="pre">{{ 'Nikah' if o.style == 'muslim_nikah' and not local else t.pre }}</div>
+  <h1 class="x-names">{{ bride }}<span class="amp">{{ catalog.LANGUAGES[o.language].connector }}</span>{{ groom }}</h1>
   <div class="x-date">{{ pretty_date(o.wedding_date) }}</div>
   <div>{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
   <div class="countdown" id="countdown" data-to="{{ countdown_to }}">
-    <div><b data-u="d">0</b><span>Days</span></div><div><b data-u="h">0</b><span>Hours</span></div>
-    <div><b data-u="m">0</b><span>Mins</span></div><div><b data-u="s">0</b><span>Secs</span></div>
+    <div><b data-u="d">0</b><span>{{ t.days }}</span></div><div><b data-u="h">0</b><span>{{ t.hours }}</span></div>
+    <div><b data-u="m">0</b><span>{{ t.mins }}</span></div><div><b data-u="s">0</b><span>{{ t.secs }}</span></div>
   </div>
   {% if ev and ev.hashtag %}<div class="hashtag">{{ ev.hashtag }}</div>{% endif %}
-  <div class="scroll-hint">Scroll ↓</div>
+  <div class="scroll-hint">{{ t.scroll }}</div>
 </section>
 <div class="toran"></div>
 
 <section class="x-section">
   <div class="narrow reveal">
     <div class="personal">
-      {% if inv %}<div class="dear">{{ ('आदरणीय ' ~ inv.name ~ ' जी') if hi else ('Dear ' ~ inv.name) }},</div>{% endif %}
+      {% if inv %}<div class="dear">{{ t.dear.format(name=inv.name) }},</div>{% endif %}
       {% if ev and ev.blessing_line %}<p class="muted" style="font-style:italic">{{ ev.blessing_line }}</p>{% endif %}
-      <p>{% if hi %}{{ bride }} संग {{ groom }} के शुभ विवाह के पावन अवसर पर आप सपरिवार सादर आमंत्रित हैं। आपकी उपस्थिति हमारे लिए आशीर्वाद होगी।
-         {% else %}{{ (ev.hosts if ev and ev.hosts else 'Our families') }} joyfully request the pleasure of your presence to bless and celebrate the wedding of <strong>{{ o.bride_name }}</strong> &amp; <strong>{{ o.groom_name }}</strong>. Your presence will make our celebrations complete.{% endif %}</p>
+      <p>{{ t.invite_para.format(hosts=(ev.hosts if ev and ev.hosts else t.our_families), bride=bride, groom=groom) }}</p>
       {% if o.bride_family or o.groom_family %}
-      <p class="small muted">{% if o.bride_family %}{{ o.bride_name }}, daughter of {{ o.bride_family }}{% endif %}{% if o.bride_family and o.groom_family %} · {% endif %}{% if o.groom_family %}{{ o.groom_name }}, son of {{ o.groom_family }}{% endif %}</p>
+      <p class="small muted">{% if o.bride_family %}{{ bride }}, {{ t.daughter_of }} {{ o.bride_family }}{% endif %}{% if o.bride_family and o.groom_family %} · {% endif %}{% if o.groom_family %}{{ groom }}, {{ t.son_of }} {{ o.groom_family }}{% endif %}</p>
       {% endif %}
     </div>
   </div>
@@ -160,7 +171,7 @@
 <section class="x-section" style="padding-top:0">
   <div class="wrap center reveal">
     <img class="card-img" src="/e/{{ o.rsvp_slug }}/invite" alt="Wedding invitation card of {{ o.bride_name }} and {{ o.groom_name }}">
-    <p style="margin-top:18px"><a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/invite" download="invitation.png">Save the card</a></p>
+    <p style="margin-top:18px"><a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/invite" download="invitation.png">{{ t.save_card }}</a></p>
   </div>
 </section>
 {% endif %}
@@ -168,19 +179,19 @@
 {% if schedule %}
 <section class="x-section" style="background:var(--paper)">
   <div class="wrap">
-    <h2 class="x-title reveal"><span class="script">the celebrations</span>{{ 'Your invitation includes' if inv and inv.functions else 'Wedding Festivities' }}</h2>
+    <h2 class="x-title reveal">{% if not local %}<span class="script">the celebrations</span>{% endif %}{{ t.your_invitation if inv and inv.functions else t.celebrations }}</h2>
     <div class="timeline-x">
       {% for s in schedule %}
       <div class="ev reveal">
         <div class="icon" aria-hidden="true">{{ s.icon }}</div>
         <div class="body">
-          <h3>{{ s.label }}{% if hi and s.label_hi %}<span class="hi">{{ s.label_hi }}</span>{% endif %}</h3>
+          <h3>{{ s.label_local or s.label }}{% if s.label_local %}<span class="hi">{{ s.label }}</span>{% endif %}</h3>
           <div class="when">{{ s.pretty_date }}{% if s.pretty_time %} · {{ s.pretty_time }}{% endif %}</div>
           <div class="muted">{{ s.place }}</div>
-          {% if s.dress %}<span class="dress">👗 Dress code: {{ s.dress }}</span>{% endif %}
+          {% if s.dress %}<span class="dress">👗 {{ t.dress }}: {{ s.dress }}</span>{% endif %}
           <div class="links">
-            <a class="btn btn-sm btn-ghost" href="{{ s.map }}" target="_blank" rel="noopener">📍 Directions</a>
-            <a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/calendar/{{ s.key }}.ics">📅 Add to calendar</a>
+            <a class="btn btn-sm btn-ghost" href="{{ s.map }}" target="_blank" rel="noopener">{{ t.directions }}</a>
+            <a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/calendar/{{ s.key }}.ics">{{ t.calendar }}</a>
           </div>
         </div>
       </div>
@@ -193,7 +204,7 @@
 {% if ev and ev.story %}
 <section class="x-section">
   <div class="narrow reveal">
-    <h2 class="x-title"><span class="script">how it all began</span>Our Story</h2>
+    <h2 class="x-title">{% if not local %}<span class="script">how it all began</span>{% endif %}{{ t.story }}</h2>
     <p class="story">{{ ev.story }}</p>
   </div>
 </section>
@@ -201,59 +212,59 @@
 
 <section class="x-section" style="padding-top:{{ '72px' if ev and ev.story else '72px' }}">
   <div class="narrow reveal">
-    <h2 class="x-title"><span class="script">find your way</span>The Venue</h2>
+    <h2 class="x-title">{% if not local %}<span class="script">find your way</span>{% endif %}{{ t.venue }}</h2>
     <iframe class="map" src="{{ map_embed }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Map to {{ o.venue_name }}"></iframe>
-    <p class="center"><a class="btn" href="{{ map_link }}" target="_blank" rel="noopener">Open in Google Maps</a></p>
+    <p class="center"><a class="btn" href="{{ map_link }}" target="_blank" rel="noopener">{{ t.open_maps }}</a></p>
   </div>
 </section>
 
 <section class="x-section" id="rsvp" style="background:var(--paper)">
   <div class="narrow reveal">
-    <h2 class="x-title"><span class="script">kindly respond</span>Will you join us?</h2>
-    {% if thanks %}<div class="alert alert-ok center">🙏 Thank you! The family has received your response.{% if inv and inv.attending in ['yes', 'maybe'] %} We can't wait to celebrate with you!{% endif %}</div>{% endif %}
-    {% if inv and inv.attending and not thanks %}<div class="alert alert-info center">You replied <strong>{{ {'yes': 'Joyfully attending', 'maybe': 'Maybe', 'no': "Can't make it"}[inv.attending] }}</strong>{% if inv.headcount %} for {{ inv.headcount }} {{ 'person' if inv.headcount == 1 else 'people' }}{% endif %}. You can update it below.</div>{% endif %}
+    <h2 class="x-title">{% if not local %}<span class="script">kindly respond</span>{% endif %}{{ t.rsvp_title }}</h2>
+    {% if thanks %}<div class="alert alert-ok center">{{ t.thanks }}</div>{% endif %}
+    {% if inv and inv.attending and not thanks %}<div class="alert alert-info center">✓ <strong>{{ {'yes': t.yes, 'maybe': t.maybe, 'no': t.cant}[inv.attending] }}</strong>{% if inv.headcount %} · {{ inv.headcount }} 👤{% endif %}</div>{% endif %}
     <form class="rsvp-card" method="post" action="{{ action }}">
       {% if not inv %}
       <div class="form-grid" style="margin-bottom:12px">
-        <div><label for="name">Your name *</label><input id="name" name="name" type="text" required maxlength="120"></div>
-        <div><label for="phone">Phone</label><input id="phone" name="phone" type="tel" maxlength="20"></div>
+        <div><label for="name">{{ t.your_name }}</label><input id="name" name="name" type="text" required maxlength="120"></div>
+        <div><label for="phone">{{ t.phone }}</label><input id="phone" name="phone" type="tel" maxlength="20"></div>
       </div>
       {% endif %}
-      <label>Will you attend?</label>
+      <label>{{ t.attend_q }}</label>
       <div class="attend">
         {% set cur = inv.attending if inv and inv.attending else 'yes' %}
-        <label><input type="radio" name="attending" value="yes" {% if cur == 'yes' %}checked{% endif %}><span>🎉 Yes!</span></label>
-        <label><input type="radio" name="attending" value="maybe" {% if cur == 'maybe' %}checked{% endif %}><span>🤔 Maybe</span></label>
-        <label><input type="radio" name="attending" value="no" {% if cur == 'no' %}checked{% endif %}><span>🙏 Can't</span></label>
+        <label><input type="radio" name="attending" value="yes" {% if cur == 'yes' %}checked{% endif %}><span>{{ t.yes }}</span></label>
+        <label><input type="radio" name="attending" value="maybe" {% if cur == 'maybe' %}checked{% endif %}><span>{{ t.maybe }}</span></label>
+        <label><input type="radio" name="attending" value="no" {% if cur == 'no' %}checked{% endif %}><span>{{ t.cant }}</span></label>
       </div>
       <div class="form-grid">
-        <div><label for="headcount">How many people?</label><input id="headcount" name="headcount" type="number" min="1" max="30" value="{{ inv.headcount if inv and inv.headcount else 1 }}"></div>
+        <div><label for="headcount">{{ t.how_many }}</label><input id="headcount" name="headcount" type="number" min="1" max="30" value="{{ inv.headcount if inv and inv.headcount else 1 }}"></div>
         {% if inv %}
-        <div><label for="food">Food preference</label>
+        <div><label for="food">{{ t.food }}</label>
           <select id="food" name="food"><option value="">No preference</option>
             {% for k, v in food_choices.items() %}<option value="{{ k }}" {% if inv.food == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
           </select></div>
         {% endif %}
         {% if schedule|length > 1 %}
-        <div class="full"><label>Which functions will you attend?</label>
-          {% for s in schedule %}<label class="check"><input type="checkbox" name="functions" value="{{ s.key }}" {% if not inv or not inv.attending or s.key in (inv.attending_functions or []) %}checked{% endif %}> <span>{{ s.icon }} {{ s.label }} <span class="hint">{{ s.pretty_date }}</span></span></label>{% endfor %}
+        <div class="full"><label>{{ t.which_functions }}</label>
+          {% for s in schedule %}<label class="check"><input type="checkbox" name="functions" value="{{ s.key }}" {% if not inv or not inv.attending or s.key in (inv.attending_functions or []) %}checked{% endif %}> <span>{{ s.icon }} {{ s.label_local or s.label }} <span class="hint">{{ s.pretty_date }}</span></span></label>{% endfor %}
         </div>
         {% endif %}
       </div>
       {% if inv %}
       <details style="margin-top:14px" {% if inv.arrival_date %}open{% endif %}>
-        <summary>🚆 Travelling from out of town?</summary>
+        <summary>{{ t.travelling }}</summary>
         <div class="form-grid" style="margin-top:12px">
-          <div><label for="arrival_date">Arrival date</label><input id="arrival_date" name="arrival_date" type="date" value="{{ inv.arrival_date }}"></div>
-          <div><label for="arrival_mode">Arriving by</label>
+          <div><label for="arrival_date">{{ t.arrival_date }}</label><input id="arrival_date" name="arrival_date" type="date" value="{{ inv.arrival_date }}"></div>
+          <div><label for="arrival_mode">{{ t.arriving_by }}</label>
             <select id="arrival_mode" name="arrival_mode">{% for m in ['train', 'flight', 'road'] %}<option value="{{ m }}" {% if inv.arrival_mode == m %}selected{% endif %}>{{ m|capitalize }}</option>{% endfor %}</select></div>
-          <label class="check full"><input type="checkbox" name="needs_pickup" {% if inv.needs_pickup %}checked{% endif %}> <span>Please arrange pickup from the station / airport</span></label>
+          <label class="check full"><input type="checkbox" name="needs_pickup" {% if inv.needs_pickup %}checked{% endif %}> <span>{{ t.pickup }}</span></label>
         </div>
       </details>
       {% endif %}
-      <label for="message" style="margin-top:14px">Blessings for the couple 💌</label>
+      <label for="message" style="margin-top:14px">{{ t.blessings_label }}</label>
       <textarea id="message" name="message" maxlength="1000" placeholder="Wishing you a lifetime of love…">{{ inv.message if inv else '' }}</textarea>
-      <button class="btn btn-primary btn-block" type="submit" style="margin-top:14px">{{ 'Update my response' if inv and inv.attending else 'Send my RSVP' }}</button>
+      <button class="btn btn-primary btn-block" type="submit" style="margin-top:14px">{{ t.update_rsvp if inv and inv.attending else t.send_rsvp }}</button>
     </form>
   </div>
 </section>
@@ -263,10 +274,10 @@
   <div class="narrow reveal" style="display:grid;gap:20px">
     {% if upi_link %}
     <div class="shagun">
-      <h2 style="margin:0">Send your blessings 🪙</h2>
-      <p class="muted">Can't be there in person? Send shagun to the couple via UPI.</p>
+      <h2 style="margin:0">{{ t.shagun_title }}</h2>
+      <p class="muted">{{ t.shagun_text }}</p>
       <img src="/e/{{ o.rsvp_slug }}/shagun.png" alt="UPI QR code for shagun">
-      <p><a class="btn btn-primary" href="{{ upi_link }}">Pay shagun with any UPI app</a></p>
+      <p><a class="btn btn-primary" href="{{ upi_link }}">{{ t.shagun_btn }}</a></p>
       <p class="small muted">UPI ID: {{ ev.upi_id }}</p>
     </div>
     {% endif %}
@@ -280,7 +291,7 @@
 {% if blessings %}
 <section class="x-section" style="background:var(--paper)">
   <div class="wrap">
-    <h2 class="x-title reveal"><span class="script">with love</span>Blessings Wall</h2>
+    <h2 class="x-title reveal">{% if not local %}<span class="script">with love</span>{% endif %}{{ t.wall }}</h2>
     <div class="wall">{% for name, msg in blessings %}<div class="wish reveal">{{ msg }}<b>— {{ name }}</b></div>{% endfor %}</div>
   </div>
 </section>

@@ -384,4 +384,51 @@ def test_live_demo(client):
     assert "Sharma Family" in page.text and "Our Story" in page.text
     assert client.get("/demo/console").status_code == 200
     with SessionLocal() as db:
-        assert len(db.scalars(select(Order).where(Order.source == "demo")).all()) == 1
+        assert len(db.scalars(select(Order).where(Order.source == "demo")).all()) == len(demo.DEMOS)
+
+    # Every language demo renders fully in its own language and script.
+    from app import i18n
+    from app.services.overlay import RAQM
+
+    for lang, cfg in demo.DEMOS.items():
+        page = client.get(f"/demo/{lang}")
+        assert page.status_code == 200, lang
+        t = i18n.texts(lang)
+        assert f'<html lang="{lang}">' in page.text, lang
+        assert t["dear"].format(name=cfg["guest"]) in page.text, lang
+        assert t["rsvp_title"] in page.text and t["tap"] in page.text, lang
+        if cfg["bride"][1]:
+            assert cfg["bride"][1] in page.text, lang
+        if cfg["style"] != "christian":
+            assert i18n.INVOCATIONS[lang] in page.text, lang
+        assert client.get(f"/demo/{lang}/console").status_code == 200, lang
+        # A card with broken Indian-script shaping is never shown to guests.
+        has_card = f"/e/" in page.text and "/invite\"" in page.text
+        assert has_card == (lang == "en" or RAQM), lang
+    assert client.get("/demo/xx").status_code == 404
+
+
+def test_translations_complete():
+    from app import i18n
+    from app.catalog import FUNCTIONS, LANGUAGES
+
+    for lang in LANGUAGES:
+        if lang == "en":
+            continue
+        assert set(i18n.T[lang]) == set(i18n.EN), lang
+        assert set(i18n.FUNCTION_NAMES[lang]) == set(FUNCTIONS), lang
+        assert lang in i18n.INVOCATIONS and lang in i18n.WEB_FONTS, lang
+        for key in ("dear", "invite_para"):  # placeholders must survive translation
+            text = i18n.T[lang][key].format(name="X", hosts="H", bride="B", groom="G")
+            assert "{" not in text, (lang, key)
+
+
+def test_whatsapp_message_in_card_language():
+    from types import SimpleNamespace as NS
+
+    from app.services import invites
+
+    order = NS(language="ta", bride_name="Meenakshi", groom_name="Karthik", bride_name_local="மீனாட்சி",
+               groom_name_local="கார்த்திக்", wedding_date=date(2026, 12, 12), event=None)
+    text = invites.whatsapp_text(order, NS(name="ஐயர் குடும்பம்", code="abc"))
+    assert "அன்புள்ள ஐயர் குடும்பம்" in text and "மீனாட்சி" in text and "/i/abc" in text

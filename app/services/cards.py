@@ -1,7 +1,8 @@
 """Decides which cards an order gets and what text goes on each one."""
 from dataclasses import dataclass
 
-from app.catalog import ENGLISH_INVITE_LINE, FUNCTIONS, FUNCTIONS_HI, LANGUAGES, PACKAGES, card_style_for
+from app import i18n
+from app.catalog import ENGLISH_INVITE_LINE, FUNCTIONS, LANGUAGES, PACKAGES, card_style_for
 from app.services.overlay import Divider, Line
 from app.utils import pretty_date, pretty_time
 
@@ -34,15 +35,12 @@ def _names(order) -> tuple[str, str]:
 
 
 def _function_label(order, key: str) -> str:
-    if order.language == "hi":
-        return FUNCTIONS_HI.get(key, FUNCTIONS[key])
-    return FUNCTIONS[key]
+    return i18n.function_name(order.language, key, FUNCTIONS[key])
 
 
 def main_card(order) -> CardSpec:
     lang = LANGUAGES[order.language]
     bride, groom = _names(order)
-    hi = order.language == "hi"
     headline = STYLE_HEADLINES_EN.get(order.style, lang.headline) if order.language == "en" else lang.headline
     ceremony = next((f for f in order.functions or [] if f["key"] in MAIN_CEREMONIES), None)
 
@@ -52,12 +50,15 @@ def main_card(order) -> CardSpec:
         Line(lang.invite_line or ENGLISH_INVITE_LINE, "invite", 34, "secondary", max_lines=3, gap_before=14),
         Line(bride, "names", 128, "primary", gap_before=26),
     ]
+    t = i18n.texts(order.language)
+    daughter_of = "Daughter of" if order.language == "en" else t["daughter_of"]
+    son_of = "Son of" if order.language == "en" else t["son_of"]
     if order.bride_family:
-        items.append(Line(f"{'सुपुत्री' if hi else 'Daughter of'} {order.bride_family}", "family", 28, gap_before=2))
+        items.append(Line(f"{daughter_of} {order.bride_family}", "family", 28, gap_before=2))
     items.append(Line(lang.connector, "connector", 64, "accent", gap_before=6))
     items.append(Line(groom, "names", 128, "primary", gap_before=6))
     if order.groom_family:
-        items.append(Line(f"{'सुपुत्र' if hi else 'Son of'} {order.groom_family}", "family", 28, gap_before=2))
+        items.append(Line(f"{son_of} {order.groom_family}", "family", 28, gap_before=2))
     items += [Divider(gap_before=26), Line(pretty_date(order.wedding_date), "date", 38, "accent", gap_before=14)]
     if ceremony and ceremony.get("time"):
         items.append(Line(f"at {pretty_time(ceremony['time'])}", "detail", 32, gap_before=4))
@@ -73,7 +74,7 @@ def function_card(order, fn: dict) -> CardSpec:
     lang = LANGUAGES[order.language]
     key = fn["key"]
     items: list = [
-        Line("आप सादर आमंत्रित हैं" if order.language == "hi" else "Join us for the", "invite", 34, gap_before=0),
+        Line("Join us for the" if order.language == "en" else i18n.texts(order.language)["invited"], "invite", 34, gap_before=0),
         Line(_function_label(order, key), "title", 120, "primary", gap_before=10),
         Divider(gap_before=10),
         Line(f"{bride} {lang.connector} {groom}", "headline", 44, "accent", max_lines=2, gap_before=18),

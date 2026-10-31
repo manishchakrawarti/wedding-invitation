@@ -37,10 +37,15 @@ def get_invitee(code: str, db: Session = Depends(get_db)) -> Invitee:
     return invitee
 
 
+def _shaping_failed(asset: Asset) -> bool:
+    return any(c["name"] == "script_shaping" and c["status"] == "fail" for c in (asset.qc or {}).get("checks", []))
+
+
 def _hero(order: Order):
+    """The main card, but never one whose Indian-script text failed shaping QC (broken matras)."""
     if order.status != OrderStatus.DELIVERED.value:
         return None
-    return next((a for a in order.live_assets("final") if a.card_key == "main"), None)
+    return next((a for a in order.live_assets("final") if a.card_key == "main" and not _shaping_failed(a)), None)
 
 
 def _music(order: Order):
@@ -177,24 +182,31 @@ def calendar(key: str, order: Order = Depends(get_event)):
                     headers={"Content-Disposition": f'attachment; filename="{key}.ics"'})
 
 
-@router.get("/demo")
-def demo_invite():
-    """Live sample invite for marketing: what a guest receives."""
-    order = demo.demo_order()
+def _ready_demo(lang: str) -> Order:
+    if lang not in demo.DEMOS:
+        raise HTTPException(404, "No demo in that language")
+    order = demo.demo_order(lang)
     if order is None or order.status != OrderStatus.DELIVERED.value:
         raise HTTPException(503, "The demo is being prepared, please try again in a minute.")
+    return order
+
+
+@router.get("/demo/console")  # registered before /demo/{lang} so "console" isn't read as a language
+@router.get("/demo/{lang}/console")
+def demo_console(lang: str = "en"):
+    """Live sample of the family console."""
+    order = _ready_demo(lang)
+    return RedirectResponse(f"/e/{order.rsvp_slug}/guests?key={order.token}", status_code=302)
+
+
+@router.get("/demo")
+@router.get("/demo/{lang}")
+def demo_invite(lang: str = "en"):
+    """Live sample invite for marketing: what a guest receives, in any supported language."""
+    order = _ready_demo(lang)
     with SessionLocal() as db:
         invitee = db.scalar(select(Invitee).where(Invitee.order_id == order.id).order_by(Invitee.id))
     return RedirectResponse(f"/i/{invitee.code}", status_code=302)
-
-
-@router.get("/demo/console")
-def demo_console():
-    """Live sample of the family console."""
-    order = demo.demo_order()
-    if order is None or order.status != OrderStatus.DELIVERED.value:
-        raise HTTPException(503, "The demo is being prepared, please try again in a minute.")
-    return RedirectResponse(f"/e/{order.rsvp_slug}/guests?key={order.token}", status_code=302)
 
 
 # --- family console ------------------------------------------------------------

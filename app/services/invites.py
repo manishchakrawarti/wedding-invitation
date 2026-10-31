@@ -7,7 +7,8 @@ from urllib.parse import quote, quote_plus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.catalog import FUNCTIONS, FUNCTIONS_HI
+from app import i18n
+from app.catalog import FUNCTIONS
 from app.config import settings
 from app.models import EventDetails, Invitee, Order
 from app.utils import normalize_phone, pretty_date, pretty_time
@@ -54,7 +55,7 @@ def schedule(order: Order, only: list[str] | None = None) -> list[dict]:
             **fn,
             "date": when,
             "label": FUNCTIONS.get(fn["key"], fn["key"]),
-            "label_hi": FUNCTIONS_HI.get(fn["key"], ""),
+            "label_local": i18n.function_name(order.language, fn["key"], "") if order.language != "en" else "",
             "icon": FUNCTION_ICONS.get(fn["key"], "✨"),
             "place": place,
             "map": map_link(place),
@@ -78,20 +79,17 @@ def invite_url(invitee: Invitee) -> str:
 
 
 def whatsapp_text(order: Order, invitee: Invitee) -> str:
-    if order.language == "hi":
-        bride = order.bride_name_local or order.bride_name
-        groom = order.groom_name_local or order.groom_name
-        return (
-            f"नमस्ते {invitee.name} जी 🙏\n\n"
-            f"{bride} संग {groom} के शुभ विवाह ({pretty_date(order.wedding_date)}) में आप सपरिवार सादर आमंत्रित हैं।\n\n"
-            f"आपका व्यक्तिगत निमंत्रण 💌 {invite_url(invitee)}"
-        )
-    hosts = order.event.hosts if order.event and order.event.hosts else "our families"
+    """Personal WhatsApp message in the card's language."""
+    t = i18n.texts(order.language)
+    local = order.language != "en"
+    bride = order.bride_name_local if local and order.bride_name_local else order.bride_name
+    groom = order.groom_name_local if local and order.groom_name_local else order.groom_name
+    hosts = order.event.hosts if order.event and order.event.hosts else t["our_families"]
+    body = t["invite_para"].format(hosts=hosts, bride=bride, groom=groom)
     return (
-        f"Namaste {invitee.name} ji 🙏\n\n"
-        f"With great joy, {hosts} invite you to celebrate the wedding of "
-        f"{order.bride_name} & {order.groom_name} on {pretty_date(order.wedding_date)}.\n\n"
-        f"Your personal invitation 💌 {invite_url(invitee)}"
+        f"🙏 {t['dear'].format(name=invitee.name)},\n\n{body}\n"
+        f"📅 {pretty_date(order.wedding_date)}\n\n"
+        f"{t['your_invitation']} 💌 {invite_url(invitee)}"
     )
 
 
