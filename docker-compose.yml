@@ -1,0 +1,33 @@
+# Option B: your own server (VPS). Runs the app + Caddy, which gets free HTTPS certificates
+# for invite-all.com automatically. See DEPLOY.md.
+#   docker compose up -d --build
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env             # production .env on the server (never commit it)
+    environment:
+      DATA_DIR: /data
+      PORT: "8080"
+      BASE_URL: https://invite-all.com
+    volumes:
+      - appdata:/data
+    shm_size: "1gb"            # room for Chromium when rendering PDFs / long images
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  appdata:
+  caddy_data:
+  caddy_config:

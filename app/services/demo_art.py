@@ -299,7 +299,7 @@ def render_png(svg: str, w: int, h: int) -> bytes | None:
         page = Path(tmp, "art.html")
         page.write_text(f'<!doctype html><html><body style="margin:0;background:#fff">{svg}</body></html>', encoding="utf-8")
         out = Path(tmp, "art.png")
-        subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox", "--hide-scrollbars",
+        subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars",
                         f"--user-data-dir={Path(tmp, 'p')}", f"--window-size={w},{h}", "--force-device-scale-factor=1",
                         f"--screenshot={out}", page.as_uri()], capture_output=True, timeout=60)
         return out.read_bytes() if out.exists() else None

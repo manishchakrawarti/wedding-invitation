@@ -121,7 +121,7 @@ MAX_SHOT_HEIGHT = 15000  # Chrome can't screenshot taller than ~16k px in one go
 def _chrome(chrome: str, tmp: str, html: str, out: Path, extra: list[str]) -> None:
     page = Path(tmp, f"{out.stem}.html")
     page.write_text(html, encoding="utf-8")
-    cmd = [chrome, "--headless=new", "--disable-gpu", "--no-sandbox", "--hide-scrollbars",
+    cmd = [chrome, "--headless=new", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars",
            f"--user-data-dir={Path(tmp, 'profile')}", "--virtual-time-budget=5000", *extra, page.as_uri()]
     try:
         proc = subprocess.run(cmd, capture_output=True, timeout=180, env={**os.environ})

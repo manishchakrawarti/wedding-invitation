@@ -1,0 +1,62 @@
+# Render Blueprint for invite-all.com  (Render dashboard → New → Blueprint → pick this repo)
+# Values marked `sync: false` are asked for when you create the Blueprint; keep secrets out of git.
+services:
+  - type: web
+    name: invite-all
+    runtime: docker
+    region: singapore          # closest Render region to India
+    plan: standard             # 2 GB RAM: needed for 2K/4K image exports (Chromium + large images)
+    numInstances: 1            # one instance: SQLite + local files live on the attached disk
+    healthCheckPath: /healthz
+    autoDeploy: true           # every push to main redeploys
+    domains:
+      - invite-all.com
+      - www.invite-all.com
+    disk:
+      name: data
+      mountPath: /data         # database, uploaded photos, generated cards (daily snapshots by Render)
+      sizeGB: 5
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: BASE_URL
+        value: https://invite-all.com
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        generateValue: true    # strong random password; see it in Render → Environment
+      - key: BRAND_NAME
+        sync: false
+      - key: BRAND_TAGLINE
+        value: Beautiful invitations for weddings and every occasion, ready to share on WhatsApp
+      - key: WHATSAPP_NUMBER
+        sync: false
+      - key: SUPPORT_EMAIL
+        sync: false
+      - key: INSTAGRAM_HANDLE
+        sync: false
+      - key: OWNER_EMAIL
+        sync: false
+      - key: OWNER_WHATSAPP
+        sync: false
+      # Payments: Razorpay API keys (instant unlock) or your Razorpay.me link (manual confirm)
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: RAZORPAY_ME_URL
+        sync: false
+      # Optional services (leave empty to start)
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      # TEST_COUPON_CODE and TEST_ORDER_CODE are deliberately NOT set in production.
