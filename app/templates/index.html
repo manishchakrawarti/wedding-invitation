@@ -5,10 +5,14 @@
     <div>
       <h1>Not just a card. <span class="script">An invitation they'll never forget.</span></h1>
       <p class="lead">Palace doors swing open, marigold petals fall, your music plays, and each guest is greeted by name. Send personal invites to your whole guest list on WhatsApp, and know exactly who's coming to every function.</p>
-      <p>
-        <a class="btn" href="/demo" target="_blank">✨ Open a live demo invite</a>
+      <form class="demo-picker" action="/demo" method="get" target="_blank">
+        <label class="sr-only" for="demo-lang-hero">Demo language</label>
+        <select class="lang-select" id="demo-lang-hero" name="lang">
+          {% for code, l in catalog.LANGUAGES.items() %}<option value="{{ code }}" lang="{{ code }}">{{ l.native }}{% if code != 'en' %} · {{ l.name }}{% endif %}</option>{% endfor %}
+        </select>
+        <button class="btn" type="submit">✨ Open live demo</button>
         <a class="btn btn-ghost" style="color:var(--gold-soft)" href="/order?package=premium">Order yours</a>
-      </p>
+      </form>
       <div class="trust">
         <span>✦ From ₹{{ catalog.PACKAGES['basic'].price }}</span>
         <span>✦ {{ catalog.LANGUAGES|length }} languages</span>
@@ -37,10 +41,14 @@
       <div class="card"><div style="font-size:2rem">🪙</div><h3>Shagun, maps &amp; reminders</h3><p>Shagun via UPI for those who can't come, Google Maps for every venue, dress codes, and add-to-calendar reminders.</p></div>
       <div class="card"><div style="font-size:2rem">🙏</div><h3>Made by humans, in your language</h3><p>Hindi and 7 regional languages, names spelled exactly right, and a real designer checks every invite before you see it.</p></div>
     </div>
-    <p class="center" style="margin-top:30px">
-      <a class="btn btn-primary" href="/demo" target="_blank">See what guests receive</a>
-      <a class="btn btn-ghost" href="/demo/console" target="_blank">See the family console</a>
-    </p>
+    <form class="demo-picker center" action="/demo" method="get" target="_blank" style="display:flex;justify-content:center;margin-top:30px">
+      <label class="sr-only" for="demo-lang-features">Demo language</label>
+      <select class="lang-select" id="demo-lang-features" name="lang">
+        {% for code, l in catalog.LANGUAGES.items() %}<option value="{{ code }}" lang="{{ code }}">{{ l.native }}{% if code != 'en' %} · {{ l.name }}{% endif %}</option>{% endfor %}
+      </select>
+      <button class="btn btn-primary" type="submit">See what guests receive</button>
+      <button class="btn btn-ghost" type="submit" formaction="/demo/console">See the family console</button>
+    </form>
   </div>
 </section>
 
@@ -143,4 +151,17 @@
     <p class="center" style="margin-top:28px"><a class="btn btn-wa" href="{{ wa_link('Namaste! I have a question about wedding invitations') }}">Ask on WhatsApp</a></p>
   </div>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  // Keep both demo pickers on the same language, starting from the visitor's phone/browser language.
+  const pickers = Array.from(document.querySelectorAll('.lang-select'));
+  const supported = pickers[0] ? Array.from(pickers[0].options).map(o => o.value) : [];
+  const preferred = (navigator.languages || [navigator.language || 'en']).map(l => l.slice(0, 2).toLowerCase()).find(l => supported.includes(l));
+  const set = v => pickers.forEach(p => { p.value = v; });
+  if (preferred) set(preferred);
+  pickers.forEach(p => p.addEventListener('change', () => set(p.value)));
+})();
+</script>
 {% endblock %}

@@ -432,3 +432,18 @@ def test_whatsapp_message_in_card_language():
                groom_name_local="கார்த்திக்", wedding_date=date(2026, 12, 12), event=None)
     text = invites.whatsapp_text(order, NS(name="ஐயர் குடும்பம்", code="abc"))
     assert "அன்புள்ள ஐயர் குடும்பம்" in text and "மீனாட்சி" in text and "/i/abc" in text
+
+
+def test_homepage_demo_language_picker(client):
+    from app.services import demo
+
+    demo.ensure_demo()
+    home = client.get("/").text
+    assert home.count('class="lang-select"') == 2 and 'formaction="/demo/console"' in home
+    for code in ("en", "hi", "ta", "ml"):
+        assert f'<option value="{code}"' in home
+    # The picker submits ?lang=..., which must open that language's demo and console.
+    page = client.get("/demo?lang=ta")
+    assert '<html lang="ta">' in page.text
+    console = client.get("/demo/console?lang=bn")
+    assert console.status_code == 200 and "Rimjhim" in console.text  # Bengali demo couple
