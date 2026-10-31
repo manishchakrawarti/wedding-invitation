@@ -68,7 +68,7 @@ DEMO = dict(
     language="en", package="basic", addons=[], bride_name="Ananya", groom_name="Arjun",
     bride_name_local="", groom_name_local="", bride_family="", groom_family="",
     wedding_date=date(2026, 12, 12), venue_name="The Royal Palace Gardens", venue_address="", city="Jaipur",
-    functions=[{"key": "wedding", "time": "19:30"}],
+    functions=[{"key": "wedding", "time": "19:30"}], time_format="12h",
 )
 
 
@@ -111,7 +111,7 @@ def sample_event_image(type_key: str, style_key: str | None = None) -> bytes:
         language="en", style=style_key, event_type=type_key, is_wedding=False, bride_name=primary, groom_name=secondary,
         bride_name_local="", groom_name_local="", occasion_detail=detail, event=None,
         wedding_date=date(2026, 12, 12), venue_name="The Grand Banquet", venue_address="", city="Jaipur",
-        functions=[{"key": type_key, "time": "19:00"}],
+        functions=[{"key": type_key, "time": "19:00"}], time_format="12h",
     )
     style = STYLES[style_key]
     bg = offline_generator().generate("", style, LAYOUT_PLAIN, [], seed=11).image

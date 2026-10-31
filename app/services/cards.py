@@ -68,7 +68,7 @@ def main_card(order) -> CardSpec:
         items.append(Line(f"{son_of} {order.groom_family}", "family", 28, gap_before=2))
     items += [Divider(gap_before=26), Line(pretty_date(order.wedding_date), "date", 38, "accent", gap_before=14)]
     if ceremony and ceremony.get("time"):
-        items.append(Line(f"at {pretty_time(ceremony['time'])}", "detail", 32, gap_before=4))
+        items.append(Line(f"at {pretty_time(ceremony['time'], order.time_format)}", "detail", 32, gap_before=4))
     items.append(Line(order.venue_name, "detail", 36, "primary", max_lines=2, gap_before=16))
     address = ", ".join(p for p in (order.venue_address, order.city) if p)
     if address:
@@ -88,7 +88,7 @@ def function_card(order, fn: dict) -> CardSpec:
         Line(pretty_date(fn.get("date") or order.wedding_date), "date", 38, "secondary", gap_before=30),
     ]
     if fn.get("time"):
-        items.append(Line(pretty_time(fn["time"]), "detail", 34, gap_before=6))
+        items.append(Line(pretty_time(fn["time"], order.time_format), "detail", 34, gap_before=6))
     items.append(Line(fn.get("venue") or order.venue_name, "detail", 36, "primary", max_lines=2, gap_before=16))
     return CardSpec(key, FUNCTIONS[key], card_style_for(order.style, key), items, with_photo=False)
 
@@ -114,7 +114,7 @@ def event_card(order) -> CardSpec:
     items.append(Line(pretty_date(order.wedding_date), "date", 38, "accent", gap_before=14))
     main = next(iter(order.functions or []), {})
     if main.get("time"):
-        items.append(Line(f"at {pretty_time(main['time'])}", "detail", 32, gap_before=4))
+        items.append(Line(f"at {pretty_time(main['time'], order.time_format)}", "detail", 32, gap_before=4))
     items.append(Line(order.venue_name, "detail", 36, "primary", max_lines=2, gap_before=16))
     address = ", ".join(p for p in (order.venue_address, order.city) if p)
     if address:

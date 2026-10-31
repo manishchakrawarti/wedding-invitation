@@ -43,10 +43,27 @@ def pretty_date(d: date | str | None) -> str:
     return d.strftime("%A, %d %B %Y").replace(" 0", " ")
 
 
-def pretty_time(t: str | None) -> str:
+def clean_time(raw: str | None) -> str:
+    """A form time as 24-hour 'HH:MM', or '' if empty or invalid. Accepts '19:30', '7:30', '7:30 PM', '7 pm'."""
+    m = re.fullmatch(r"\s*(\d{1,2})(?::(\d{2}))?\s*([AaPp]\.?[Mm]\.?)?\s*", raw or "")
+    if not m:
+        return ""
+    hour, minute, ampm = int(m.group(1)), int(m.group(2) or 0), (m.group(3) or "").lower()[:1]
+    if ampm:
+        if not 1 <= hour <= 12:
+            return ""
+        hour = hour % 12 + (12 if ampm == "p" else 0)
+    if hour > 23 or minute > 59 or (not ampm and m.group(2) is None):
+        return ""
+    return f"{hour:02d}:{minute:02d}"
+
+
+def pretty_time(t: str | None, fmt: str = "12h") -> str:
+    """'19:30' -> '7:30 PM' (fmt '12h') or '19:30' (fmt '24h')."""
     if not t:
         return ""
-    return datetime.strptime(t, "%H:%M").strftime("%I:%M %p").lstrip("0")
+    when = datetime.strptime(t, "%H:%M")
+    return when.strftime("%H:%M") if fmt == "24h" else when.strftime("%I:%M %p").lstrip("0")
 
 
 def slugify(text: str) -> str:

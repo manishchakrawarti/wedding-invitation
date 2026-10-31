@@ -1,0 +1,82 @@
+{# Time picker with a clear AM/PM (or 24-hour) choice, instead of the browser's time box whose
+   format depends on the phone's settings. The value is always sent as 24-hour "HH:MM" in a hidden
+   input, so the server sees the same thing either way.
+
+   {% import "_time.html" as tp %}
+   {{ tp.format_switch(v.time_format) }}               once per form: 12-hour / 24-hour
+   {{ tp.time_input("wedding_time", v.wedding_time) }} each time field
+   {{ tp.script() }}                                   once, in the scripts block #}
+
+{% macro format_switch(current) %}
+<div class="tp-format" role="radiogroup" aria-label="Time format">
+  <span class="hint">Time format:</span>
+  <label><input type="radio" name="time_format" value="12h" {% if current != '24h' %}checked{% endif %}> <span>12-hour (AM / PM)</span></label>
+  <label><input type="radio" name="time_format" value="24h" {% if current == '24h' %}checked{% endif %}> <span>24-hour</span></label>
+</div>
+{% endmacro %}
+
+{% macro time_input(name, value, label="Time", id="") %}
+{% set hh = (value or '')[:2] %}{% set mm = (value or '')[3:5] %}
+{% set h = hh | int if hh else none %}
+<span class="tpick" data-tpick>
+  <input type="hidden" name="{{ name }}" value="{{ value or '' }}">
+  <select class="tp-h" {% if id %}id="{{ id }}"{% endif %} aria-label="{{ label }}: hour">
+    <option value="">Hour</option>
+    {% for i in range(1, 13) %}<option value="{{ i }}" {% if h is not none and (h % 12 or 12) == i %}selected{% endif %}>{{ i }}</option>{% endfor %}
+  </select>
+  <select class="tp-m" aria-label="{{ label }}: minutes">
+    {% for i in range(0, 60, 5) %}{% set m2 = '%02d' % i %}<option value="{{ m2 }}" {% if mm == m2 %}selected{% endif %}>{{ m2 }}</option>{% endfor %}
+    {% if mm and (mm | int) % 5 %}<option value="{{ mm }}" selected>{{ mm }}</option>{% endif %}
+  </select>
+  <select class="tp-ap" aria-label="{{ label }}: AM or PM">
+    <option value="AM" {% if h is not none and h < 12 %}selected{% endif %}>AM</option>
+    <option value="PM" {% if h is none or h >= 12 %}selected{% endif %}>PM</option>
+  </select>
+</span>
+{% endmacro %}
+
+{% macro script() %}
+<style>
+  .tpick { display: flex; gap: 6px; align-items: center; }
+  .tpick select { width: auto; flex: 1 1 0; min-width: 0; padding-left: 9px; padding-right: 4px; }
+  .tpick .tp-ap { flex: 0 0 auto; font-weight: 600; }
+  .tp-format { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 2px 0 12px; }
+  .tp-format label { display: flex; gap: 6px; align-items: center; font-weight: 400; margin: 0; cursor: pointer; }
+  .tp-format input { accent-color: var(--maroon); }
+</style>
+<script>
+(function () {
+  const pickers = [...document.querySelectorAll('[data-tpick]')];
+  if (!pickers.length) return;
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = form => (form && form.querySelector('input[name=time_format]:checked') || {}).value || '12h';
+  // current 24-hour value of a picker, or "" if no hour is chosen
+  const read = p => {
+    const h = p.querySelector('.tp-h').value, m = p.querySelector('.tp-m').value || '00';
+    if (h === '') return '';
+    if (fmt(p.closest('form')) === '24h') return pad(h) + ':' + m;
+    return pad((+h % 12) + (p.querySelector('.tp-ap').value === 'PM' ? 12 : 0)) + ':' + m;
+  };
+  // rebuild the hour list for the form's format, keeping the same time
+  const render = p => {
+    const value = p.querySelector('input[type=hidden]').value, h24 = fmt(p.closest('form')) === '24h';
+    const hourSel = p.querySelector('.tp-h'), ap = p.querySelector('.tp-ap');
+    const hour = value ? +value.slice(0, 2) : null;
+    const hours = h24 ? [...Array(24).keys()] : [...Array(12).keys()].map(i => i + 1);
+    hourSel.innerHTML = '<option value="">Hour</option>' + hours.map(i => `<option value="${i}">${h24 ? pad(i) : i}</option>`).join('');
+    if (hour !== null) { hourSel.value = h24 ? hour : (hour % 12 || 12); ap.value = hour >= 12 ? 'PM' : 'AM'; }
+    ap.hidden = h24;
+  };
+  pickers.forEach(p => {
+    const hidden = p.querySelector('input[type=hidden]');
+    p.querySelectorAll('select').forEach(s => s.addEventListener('change', () => { hidden.value = read(p); }));
+    render(p);
+  });
+  new Set(pickers.map(p => p.closest('form'))).forEach(form => {
+    if (!form) return;
+    form.querySelectorAll('input[name=time_format]').forEach(r => r.addEventListener('change', () =>
+      pickers.filter(p => p.closest('form') === form).forEach(render)));
+  });
+})();
+</script>
+{% endmacro %}

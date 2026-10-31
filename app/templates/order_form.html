@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_time.html" as tp %}
 {% block title %}Order your invitation · {{ settings.brand_name }}{% endblock %}
 {% block content %}
 <section style="padding-top:36px">
@@ -77,12 +78,13 @@
     </div>
     <h3 style="margin-top:20px">Functions</h3>
     <p class="hint">Tick each function. Date and venue default to the wedding's if left empty.</p>
+    {{ tp.format_switch(v.time_format) }}
     {% for key, label in functions.items() %}
     <div class="fn-row {% if v.get('fn_' ~ key) %}on{% endif %}">
       <label class="check" style="margin:0"><input type="checkbox" name="fn_{{ key }}" {% if v.get('fn_' ~ key) %}checked{% endif %}> <span>{{ label }}</span></label>
       <div class="fn-fields">
         <input type="date" name="fn_{{ key }}_date" value="{{ v.get('fn_' ~ key ~ '_date', '') }}" aria-label="{{ label }} date">
-        <input type="time" name="fn_{{ key }}_time" value="{{ v.get('fn_' ~ key ~ '_time', '') }}" aria-label="{{ label }} time">
+        {{ tp.time_input("fn_" ~ key ~ "_time", v.get("fn_" ~ key ~ "_time", ""), label ~ " time") }}
         <input type="text" name="fn_{{ key }}_venue" value="{{ v.get('fn_' ~ key ~ '_venue', '') }}" placeholder="Venue (if different)" aria-label="{{ label }} venue">
       </div>
     </div>
@@ -130,6 +132,7 @@
 </section>
 {% endblock %}
 {% block scripts %}
+{{ tp.script() }}
 <script>
 (function () {
   const form = document.getElementById('order-form');

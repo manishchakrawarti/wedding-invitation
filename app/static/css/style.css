@@ -159,9 +159,9 @@ textarea { min-height: 90px; resize: vertical; }
 .pkg-choice strong { font-family: var(--serif); font-size: 1.3rem; display: block; color: var(--maroon-dark); }
 
 .fn-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; background: #fff; }
-.fn-row .fn-fields { display: none; grid-template-columns: 1fr 1fr 2fr; gap: 10px; margin-top: 8px; }
+.fn-row .fn-fields { display: none; grid-template-columns: 1fr 1.3fr 1.6fr; gap: 10px; margin-top: 8px; }
 .fn-row.on .fn-fields { display: grid; }
-@media (max-width: 640px) { .fn-row .fn-fields { grid-template-columns: 1fr 1fr; } .fn-row .fn-fields > :last-child { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .fn-row .fn-fields { grid-template-columns: 1fr; } }
 
 .summary-bar { position: sticky; bottom: 0; background: var(--maroon-dark); color: var(--cream); padding: 14px 0; margin-top: 24px; z-index: 10; box-shadow: 0 -6px 20px rgba(0, 0, 0, .15); }
 .summary-bar .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; }

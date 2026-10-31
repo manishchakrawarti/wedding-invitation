@@ -141,7 +141,7 @@ def schedule(order: Order, only: list[str] | None = None) -> list[dict]:
             "map": map_link(place),
             "dress": dress.get(fn["key"], ""),
             "pretty_date": pretty_date(when),
-            "pretty_time": pretty_time(fn.get("time")),
+            "pretty_time": pretty_time(fn.get("time"), order.time_format),
         })
     return items
 

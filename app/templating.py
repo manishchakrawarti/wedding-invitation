@@ -1,3 +1,4 @@
+import hashlib
 from datetime import date
 from urllib.parse import quote
 
@@ -9,6 +10,8 @@ from app.models import STATUS_LABELS, OrderStatus
 from app.utils import inr, pretty_date, pretty_time
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
+# changes whenever style.css does, so browsers fetch the new stylesheet after a deploy
+CSS_VERSION = hashlib.md5((APP_DIR / "static" / "css" / "style.css").read_bytes()).hexdigest()[:8]
 templates.env.globals.update(
     settings=settings,
     catalog=catalog,
@@ -19,5 +22,6 @@ templates.env.globals.update(
     OrderStatus=OrderStatus,
     STATUS_LABELS=STATUS_LABELS,
     current_year=date.today().year,
+    css_version=CSS_VERSION,
     wa_link=lambda text="": f"https://wa.me/{settings.whatsapp_number}?text={quote(text)}",
 )

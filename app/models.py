@@ -86,6 +86,7 @@ class Order(Base):
     resolution: Mapped[str] = mapped_column(String(8), default="")
     event_type: Mapped[str] = mapped_column(String(40), default="wedding", index=True)  # see app/events.py
     occasion_detail: Mapped[str] = mapped_column(String(120), default="")  # age, years, theme, product…  # instant orders: tier being bought (1080 | 2k | 4k)
+    time_format: Mapped[str] = mapped_column(String(4), default="12h")  # how times show on cards: 12h (AM/PM) | 24h
     subtotal: Mapped[int] = mapped_column(Integer, default=0)
     discount: Mapped[int] = mapped_column(Integer, default=0)
     total: Mapped[int] = mapped_column(Integer, default=0)

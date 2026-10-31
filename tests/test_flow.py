@@ -1116,3 +1116,33 @@ def test_stash_purge_removes_old_uploads(tmp_path):
     os.utime(tmp_path / "stash/abc/bride", (old, old))
     assert store.purge("stash/", 6 * 3600) == 1
     assert not (tmp_path / "stash/abc").exists() and store.exists("stash/new/bride")
+
+
+# --- times: 12-hour (AM/PM) or 24-hour ------------------------------------------------
+
+def test_clean_time_and_pretty_time_formats():
+    from app.utils import clean_time, pretty_time
+
+    assert [clean_time(x) for x in ("19:30", "7:30 PM", "7 pm", "12:05 am", "12 PM", "25:00", "13:00 PM", "7", "x", "")] == \
+        ["19:30", "19:30", "19:00", "00:05", "12:00", "", "", "", "", ""]
+    assert (pretty_time("19:30"), pretty_time("19:30", "24h"), pretty_time("00:15"), pretty_time("00:15", "24h")) == \
+        ("7:30 PM", "19:30", "12:15 AM", "00:15")
+
+
+def test_time_picker_and_24_hour_invitations(client):
+    form = client.get("/create").text
+    assert 'type="time"' not in form and 'name="time_format"' in form and 'class="tp-ap"' in form
+
+    ampm = create_instant(client, wedding_time="19:30", fn_haldi="on", fn_haldi_date=WEDDING, fn_haldi_time="10:15")
+    page = client.get(f"/e/{ampm.rsvp_slug}").text
+    assert ampm.time_format == "12h" and "7:30 PM" in page and "10:15 AM" in page
+
+    h24 = create_instant(client, wedding_time="19:30", time_format="24h", fn_haldi="on", fn_haldi_date=WEDDING,
+                         fn_haldi_time="10:15")
+    page = client.get(f"/e/{h24.rsvp_slug}").text
+    assert h24.time_format == "24h" and "19:30" in page and "7:30 PM" not in page and "10:15 AM" not in page
+    assert next(f for f in h24.functions if f["key"] == "wedding")["time"] == "19:30"
+
+    # A broken time is dropped instead of breaking the cards.
+    bad = create_instant(client, wedding_time="99:99")
+    assert next(f for f in bad.functions if f["key"] == "wedding")["time"] == ""

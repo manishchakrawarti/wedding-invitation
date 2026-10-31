@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_time.html" as tp %}
 {% block title %}{{ c.heading }} free · {{ settings.brand_name }}{% endblock %}
 {% block head %}
 <style>
@@ -101,7 +102,8 @@
     <h2 class="step-title"><b>2</b> <span id="step2-title">{{ c.step2 }}</span></h2>
     <div class="form-grid">
       <div><label for="wedding_date"><span id="date-label">{{ c.date }}</span> *</label><input id="wedding_date" name="wedding_date" type="date" min="{{ today }}" value="{{ v.wedding_date }}" required></div>
-      <div><label for="wedding_time">Time <span class="hint">optional</span></label><input id="wedding_time" name="wedding_time" type="time" value="{{ v.wedding_time }}"></div>
+      <div><label for="wedding_time">Time <span class="hint">optional</span></label>{{ tp.time_input("wedding_time", v.wedding_time, "Time", id="wedding_time") }}</div>
+      <div class="full">{{ tp.format_switch(v.time_format) }}</div>
       <div class="full"><label for="venue_name">Venue *</label><input id="venue_name" name="venue_name" type="text" value="{{ v.venue_name }}" required maxlength="100" placeholder="e.g. The Royal Palace Gardens"></div>
       <div><label for="city">City</label><input id="city" name="city" type="text" value="{{ v.city }}" maxlength="60" placeholder="e.g. Jaipur"></div>
       <div><label for="venue_address">Address <span class="hint">for the map</span></label><input id="venue_address" name="venue_address" type="text" value="{{ v.venue_address }}" maxlength="160"></div>
@@ -114,7 +116,7 @@
           <label class="check" style="margin:0"><input type="checkbox" name="fn_{{ key }}" {% if v.get('fn_' ~ key) %}checked{% endif %}> <span>{{ label }}</span></label>
           <div class="fn-fields">
             <input type="date" name="fn_{{ key }}_date" value="{{ v.get('fn_' ~ key ~ '_date', '') }}" aria-label="{{ label }} date">
-            <input type="time" name="fn_{{ key }}_time" value="{{ v.get('fn_' ~ key ~ '_time', '') }}" aria-label="{{ label }} time">
+            {{ tp.time_input("fn_" ~ key ~ "_time", v.get("fn_" ~ key ~ "_time", ""), label ~ " time") }}
             <input type="text" name="fn_{{ key }}_venue" value="{{ v.get('fn_' ~ key ~ '_venue', '') }}" placeholder="Venue (if different)" aria-label="{{ label }} venue">
           </div>
         </div>
@@ -154,6 +156,7 @@
 </section>
 {% endblock %}
 {% block scripts %}
+{{ tp.script() }}
 <script>
 (function () {
   const CFG = {{ form_cfg|tojson }};

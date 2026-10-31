@@ -22,7 +22,7 @@ from app.services.cards import has_guest_console
 from app.services.maintenance import sample_event_image, sample_image
 from app.services.storage import storage
 from app.templating import templates
-from app.utils import new_token, normalize_phone, slugify
+from app.utils import clean_time, new_token, normalize_phone, slugify
 
 router = APIRouter()
 
@@ -146,7 +146,7 @@ def _parse_functions(form, wedding_date: date | None, errors: list[str]) -> list
                 continue
             functions.append({
                 "key": key, "date": fn_date,
-                "time": str(form.get(f"fn_{key}_time") or "").strip(),
+                "time": clean_time(str(form.get(f"fn_{key}_time") or "")),
                 "venue": str(form.get(f"fn_{key}_venue") or "").strip(),
             })
     return functions
@@ -232,7 +232,7 @@ async def submit_order(request: Request, db: Session = Depends(get_db)):
         marketing_consent=bool(form.get("marketing_consent")),
         referral_code=orders.new_referral_code(db, f("bride_name")), referred_by_code=referral if referral_ok else "",
         payment_option=payment_option, subtotal=subtotal, discount=discount, total=total,
-        source="test" if test_order else "website",
+        source="test" if test_order else "website", time_format="24h" if f("time_format") == "24h" else "12h",
     )
     db.add(order)
     db.flush()
@@ -471,14 +471,14 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     functions = [] if etype else _parse_functions(form, wedding_date, errors)
     if etype and wedding_date:
         functions = [{"key": etype.key, "label": etype.headline, "label_hi": etype.headline_hi,
-                      "date": wedding_date.isoformat(), "time": f("wedding_time"), "venue": ""}]
+                      "date": wedding_date.isoformat(), "time": clean_time(f("wedding_time")), "venue": ""}]
     if not etype and not any(fn["key"] in ("wedding", "nikah") for fn in functions) and wedding_date:
         functions.append({"key": "nikah" if style == "muslim_nikah" else "wedding", "date": wedding_date.isoformat(),
-                          "time": f("wedding_time"), "venue": ""})
+                          "time": clean_time(f("wedding_time")), "venue": ""})
     else:
         for fn in functions:
             if fn["key"] in ("wedding", "nikah") and not fn["time"]:
-                fn["time"] = f("wedding_time")
+                fn["time"] = clean_time(f("wedding_time"))
     if not errors and _too_many_previews(request.client.host if request.client else "unknown"):
         errors.append("You've created several previews this hour. Please try again a little later, or message us on WhatsApp.")
     if errors:
@@ -503,6 +503,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
         referral_code=orders.new_referral_code(db, f("bride_name")), payment_option="full",
         subtotal=price, discount=0, total=price,
         event_type=etype.key if etype else "wedding", occasion_detail=f("occasion_detail")[:120] if etype else "",
+        time_format="24h" if f("time_format") == "24h" else "12h",
     )
     db.add(order)
     db.flush()
