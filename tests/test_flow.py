@@ -874,3 +874,15 @@ def test_live_demos_for_every_occasion(client):
         assert "/portrait/bride" in client.get(f"/e/{kid.rsvp_slug}").text
         shop = demo.demo_order("en", "grand_opening")
         assert "/portrait/" not in client.get(f"/e/{shop.rsvp_slug}").text
+
+
+def test_create_page_has_occasion_picker(client):
+    from app import events
+
+    page = client.get("/create").text
+    assert "What are you celebrating?" in page and 'class="occ-tab active" data-cat="wedding"' in page
+    for key in events.TYPES:
+        assert f'href="/create?event={key}"' in page
+    event_page = client.get("/create?event=diwali_puja").text
+    assert 'class="occ-tab active" data-cat="puja"' in event_page
+    assert 'class="occ-type current" href="/create?event=diwali_puja"' in event_page

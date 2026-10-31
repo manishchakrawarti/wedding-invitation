@@ -370,11 +370,12 @@ def _create_context(values: dict, errors: list[str] | None = None) -> dict:
     return {
         "styles": STYLES, "languages": LANGUAGES, "functions": FUNCTIONS, "v": values, "errors": errors or [],
         "today": date.today().isoformat(), "pkg": PACKAGES["instant"],
+        "occasion_categories": events.CATEGORIES, "occasion_types": events.TYPES, "current_event": "wedding",
     }
 
 
 def _event_context(etype, values: dict, errors: list[str] | None = None) -> dict:
-    return {**_create_context(values, errors), "et": etype, "cat": events.CATEGORIES[etype.category],
+    return {**_create_context(values, errors), "et": etype, "cat": events.CATEGORIES[etype.category], "current_event": etype.key,
             "event_styles": [STYLES[k] for k in etype.styles]}
 
 

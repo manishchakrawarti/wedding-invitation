@@ -27,7 +27,7 @@
 {% block content %}
 <section class="create-hero" style="padding-bottom:36px">
   <div class="narrow">
-    <h1>Create your invitation <span class="script">free</span></h1>
+    <h1>Create your wedding invitation <span class="script">free</span></h1>
     <p>Fill in a few details and see your invitation in seconds. Download it free, or get HD from just <strong>₹{{ pkg.price }}</strong>.</p>
     <div class="chips"><span>✦ Free download</span><span>✦ Full HD ₹9 · 2K ₹49 · 4K ₹99</span><span>✦ 10 languages</span><span>✦ Cards for every function</span><span>✦ Shareable invite page</span></div>
   </div>
@@ -35,6 +35,8 @@
 
 <section style="padding-top:30px">
 <form class="narrow" method="post" action="/create" id="create-form" enctype="multipart/form-data">
+  {% include "_occasion_picker.html" %}
+
   {% if errors %}<div class="alert alert-error"><strong>Almost there:</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 
   <div class="card">

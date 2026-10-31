@@ -34,6 +34,8 @@
 <section style="padding-top:30px">
 <form class="narrow" method="post" action="/create" id="create-form" enctype="multipart/form-data">
   <input type="hidden" name="event_type" value="{{ et.key }}">
+  {% include "_occasion_picker.html" %}
+
   {% if errors %}<div class="alert alert-error"><strong>Almost there:</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 
   <div class="card">
