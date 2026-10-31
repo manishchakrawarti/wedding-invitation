@@ -417,12 +417,17 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     db.flush()
     if f("hosts"):
         db.add(EventDetails(order_id=order.id, hosts=f("hosts")[:200], dress_codes={}))
+    enhance = f("enhance_photos") != "off"
     for role, data in portrait_uploads.items():
-        invites.save_portrait(db, order, role, data)
+        invites.save_portrait(db, order, role, data, enhance=enhance)
     order.photo_consent = bool(portrait_uploads)
     orders.log_event(db, order, f"Instant invitation created: {STYLES[style].name}, {LANGUAGES[language].name}")
     db.commit()
     pipeline.enqueue(order.id)
+    if portrait_uploads and enhance:
+        from app.services.photo_enhance import ai_upgrade_portraits
+
+        pipeline.run_background(ai_upgrade_portraits, order.id)
     return redirect(f"/o/{order.token}/preview")
 
 

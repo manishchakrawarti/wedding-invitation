@@ -653,3 +653,61 @@ def test_bride_groom_and_family_photos(client):
         db.commit()
         cleanup_expired(db)
     assert all(a.deleted_at for a in get(order.token).assets if a.kind == "portrait")
+
+
+def _create_with_photos(client, **extra):
+    files = [("bride_photo", ("b.jpg", _photo((200, 150, 120)), "image/jpeg")),
+             ("family_photo", ("f.jpg", _photo((120, 160, 100)), "image/jpeg"))]
+    data = {"bride_name": "Asha", "groom_name": "Vivek", "language": "en", "style": "north_indian",
+            "wedding_date": WEDDING, "venue_name": "Taj", "photo_consent": "on", **extra}
+    resp = client.post("/create", data=data, files=files, follow_redirects=False)
+    assert resp.status_code == 303, resp.text[:800]
+    return get(resp.headers["location"].split("/")[2])
+
+
+def test_photos_enhanced_by_default_original_kept(client):
+    from PIL import Image
+
+    from app.services.storage import storage
+
+    order = _create_with_photos(client)
+    shown = {a.card_key: a for a in order.assets if a.kind == "portrait" and not a.deleted_at}
+    raws = {a.card_key: a for a in order.assets if a.kind == "portrait_raw"}
+    assert set(shown) == set(raws) == {"bride", "family"}
+    assert shown["bride"].meta["enhanced"] is True and shown["bride"].meta["ai"] is False
+    bride = Image.open(io.BytesIO(storage.read(shown["bride"].path)))
+    family = Image.open(io.BytesIO(storage.read(shown["family"].path)))
+    assert abs(bride.width - bride.height) <= 2  # square, ready for the circle
+    assert abs(family.width / family.height - 4 / 3) < 0.02  # 4:3 family frame
+
+    # Opting out keeps the photo as uploaded (cleaned of EXIF only).
+    plain = _create_with_photos(client, enhance_photos="off")
+    meta = next(a.meta for a in plain.assets if a.kind == "portrait" and a.card_key == "bride")
+    assert meta["enhanced"] is False
+
+
+def test_ai_photo_retouch_used_and_costed_but_rejected_if_face_lost(client, monkeypatch):
+    from PIL import Image
+
+    from app.config import settings
+    from app.models import CostEntry
+    from app.services import photo_enhance, pipeline
+    from app.services.generation import offline_generator
+
+    monkeypatch.setattr(settings, "gemini_api_key", "test-key")
+    monkeypatch.setattr(pipeline, "get_generator", lambda: offline_generator())  # cards stay offline
+    monkeypatch.setattr(photo_enhance, "ai_retouch", lambda img: Image.new("RGB", img.size, (250, 230, 200)))
+    order = _create_with_photos(client)
+    shown = {a.card_key: a for a in get(order.token).assets if a.kind == "portrait" and not a.deleted_at}
+    assert shown["bride"].meta["ai"] is True and shown["family"].meta["ai"] is True
+    with SessionLocal() as db:
+        costs = db.scalars(select(CostEntry).where(CostEntry.order_id == order.id, CostEntry.service == "gemini_photo_retouch")).all()
+    assert len(costs) == 2
+
+    # If the original has a face and the AI version doesn't, the AI version is thrown away.
+    def faces(img):
+        return [(10, 10, 50, 50)] if img.getpixel((5, 5))[0] < 240 else []
+
+    monkeypatch.setattr(photo_enhance, "detect_faces", faces)
+    _, info = photo_enhance.enhance(_photo((200, 150, 120)), "bride", use_ai=True)
+    assert info["ai"] is False and "face not found" in info["ai_error"]

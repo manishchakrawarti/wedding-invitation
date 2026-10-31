@@ -44,6 +44,14 @@ def enqueue(order_id: int, notes: str = "") -> None:
         _executor.submit(run_order, order_id, notes)
 
 
+def run_background(fn, *args) -> None:
+    """Run a side job (e.g. AI photo retouch) on the worker pool, or inline in tests."""
+    if settings.run_pipeline_inline:
+        fn(*args)
+    else:
+        _executor.submit(fn, *args)
+
+
 def _generate_with_retry(db, order, generator, prompt, style, layout, photos, seed):
     attempts = settings.generation_max_attempts
     for attempt in range(1, attempts + 1):

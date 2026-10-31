@@ -73,6 +73,8 @@
       </label>
       {% endfor %}
     </div>
+<input type="hidden" name="enhance_photos" value="off">
+    <label class="check"><input type="checkbox" name="enhance_photos" value="on" {% if v.get('enhance_photos', 'on') != 'off' %}checked{% endif %}> <span><strong>✨ Enhance my photos</strong>: face-centred framing, studio lighting &amp; colour, crisp detail{% if settings.gemini_enabled %}, plus AI retouch{% endif %}. Your original is kept.</span></label>
     <label class="check"><input type="checkbox" name="photo_consent" {% if v.photo_consent %}checked{% endif %}> <span>I have permission from everyone in these photos to show them on this invitation (<a href="/terms#photos" target="_blank">photo terms</a>).</span></label>
   </div>
 

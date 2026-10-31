@@ -53,17 +53,24 @@ def portraits(order: Order) -> dict:
     return found
 
 
-def save_portrait(db: Session, order: Order, role: str, data: bytes) -> None:
-    """Store a cleaned photo for a role, replacing (and deleting) any previous one."""
+def save_portrait(db: Session, order: Order, role: str, data: bytes, enhance: bool = True) -> None:
+    """Store a photo for a role (replacing any previous one): the original is kept, and the
+    version shown on the invitation is face-framed and studio-finished unless enhance is off."""
     from app.models import Asset, utcnow
+    from app.services import photo_enhance
     from app.services.storage import storage
 
-    for old in order.live_assets("portrait"):
+    for old in [*order.live_assets("portrait"), *order.live_assets("portrait_raw")]:
         if old.card_key == role:
             storage.delete(old.path)
             old.deleted_at = utcnow()
-    path = storage.save(f"orders/{order.public_id}/portraits/{role}_{secrets.token_hex(4)}.jpg", clean_photo(data))
-    db.add(Asset(order_id=order.id, kind="portrait", card_key=role, path=path, content_type="image/jpeg"))
+    stem = f"orders/{order.public_id}/portraits/{role}_{secrets.token_hex(4)}"
+    original = clean_photo(data)
+    db.add(Asset(order_id=order.id, kind="portrait_raw", card_key=role, path=storage.save(f"{stem}_original.jpg", original),
+                 content_type="image/jpeg"))
+    shown, info = photo_enhance.enhance(original, role) if enhance else (original, {})
+    db.add(Asset(order_id=order.id, kind="portrait", card_key=role, path=storage.save(f"{stem}.jpg", shown),
+                 content_type="image/jpeg", meta={"enhanced": enhance, **info}))
 
 
 async def read_portrait_uploads(form, errors: list[str]) -> dict[str, bytes]:

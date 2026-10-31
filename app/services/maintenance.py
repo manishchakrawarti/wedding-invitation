@@ -30,7 +30,7 @@ def cleanup_expired(db: Session) -> dict:
     photos = db.scalars(
         select(Asset).join(Order).where(
             Asset.deleted_at.is_(None), Asset.created_at < photo_cutoff,
-            (Asset.kind == "photo") | ((Asset.kind == "portrait") & Order.delivered_at.is_(None)),
+            (Asset.kind == "photo") | (Asset.kind.in_(["portrait", "portrait_raw"]) & Order.delivered_at.is_(None)),
         )
     ).all()
     old_files = db.scalars(

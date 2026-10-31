@@ -295,8 +295,10 @@ async def save_details(request: Request, order: Order = Depends(get_event), db: 
         setattr(ev, field, str(form.get(field, "")).strip()[:limit])
     ev.dress_codes = {f["key"]: str(form.get(f"dress_{f['key']}", "")).strip()[:120] for f in order.functions or []}
     errors: list[str] = []
-    for role, data in (await invites.read_portrait_uploads(form, errors)).items():
-        invites.save_portrait(db, order, role, data)
+    new_photos = await invites.read_portrait_uploads(form, errors)
+    enhance = str(form.get("enhance_photos", "on")) != "off"
+    for role, data in new_photos.items():
+        invites.save_portrait(db, order, role, data, enhance=enhance)
     if errors:
         db.commit()
         return _console(order.rsvp_slug, key, " ".join(errors))
@@ -309,7 +311,12 @@ async def save_details(request: Request, order: Order = Depends(get_event), db: 
         path = storage.save(f"orders/{order.public_id}/music/{secrets.token_hex(4)}.{ext}", data)
         db.add(Asset(order_id=order.id, kind="music", card_key="music", path=path, content_type=MUSIC_TYPES[ext]))
     db.commit()
-    return _console(order.rsvp_slug, key, "Invitation page updated.")
+    if new_photos and enhance:
+        from app.services import pipeline
+        from app.services.photo_enhance import ai_upgrade_portraits
+
+        pipeline.run_background(ai_upgrade_portraits, order.id)
+    return _console(order.rsvp_slug, key, "Invitation page updated." + (" Photos enhanced ✨" if new_photos and enhance else ""))
 
 
 @router.get("/e/{slug}/guests.csv")

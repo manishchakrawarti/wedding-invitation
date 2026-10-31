@@ -144,6 +144,8 @@
             </label>
             {% endfor %}
           </div>
+          <input type="hidden" name="enhance_photos" value="off">
+          <label class="check"><input type="checkbox" name="enhance_photos" value="on" checked> <span>✨ Enhance new photos (face-centred framing, studio lighting &amp; colour, crisp detail). Originals are kept.</span></label>
           <label class="check"><input type="checkbox" name="photo_consent"> <span>Everyone in new photos has agreed to appear on the invitation.</span></label>
         </div>
         <div class="full"><label for="music">Background music <span class="hint">MP3, plays when guests open the invite{% if music %} · current track uploaded ✓{% endif %}</span></label><input id="music" name="music" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*">

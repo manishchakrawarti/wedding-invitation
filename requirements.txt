@@ -12,7 +12,8 @@ qrcode[pil]==8.2
 # Optional
 # google-cloud-storage   # STORAGE_BACKEND=gcs
 # psycopg[binary]        # DATABASE_URL=postgresql+psycopg://...
-# opencv-python-headless # face-detection QC check
+# Face-centred photo framing + face QC (4.x keeps the Haar face detector)
+opencv-python-headless==4.14.0.94
 
 # Dev
 pytest==9.2.0
