@@ -80,6 +80,17 @@
   .qr p { color: #3b2320; font-family: var(--serif); font-size: 26px; margin-top: 10px; font-weight: 600; }
   .url { margin-top: 16px; font-size: 24px; opacity: .85; }
   .brand { position: absolute; bottom: 52px; left: 0; right: 0; text-align: center; font-size: 22px; opacity: .7; }
+  .couple { display: flex; align-items: center; justify-content: center; gap: 46px; margin: 36px 0 18px; }
+  .person { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 360px; }
+  .portrait { width: 270px; height: 270px; border-radius: 50%; object-fit: cover; object-position: center 30%;
+    border: 7px solid var(--acc); box-shadow: 0 0 0 9px rgba(255,255,255,.12), 0 18px 44px rgba(0,0,0,.35); }
+  .portrait.mono { display: grid; place-items: center; background: rgba(0,0,0,.15); font: 400 130px "GreatVibes", serif; color: var(--t1); }
+  .names.couple-name { margin: 0; font-size: {{ '78px' if local else '112px' }}; }
+  .couple-amp { font: 400 96px "GreatVibes", serif; color: var(--acc); margin-top: -90px; }
+  .family { margin-bottom: 26px; }
+  .family img { width: 560px; height: 380px; object-fit: cover; border-radius: 22px; border: 6px solid var(--acc); box-shadow: 0 16px 40px rgba(0,0,0,.3); display: block; }
+  .family-cap { margin-top: 14px; font-size: 30px; }
+  .para.tight { font-size: 30px; }
   .credit { position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.85); color: #5a2828;
     font: 600 22px var(--serif); padding: 6px 22px; border-radius: 30px; white-space: nowrap; }
   {% if pages_range %}{% set sel = ':nth-of-type(n+' ~ pages_range[0] ~ '):nth-of-type(-n+' ~ pages_range[1] ~ ')' %}
@@ -96,7 +107,21 @@
   {% if o.style == 'muslim_nikah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
   {% elif o.style != 'christian' and invocation %}<div class="invocation">{{ invocation }}</div>{% endif %}
   <div class="pre">{{ 'Nikah' if o.style == 'muslim_nikah' and not local else t.pre }}</div>
+  {% if photos.bride or photos.groom %}
+  <div class="couple">
+    <div class="person">
+      {% if photos.bride %}<img class="portrait" src="{{ photos.bride }}" alt="">{% else %}<span class="portrait mono">{{ o.bride_name[:1] }}</span>{% endif %}
+      <div class="names couple-name">{{ bride }}</div>
+    </div>
+    <span class="couple-amp">{{ lang.connector }}</span>
+    <div class="person">
+      {% if photos.groom %}<img class="portrait" src="{{ photos.groom }}" alt="">{% else %}<span class="portrait mono">{{ o.groom_name[:1] }}</span>{% endif %}
+      <div class="names couple-name">{{ groom }}</div>
+    </div>
+  </div>
+  {% else %}
   <div class="names">{{ bride }}<span class="amp">{{ lang.connector }}</span>{{ groom }}</div>
+  {% endif %}
   <div class="divider"></div>
   <div class="date">{{ pretty_date(o.wedding_date) }}</div>
   <div class="place">{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
@@ -134,7 +159,10 @@
   <div class="frame"></div>
   <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
   {% if ev and ev.blessing_line %}<div class="blessing">{{ ev.blessing_line }}</div>{% endif %}
-  <div class="para">{{ t.invite_para.format(hosts=hosts, bride=bride, groom=groom) }}</div>
+  {% if photos.family %}
+  <div class="family"><img src="{{ photos.family }}" alt=""><div class="family-cap">{{ t.invited_by }}: <b>{{ hosts }}</b></div></div>
+  {% endif %}
+  <div class="para{{ ' tight' if photos.family else '' }}">{{ t.invite_para.format(hosts=hosts, bride=bride, groom=groom) }}</div>
   <div class="divider"></div>
   <div style="font-family:var(--heading);font-size:30px;color:var(--acc)">{{ t.venue }}</div>
   <div class="venue-name">{{ o.venue_name }}</div>

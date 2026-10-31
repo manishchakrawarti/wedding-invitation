@@ -15,7 +15,7 @@ from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STY
 from app.config import settings
 from app.db import get_db
 from app.models import Asset, EventDetails, Order, OrderStatus
-from app.services import export, hires, notify, orders, payments, pipeline
+from app.services import export, hires, invites, notify, orders, payments, pipeline
 from app.services.cards import has_guest_console
 from app.services.maintenance import sample_image
 from app.services.storage import storage
@@ -369,8 +369,9 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     def f(key: str) -> str:
         return str(form.get(key) or "").strip()
 
-    values = {k: f(k) for k in form.keys()}
+    values = {k: f(k) for k in form.keys() if not k.endswith("_photo")}
     errors: list[str] = []
+    portrait_uploads = await invites.read_portrait_uploads(form, errors)
     for key, label in [("bride_name", "Bride's name"), ("groom_name", "Groom's name"), ("venue_name", "Venue")]:
         if not f(key):
             errors.append(f"{label} is required.")
@@ -416,6 +417,9 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     db.flush()
     if f("hosts"):
         db.add(EventDetails(order_id=order.id, hosts=f("hosts")[:200], dress_codes={}))
+    for role, data in portrait_uploads.items():
+        invites.save_portrait(db, order, role, data)
+    order.photo_consent = bool(portrait_uploads)
     orders.log_event(db, order, f"Instant invitation created: {STYLES[style].name}, {LANGUAGES[language].name}")
     db.commit()
     pipeline.enqueue(order.id)

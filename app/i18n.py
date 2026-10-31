@@ -38,6 +38,7 @@ EN = {
     "save_card": "Save the card",
     "scroll": "Scroll ↓",
     "daughter_of": "daughter of", "son_of": "son of",
+    "invited_by": "Invited by",
     "scan_rsvp": "Scan for directions & RSVP",
     "your_name": "Your name *",
     "phone": "Phone",
@@ -48,6 +49,7 @@ EN = {
 
 T = {
     "hi": {
+        "invited_by": "निमंत्रक",
         "scan_rsvp": "रास्ता और जवाब के लिए स्कैन करें",
         "your_name": "आपका नाम *",
         "phone": "फ़ोन",
@@ -70,6 +72,7 @@ T = {
         "daughter_of": "सुपुत्री", "son_of": "सुपुत्र",
     },
     "mr": {
+        "invited_by": "निमंत्रक",
         "scan_rsvp": "मार्ग व उत्तरासाठी स्कॅन करा",
         "your_name": "आपले नाव *",
         "phone": "फोन",
@@ -92,6 +95,7 @@ T = {
         "daughter_of": "कन्या", "son_of": "चिरंजीव",
     },
     "bn": {
+        "invited_by": "নিমন্ত্রণকর্তা",
         "scan_rsvp": "পথনির্দেশ ও উত্তরের জন্য স্ক্যান করুন",
         "your_name": "আপনার নাম *",
         "phone": "ফোন",
@@ -114,6 +118,7 @@ T = {
         "daughter_of": "কন্যা", "son_of": "পুত্র",
     },
     "gu": {
+        "invited_by": "નિમંત્રક",
         "scan_rsvp": "રસ્તો અને જવાબ માટે સ્કેન કરો",
         "your_name": "આપનું નામ *",
         "phone": "ફોન",
@@ -136,6 +141,7 @@ T = {
         "daughter_of": "સુપુત્રી", "son_of": "સુપુત્ર",
     },
     "pa": {
+        "invited_by": "ਸੱਦਾ ਦੇਣ ਵਾਲੇ",
         "scan_rsvp": "ਰਸਤੇ ਅਤੇ ਜਵਾਬ ਲਈ ਸਕੈਨ ਕਰੋ",
         "your_name": "ਤੁਹਾਡਾ ਨਾਮ *",
         "phone": "ਫ਼ੋਨ",
@@ -158,6 +164,7 @@ T = {
         "daughter_of": "ਸਪੁੱਤਰੀ", "son_of": "ਸਪੁੱਤਰ",
     },
     "ta": {
+        "invited_by": "அழைப்பவர்கள்",
         "scan_rsvp": "வழி மற்றும் பதிலுக்கு ஸ்கேன் செய்யவும்",
         "your_name": "உங்கள் பெயர் *",
         "phone": "தொலைபேசி",
@@ -180,6 +187,7 @@ T = {
         "daughter_of": "மகள்", "son_of": "மகன்",
     },
     "te": {
+        "invited_by": "ఆహ్వానించువారు",
         "scan_rsvp": "దారి మరియు జవాబు కోసం స్కాన్ చేయండి",
         "your_name": "మీ పేరు *",
         "phone": "ఫోన్",
@@ -202,6 +210,7 @@ T = {
         "daughter_of": "కుమార్తె", "son_of": "కుమారుడు",
     },
     "kn": {
+        "invited_by": "ಆಹ್ವಾನಿಸುವವರು",
         "scan_rsvp": "ದಾರಿ ಮತ್ತು ಉತ್ತರಕ್ಕಾಗಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ",
         "your_name": "ನಿಮ್ಮ ಹೆಸರು *",
         "phone": "ಫೋನ್",
@@ -224,6 +233,7 @@ T = {
         "daughter_of": "ಪುತ್ರಿ", "son_of": "ಪುತ್ರ",
     },
     "ml": {
+        "invited_by": "ക്ഷണിക്കുന്നവർ",
         "scan_rsvp": "വഴിക്കും മറുപടിക്കും സ്കാൻ ചെയ്യുക",
         "your_name": "നിങ്ങളുടെ പേര് *",
         "phone": "ഫോൺ",

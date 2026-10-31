@@ -135,7 +135,7 @@ class Order(Base):
         return [
             a
             for a in self.assets
-            if a.kind == kind and a.deleted_at is None and (kind in ("photo", "video", "music") or a.version == version)
+            if a.kind == kind and a.deleted_at is None and (kind in ("photo", "video", "music", "portrait") or a.version == version)
         ]
 
 

@@ -596,3 +596,60 @@ def test_einvite_pdf_and_long_image_in_sizes(client):
     with SessionLocal() as db:
         note = db.scalars(select(Notification).where(Notification.recipient == "e@example.com")).first()
     assert "complete e-invite (PDF)" in note.body
+
+
+def _photo(color):
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (800, 1000), color).save(buf, "JPEG")
+    return buf.getvalue()
+
+
+def test_bride_groom_and_family_photos(client):
+    from app.models import utcnow
+    from app.services import export
+    from app.services.maintenance import cleanup_expired
+
+    files = [("bride_photo", ("b.jpg", _photo((220, 120, 140)), "image/jpeg")),
+             ("groom_photo", ("g.jpg", _photo((90, 120, 200)), "image/jpeg")),
+             ("family_photo", ("f.jpg", _photo((120, 180, 90)), "image/jpeg"))]
+    data = {"bride_name": "Priya", "groom_name": "Rohan", "language": "en", "style": "north_indian",
+            "wedding_date": WEDDING, "venue_name": "ITC Rajputana", "hosts": "The Kapoor family"}
+
+    # Photos need consent.
+    resp = client.post("/create", data=data, files=files)
+    assert resp.status_code == 422 and "permission to use these photos" in resp.text
+
+    resp = client.post("/create", data={**data, "photo_consent": "on"}, files=files, follow_redirects=False)
+    order = get(resp.headers["location"].split("/")[2])
+    assert sorted(a.card_key for a in order.assets if a.kind == "portrait") == ["bride", "family", "groom"]
+
+    # Live invite: photos by the names, family photo with "Invited by".
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert f"/e/{order.rsvp_slug}/portrait/bride" in page and f"/e/{order.rsvp_slug}/portrait/groom" in page
+    assert f"/e/{order.rsvp_slug}/portrait/family" in page and "Invited by: <strong>The Kapoor family</strong>" in page
+    photo = client.get(f"/e/{order.rsvp_slug}/portrait/bride")
+    assert photo.status_code == 200 and photo.headers["content-type"] == "image/jpeg"
+    assert client.get(f"/e/{order.rsvp_slug}/portrait/nobody").status_code == 404
+
+    # E-invite cover and note page carry the photos.
+    with SessionLocal() as db:
+        html, _ = export.build_html(db.get(Order, order.id), "free")
+    assert html.count('class="portrait"') == 2 and 'class="family"' in html
+
+    # Family console can replace a photo; unpaid previews' photos expire with the others.
+    with SessionLocal() as db:
+        o = db.get(Order, order.id)
+        o.package = "premium"  # console is a Premium feature
+        db.commit()
+    client.post(f"/e/{order.rsvp_slug}/details", data={"key": order.token, "photo_consent": "on"},
+                files=[("groom_photo", ("g2.jpg", _photo((10, 10, 10)), "image/jpeg"))])
+    groom = [a for a in get(order.token).assets if a.kind == "portrait" and a.card_key == "groom"]
+    assert len(groom) == 2 and sum(a.deleted_at is None for a in groom) == 1
+    with SessionLocal() as db:
+        for a in db.scalars(select(Asset).where(Asset.order_id == order.id, Asset.kind == "portrait")):
+            a.created_at = utcnow() - timedelta(days=31)
+        db.commit()
+        cleanup_expired(db)
+    assert all(a.deleted_at for a in get(order.token).assets if a.kind == "portrait")

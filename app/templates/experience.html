@@ -67,6 +67,16 @@
   .invocation { font-family: var(--serif); color: var(--acc); letter-spacing: 2px; font-size: 1.1rem; margin-bottom: 18px; }
   .x-hero .pre { letter-spacing: 5px; text-transform: uppercase; font-size: .85rem; color: var(--acc); }
   .x-names { font-family: var(--script); font-weight: 400; color: var(--t1); font-size: clamp(3.4rem, 13vw, 7rem); line-height: 1; margin: 18px 0; text-shadow: 0 4px 20px rgba(0,0,0,.25); }
+  .couple { display: flex; align-items: center; justify-content: center; gap: clamp(12px, 4vw, 48px); margin: 18px 0 10px; }
+  .person { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; }
+  .portrait { width: clamp(120px, 26vw, 210px); aspect-ratio: 1; border-radius: 50%; object-fit: cover; object-position: center 30%;
+    border: 5px solid var(--acc); box-shadow: 0 0 0 6px rgba(255,255,255,.12), 0 14px 34px rgba(0,0,0,.35); }
+  .portrait.mono { display: grid; place-items: center; background: rgba(0,0,0,.15); font: 400 clamp(3rem, 10vw, 5rem) var(--script); color: var(--t1); }
+  body .couple-name { font-size: clamp(2.2rem, 7vw, 4.4rem); margin: 0; overflow-wrap: anywhere; }
+  .couple-amp { font: 400 clamp(2rem, 6vw, 3.4rem) var(--script); color: var(--acc); margin-top: clamp(-60px, -6vw, -30px); }
+  .family { margin: 6px auto 18px; max-width: 520px; }
+  .family img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; border: 4px solid var(--gold-soft); box-shadow: var(--shadow); }
+  .family figcaption { margin-top: 10px; color: var(--muted); }
   .x-names .amp { display: block; font-size: .45em; color: var(--acc); margin: 6px 0; }
   .x-date { font-family: var(--serif); font-size: clamp(1.3rem, 4vw, 1.8rem); letter-spacing: 2px; }
   .countdown { display: flex; gap: 12px; justify-content: center; margin: 30px 0 10px; flex-wrap: wrap; }
@@ -144,7 +154,21 @@
   {% if o.style == 'muslim_nikah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
   {% elif o.style != 'christian' %}<div class="invocation">{{ i18n.INVOCATIONS.get(o.language, i18n.INVOCATIONS['en']) }}</div>{% endif %}
   <div class="pre">{{ 'Nikah' if o.style == 'muslim_nikah' and not local else t.pre }}</div>
+  {% if photos.bride or photos.groom %}
+  <div class="couple">
+    <div class="person">
+      {% if photos.bride %}<img class="portrait" src="/e/{{ o.rsvp_slug }}/portrait/bride" alt="{{ o.bride_name }}">{% else %}<span class="portrait mono">{{ o.bride_name[:1] }}</span>{% endif %}
+      <h1 class="x-names couple-name">{{ bride }}</h1>
+    </div>
+    <span class="couple-amp">{{ catalog.LANGUAGES[o.language].connector }}</span>
+    <div class="person">
+      {% if photos.groom %}<img class="portrait" src="/e/{{ o.rsvp_slug }}/portrait/groom" alt="{{ o.groom_name }}">{% else %}<span class="portrait mono">{{ o.groom_name[:1] }}</span>{% endif %}
+      <div class="x-names couple-name">{{ groom }}</div>
+    </div>
+  </div>
+  {% else %}
   <h1 class="x-names">{{ bride }}<span class="amp">{{ catalog.LANGUAGES[o.language].connector }}</span>{{ groom }}</h1>
+  {% endif %}
   <div class="x-date">{{ pretty_date(o.wedding_date) }}</div>
   <div>{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
   <div class="countdown" id="countdown" data-to="{{ countdown_to }}">
@@ -161,6 +185,10 @@
     <div class="personal">
       {% if inv %}<div class="dear">{{ t.dear.format(name=inv.name) }},</div>{% endif %}
       {% if ev and ev.blessing_line %}<p class="muted" style="font-style:italic">{{ ev.blessing_line }}</p>{% endif %}
+      {% if photos.family %}
+      <figure class="family"><img src="/e/{{ o.rsvp_slug }}/portrait/family" alt="{{ ev.hosts if ev and ev.hosts else 'Family' }}">
+        <figcaption>{{ t.invited_by }}: <strong>{{ ev.hosts if ev and ev.hosts else t.our_families }}</strong></figcaption></figure>
+      {% endif %}
       <p>{{ t.invite_para.format(hosts=(ev.hosts if ev and ev.hosts else t.our_families), bride=bride, groom=groom) }}</p>
       {% if o.bride_family or o.groom_family %}
       <p class="small muted">{% if o.bride_family %}{{ bride }}, {{ t.daughter_of }} {{ o.bride_family }}{% endif %}{% if o.bride_family and o.groom_family %} · {% endif %}{% if o.groom_family %}{{ groom }}, {{ t.son_of }} {{ o.groom_family }}{% endif %}</p>

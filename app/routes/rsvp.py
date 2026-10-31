@@ -73,7 +73,7 @@ def _experience(request: Request, order: Order, invitee: Invitee | None, thanks:
             "o": order, "inv": invitee, "ev": order.event, "schedule": sched, "hero": _hero(order),
             "music": _music(order), "map_embed": invites.map_embed(main_place), "map_link": invites.map_link(main_place),
             "countdown_to": invites.main_moment(order), "upi_link": _upi_link(order), "food_choices": invites.FOOD_CHOICES,
-            "blessings": blessings[-40:][::-1], "thanks": thanks, "preview": preview,
+            "blessings": blessings[-40:][::-1], "thanks": thanks, "preview": preview, "photos": invites.portraits(order),
             "action": f"/i/{invitee.code}/rsvp" if invitee else f"/e/{order.rsvp_slug}/rsvp",
         },
     )
@@ -161,6 +161,14 @@ def _png_qr(data: str) -> Response:
     return Response(buf.getvalue(), media_type="image/png")
 
 
+@router.get("/e/{slug}/portrait/{role}")
+def portrait(role: str, order: Order = Depends(get_event)):
+    photo = invites.portraits(order).get(role)
+    if photo is None:
+        raise HTTPException(404)
+    return Response(storage.read(photo.path), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
+
+
 @router.get("/e/{slug}/qr.png")
 def qr(order: Order = Depends(get_event)):
     return _png_qr(f"{settings.base_url}/e/{order.rsvp_slug}")
@@ -237,6 +245,7 @@ def family_console(request: Request, key: str = "", msg: str = "", order: Order 
         "o": order, "ev": order.event, "rows": rows, "walk_ins": sorted(order.guests, key=lambda g: g.created_at, reverse=True),
         "stats": invites.stats(order), "key": key, "msg": msg, "schedule": invites.schedule(order),
         "music": _music(order), "food_choices": invites.FOOD_CHOICES, "days": invites.days_until(order),
+        "photos": invites.portraits(order), "photo_roles": invites.PORTRAIT_ROLES,
     })
 
 
@@ -285,6 +294,12 @@ async def save_details(request: Request, order: Order = Depends(get_event), db: 
     for field, limit in (("hosts", 200), ("blessing_line", 300), ("story", 3000), ("hashtag", 60), ("upi_id", 100), ("livestream_url", 300)):
         setattr(ev, field, str(form.get(field, "")).strip()[:limit])
     ev.dress_codes = {f["key"]: str(form.get(f"dress_{f['key']}", "")).strip()[:120] for f in order.functions or []}
+    errors: list[str] = []
+    for role, data in (await invites.read_portrait_uploads(form, errors)).items():
+        invites.save_portrait(db, order, role, data)
+    if errors:
+        db.commit()
+        return _console(order.rsvp_slug, key, " ".join(errors))
     upload = form.get("music")
     if getattr(upload, "filename", ""):
         ext = upload.filename.rsplit(".", 1)[-1].lower()

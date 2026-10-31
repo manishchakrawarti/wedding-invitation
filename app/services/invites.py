@@ -28,6 +28,68 @@ def event_details(db: Session, order: Order) -> EventDetails:
     return order.event
 
 
+PORTRAIT_ROLES = {"bride": "Bride's photo", "groom": "Groom's photo", "family": "Family photo"}
+MAX_PHOTO_BYTES = 10 * 1024 * 1024
+
+
+def clean_photo(data: bytes) -> bytes:
+    """Fix rotation, downscale and re-encode. This also strips EXIF metadata, including GPS location."""
+    import io
+
+    from PIL import Image, ImageOps
+
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
+    img.thumbnail((2000, 2000))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
+    return buf.getvalue()
+
+
+def portraits(order: Order) -> dict:
+    """Latest photo per role (bride / groom / family) shown on the invitation."""
+    found = {}
+    for a in sorted(order.live_assets("portrait"), key=lambda a: a.id):
+        found[a.card_key] = a
+    return found
+
+
+def save_portrait(db: Session, order: Order, role: str, data: bytes) -> None:
+    """Store a cleaned photo for a role, replacing (and deleting) any previous one."""
+    from app.models import Asset, utcnow
+    from app.services.storage import storage
+
+    for old in order.live_assets("portrait"):
+        if old.card_key == role:
+            storage.delete(old.path)
+            old.deleted_at = utcnow()
+    path = storage.save(f"orders/{order.public_id}/portraits/{role}_{secrets.token_hex(4)}.jpg", clean_photo(data))
+    db.add(Asset(order_id=order.id, kind="portrait", card_key=role, path=path, content_type="image/jpeg"))
+
+
+async def read_portrait_uploads(form, errors: list[str]) -> dict[str, bytes]:
+    """Validate the bride/groom/family photo fields of a submitted form."""
+    from PIL import UnidentifiedImageError
+
+    photos = {}
+    for role, label in PORTRAIT_ROLES.items():
+        upload = form.get(f"{role}_photo")
+        if not getattr(upload, "filename", ""):
+            continue
+        data = await upload.read()
+        if len(data) > MAX_PHOTO_BYTES:
+            errors.append(f"{label} is larger than 10 MB.")
+            continue
+        try:
+            clean_photo(data)
+        except (UnidentifiedImageError, OSError):
+            errors.append(f"{label} must be a JPG, PNG or WebP image (iPhone HEIC: please export as JPG).")
+            continue
+        photos[role] = data
+    if photos and not form.get("photo_consent"):
+        errors.append("Please confirm you have permission to use these photos on the invitation.")
+    return photos
+
+
 def place_for(order: Order, fn: dict) -> str:
     if fn.get("venue"):
         return f"{fn['venue']}, {order.city}" if order.city else fn["venue"]

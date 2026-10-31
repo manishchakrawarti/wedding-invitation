@@ -9,6 +9,16 @@
   .step-title b { width: 30px; height: 30px; border-radius: 50%; background: var(--maroon); color: #fff; display: grid; place-items: center; font: 700 .95rem var(--sans); flex: none; }
   details.more { background: #fff; margin-top: 16px; }
   details.more summary { color: var(--maroon); }
+  .photo-pickers { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 14px; margin: 12px 0; }
+  @media (max-width: 560px) { .photo-pickers { grid-template-columns: 1fr 1fr; } .photo-pick.wide { grid-column: 1 / -1; } }
+  .photo-pick { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; cursor: pointer; font-weight: 400; margin: 0;
+    background: #fff; border: 1.5px dashed var(--gold); border-radius: 14px; padding: 14px 10px; }
+  .photo-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .photo-pick input:focus-visible + .ph { outline: 3px solid var(--gold); }
+  .photo-pick .ph { width: 96px; height: 96px; border-radius: 50%; background: #fbf3e4 center / cover no-repeat; border: 3px solid var(--gold);
+    display: grid; place-items: center; color: var(--gold); font-size: 2rem; }
+  .photo-pick.wide .ph { width: 150px; border-radius: 14px; }
+  .photo-pick .ph.has span { display: none; }
   .cta-bar { position: sticky; bottom: 0; z-index: 10; background: var(--maroon-dark); padding: 14px 0; box-shadow: 0 -6px 20px rgba(0,0,0,.15); }
   .cta-bar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--cream); }
   .cta-bar small { color: var(--gold-soft); }
@@ -24,7 +34,7 @@
 </section>
 
 <section style="padding-top:30px">
-<form class="narrow" method="post" action="/create" id="create-form">
+<form class="narrow" method="post" action="/create" id="create-form" enctype="multipart/form-data">
   {% if errors %}<div class="alert alert-error"><strong>Almost there:</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 
   <div class="card">
@@ -49,6 +59,21 @@
         <div class="full"><label for="hosts">Invited by</label><input id="hosts" name="hosts" type="text" value="{{ v.hosts }}" maxlength="120" placeholder="The Sharma &amp; Mehta families"></div>
       </div>
     </details>
+  </div>
+
+  <div class="card">
+    <h2 class="step-title"><b>📸</b> Add photos <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional, but they make it special</span></h2>
+    <p class="hint" style="margin-top:-6px">The bride's and groom's photos appear next to their names on the first page. The family photo appears in the "Invited by" section.</p>
+    <div class="photo-pickers">
+      {% for role, label, hint in [('bride', "Bride's photo", 'Shown with her name'), ('groom', "Groom's photo", 'Shown with his name'), ('family', 'Family photo', 'For "Invited by"')] %}
+      <label class="photo-pick {{ 'wide' if role == 'family' else '' }}">
+        <input type="file" name="{{ role }}_photo" accept="image/jpeg,image/png,image/webp" data-preview="prev-{{ role }}">
+        <span class="ph" id="prev-{{ role }}"><span>＋</span></span>
+        <strong>{{ label }}</strong><span class="hint">{{ hint }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <label class="check"><input type="checkbox" name="photo_consent" {% if v.photo_consent %}checked{% endif %}> <span>I have permission from everyone in these photos to show them on this invitation (<a href="/terms#photos" target="_blank">photo terms</a>).</span></label>
   </div>
 
   <div class="card">
@@ -115,6 +140,13 @@
   form.language.addEventListener('change', toggleLocal); toggleLocal();
   form.querySelectorAll('.fn-row input[type=checkbox]').forEach(box =>
     box.addEventListener('change', () => box.closest('.fn-row').classList.toggle('on', box.checked)));
+  form.querySelectorAll('input[type=file][data-preview]').forEach(input => input.addEventListener('change', () => {
+    const box = document.getElementById(input.dataset.preview), file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => { box.style.backgroundImage = `url(${e.target.result})`; box.classList.add('has'); };
+    reader.readAsDataURL(file);
+  }));
   form.addEventListener('submit', () => { const b = form.querySelector('button[type=submit]'); b.disabled = true; b.textContent = '✨ Creating…'; });
 })();
 </script>

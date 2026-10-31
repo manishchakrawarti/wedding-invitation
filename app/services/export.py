@@ -93,6 +93,15 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
     }
     if script:
         fonts["LocalScript"] = _font_uri(SCRIPT_FONTS[script])
+    photos = {}
+    for role, asset in invites.portraits(order).items():
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(storage.read(asset.path))).convert("RGB")
+        img.thumbnail((900, 900))
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=88)
+        photos[role] = _uri(buf.getvalue(), "image/jpeg")
     pages = 1 + len(card_pages) + (1 if schedule else 0) + 1
     free = tier == "free"
     rsvp_url = f"{settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug and not free else ""
@@ -101,7 +110,7 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
         local=order.language != "en", fonts=fonts, card_pages=card_pages, schedule=schedule, ev=order.event,
         qr=_qr_uri(rsvp_url) if rsvp_url else "", rsvp_url=rsvp_url, invocation=i18n.INVOCATIONS.get(order.language, ""),
         W=PAGE_W, H=PAGE_H, settings=settings, credit=f"Made with love · {settings.brand_name}" if free else "",
-        pages_range=pages_range,
+        pages_range=pages_range, photos=photos,
     )
     return html, pages
 

@@ -27,7 +27,12 @@ def cleanup_expired(db: Session) -> dict:
     now = utcnow()
     photo_cutoff = now - timedelta(days=settings.photo_retention_days)
     final_cutoff = now - timedelta(days=settings.final_retention_days)
-    photos = db.scalars(select(Asset).where(Asset.kind == "photo", Asset.deleted_at.is_(None), Asset.created_at < photo_cutoff)).all()
+    photos = db.scalars(
+        select(Asset).join(Order).where(
+            Asset.deleted_at.is_(None), Asset.created_at < photo_cutoff,
+            (Asset.kind == "photo") | ((Asset.kind == "portrait") & Order.delivered_at.is_(None)),
+        )
+    ).all()
     old_files = db.scalars(
         select(Asset).join(Order).where(Asset.deleted_at.is_(None), Order.delivered_at.is_not(None), Order.delivered_at < final_cutoff)
     ).all()
