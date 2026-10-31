@@ -754,3 +754,28 @@ def test_custom_demo_photos_replace_illustrations(client):
     demo.ensure_demo_portraits()  # unchanged files: nothing re-done
     with SessionLocal() as db:
         assert len([a for a in db.get(Order, o.id).assets if a.kind == "portrait"]) == before
+
+
+def test_demo_cast_generator_with_stub_ai(tmp_path, monkeypatch):
+    """The cast script without calling Gemini: every person + family is made and installed."""
+    import importlib.util
+
+    from PIL import Image
+
+    spec = importlib.util.spec_from_file_location("cast", "scripts/make_demo_cast_ai.py")
+    cast = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cast)
+    Image.new("RGB", (300, 400), (200, 30, 40)).save(tmp_path / "bride.jpg")
+    Image.new("RGB", (300, 400), (240, 230, 210)).save(tmp_path / "groom.jpg")
+    calls = []
+
+    def fake_generate(client, prompt, refs, aspect):
+        calls.append((prompt[:20], len(refs), aspect))
+        return Image.new("RGB", (400, 300) if aspect == "4:3" else (300, 400), (len(calls) * 20, 100, 150))
+
+    monkeypatch.setattr(cast, "generate", fake_generate)
+    out = cast.make_cast(client=None, demo_dir=tmp_path)
+    assert set(out) == {"bride", "groom", "family"} and all(p.exists() for p in out.values())
+    assert {p.stem for p in (tmp_path / "cast").iterdir()} == set(cast.CAST)
+    assert calls[0][1] == 1 and calls[-1][1] == len(cast.CAST)  # bride styled on the old photo; family uses everyone
+    assert (tmp_path / "previous" / "bride.jpg").exists()  # old photos kept
