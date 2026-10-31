@@ -303,3 +303,59 @@ def render_png(svg: str, w: int, h: int) -> bytes | None:
                         f"--user-data-dir={Path(tmp, 'p')}", f"--window-size={w},{h}", "--force-device-scale-factor=1",
                         f"--screenshot={out}", page.as_uri()], capture_output=True, timeout=60)
         return out.read_bytes() if out.exists() else None
+
+
+def couple_frame(bride_jpeg: bytes, groom_jpeg: bytes) -> bytes:
+    """A royal double-arch frame of the bride's and groom's photos (4:3), studio-finished and vibrant."""
+    import io
+
+    from PIL import Image, ImageDraw, ImageFilter
+
+    from app.services import photo_enhance as pe
+    from app.services.overlay import load_font
+
+    W, H, PW, PH = 1600, 1200, 600, 860
+
+    def panel(data: bytes) -> Image.Image:
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+        faces = pe.detect_faces(img)
+        w = min(img.width, img.height * PW / PH)
+        h = w * PH / PW
+        cx = faces[0][0] + faces[0][2] / 2 if faces else img.width / 2
+        top = (faces[0][1] - faces[0][3] * 0.9) if faces else 0
+        left = min(max(cx - w / 2, 0), img.width - w)
+        top = min(max(top, 0), img.height - h)
+        crop = img.crop((int(left), int(top), int(left + w), int(top + h)))
+        return pe.studio_finish(crop, "portrait", vibrant=True).resize((PW, PH), Image.LANCZOS)
+
+    bride, groom = panel(bride_jpeg), panel(groom_jpeg)
+    # Background: the two photos blurred into a warm glow
+    bg = Image.new("RGB", (W, H))
+    bg.paste(bride.resize((W // 2, H)), (0, 0))
+    bg.paste(groom.resize((W // 2, H)), (W // 2, 0))
+    bg = bg.filter(ImageFilter.GaussianBlur(40))
+    bg = Image.blend(bg, Image.new("RGB", (W, H), (90, 20, 30)), 0.45)
+    canvas = bg.convert("RGBA")
+    draw = ImageDraw.Draw(canvas)
+
+    def arch_mask(w: int, h: int) -> Image.Image:
+        m = Image.new("L", (w, h), 0)
+        d = ImageDraw.Draw(m)
+        d.rectangle([0, w // 2, w, h], fill=255)
+        d.ellipse([0, 0, w, w], fill=255)
+        return m
+
+    for img, x in ((bride, 170), (groom, W - 170 - PW)):
+        y = 220
+        canvas.paste((231, 181, 74, 255), (x - 14, y - 14), arch_mask(PW + 28, PH + 28))  # gold arch border
+        canvas.paste(img, (x, y), arch_mask(PW, PH))
+    # Marigold garland across the top
+    for i, gx in enumerate(range(30, W, 44)):
+        sag = int(26 * abs(((gx % 400) - 200) / 200))
+        col = (246, 162, 26, 255) if i % 2 else (255, 203, 61, 255)
+        draw.ellipse([gx - 20, 50 + sag - 20, gx + 20, 50 + sag + 20], fill=col)
+    font = load_font("names", "latin", 150)
+    draw.text((W // 2, 640), "&", font=font, fill=(255, 226, 150, 255), anchor="mm")
+    out = io.BytesIO()
+    canvas.convert("RGB").save(out, "JPEG", quality=92)
+    return out.getvalue()

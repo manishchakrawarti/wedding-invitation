@@ -732,3 +732,25 @@ def test_demo_weddings_have_regional_portraits(client):
     with SessionLocal() as db:
         o = db.get(Order, demo.demo_order("hi").id)
         assert len([a for a in o.assets if a.kind == "portrait" and not a.deleted_at]) == 3
+
+
+def test_custom_demo_photos_replace_illustrations(client):
+    import pytest
+
+    from app.services import demo, export
+
+    if not export.chrome_binary():
+        pytest.skip("Chrome/Chromium not installed")
+    demo.ensure_demo()
+    for lang in ("en", "hi", "ta"):
+        with SessionLocal() as db:
+            o = db.get(Order, demo.demo_order(lang).id)
+            shown = {a.card_key: a for a in o.assets if a.kind == "portrait" and not a.deleted_at}
+        custom = demo._custom_photo(lang, "bride") is not None
+        assert bool((shown["bride"].meta or {}).get("source")) == custom, lang
+        if custom:  # your bride/groom photos are enhanced + vibrant; the ready-made couple frame is used as-is
+            assert shown["bride"].meta["enhanced"] is True and shown["family"].meta["enhanced"] is False
+    before = len([a for a in o.assets if a.kind == "portrait"])
+    demo.ensure_demo_portraits()  # unchanged files: nothing re-done
+    with SessionLocal() as db:
+        assert len([a for a in db.get(Order, o.id).assets if a.kind == "portrait"]) == before

@@ -53,7 +53,8 @@ def portraits(order: Order) -> dict:
     return found
 
 
-def save_portrait(db: Session, order: Order, role: str, data: bytes, enhance: bool = True) -> None:
+def save_portrait(db: Session, order: Order, role: str, data: bytes, enhance: bool = True,
+                  vibrant: bool = False, meta: dict | None = None) -> None:
     """Store a photo for a role (replacing any previous one): the original is kept, and the
     version shown on the invitation is face-framed and studio-finished unless enhance is off."""
     from app.models import Asset, utcnow
@@ -68,9 +69,9 @@ def save_portrait(db: Session, order: Order, role: str, data: bytes, enhance: bo
     original = clean_photo(data)
     db.add(Asset(order_id=order.id, kind="portrait_raw", card_key=role, path=storage.save(f"{stem}_original.jpg", original),
                  content_type="image/jpeg"))
-    shown, info = photo_enhance.enhance(original, role) if enhance else (original, {})
+    shown, info = photo_enhance.enhance(original, role, vibrant=vibrant) if enhance else (original, {})
     db.add(Asset(order_id=order.id, kind="portrait", card_key=role, path=storage.save(f"{stem}.jpg", shown),
-                 content_type="image/jpeg", meta={"enhanced": enhance, **info}))
+                 content_type="image/jpeg", meta={"enhanced": enhance, **info, **(meta or {})}))
 
 
 async def read_portrait_uploads(form, errors: list[str]) -> dict[str, bytes]:

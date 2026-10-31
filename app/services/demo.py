@@ -160,34 +160,48 @@ def _create(lang: str, cfg: dict) -> int:
 CUSTOM_PHOTO_DIR = APP_DIR / "static" / "demo"  # optional: static/demo/<lang>/<role>.jpg or static/demo/<role>.jpg
 
 
-def _demo_photo(lang: str, role: str) -> bytes | None:
-    """Your own licensed photo if present, else an illustrated regional portrait."""
-    from app.services import demo_art
-
-    for path in (CUSTOM_PHOTO_DIR / lang / f"{role}.jpg", CUSTOM_PHOTO_DIR / f"{role}.jpg"):
-        if path.exists():
-            return path.read_bytes()
-    svg, w, h = demo_art.portrait_svg(demo_art.LANG_REGION.get(lang, "north"), role)
-    return demo_art.render_png(svg, w, h)
+def _custom_photo(lang: str, role: str) -> tuple[bytes, bool] | None:
+    """(bytes, ready) for your own photo. `<role>.ready.jpg` is used as-is; `<role>.jpg` gets enhanced."""
+    for folder in (CUSTOM_PHOTO_DIR / lang, CUSTOM_PHOTO_DIR):
+        for name, ready in ((f"{role}.ready.jpg", True), (f"{role}.jpg", False)):
+            if (folder / name).exists():
+                return (folder / name).read_bytes(), ready
+    return None
 
 
 def ensure_demo_portraits() -> None:
-    """Give every demo wedding bride, groom and family portraits (once)."""
+    """Give every demo wedding bride, groom and family portraits: your photos from static/demo
+    when present (re-applied whenever the file changes), otherwise illustrated regional portraits."""
+    import hashlib
+
+    from app.services import demo_art
+
     for lang in DEMOS:
         order_ref = demo_order(lang)
         if order_ref is None:
             continue
         with SessionLocal() as db:
             order = db.get(Order, order_ref.id)
-            have = set(invites.portraits(order))
-            missing = [r for r in ("bride", "groom", "family") if r not in have]
-            for role in missing:
-                data = _demo_photo(lang, role)
-                if data:
-                    invites.save_portrait(db, order, role, data, enhance=False)
-            if missing:
+            current = invites.portraits(order)
+            changed = []
+            for role in ("bride", "groom", "family"):
+                custom = _custom_photo(lang, role)
+                if custom:
+                    data, ready = custom
+                    digest = hashlib.sha1(data).hexdigest()[:12]
+                    if (current.get(role) and (current[role].meta or {}).get("source") == digest):
+                        continue
+                    invites.save_portrait(db, order, role, data, enhance=not ready, vibrant=True, meta={"source": digest})
+                    changed.append(role)
+                elif role not in current or (current[role].meta or {}).get("source"):
+                    svg, w, h = demo_art.portrait_svg(demo_art.LANG_REGION.get(lang, "north"), role)
+                    data = demo_art.render_png(svg, w, h)
+                    if data:
+                        invites.save_portrait(db, order, role, data, enhance=False)
+                        changed.append(role)
+            if changed:
                 db.commit()
-                log.info("demo portraits added: %s %s", lang, missing)
+                log.info("demo portraits updated: %s %s", lang, changed)
 
 
 def ensure_demo() -> None:

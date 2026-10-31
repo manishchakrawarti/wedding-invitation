@@ -90,8 +90,11 @@ def smart_crop(img: Image.Image, role: str, faces: list | None = None) -> Image.
     return img.crop(_clamp_box(img.width / 2, side / 2 + top_bias, side, side, img))
 
 
-def studio_finish(img: Image.Image, role: str) -> Image.Image:
+def studio_finish(img: Image.Image, role: str, vibrant: bool = False) -> Image.Image:
     img = img.convert("RGB")
+    if min(img.size) < 900:  # small photos: high-quality upscale first, so the sharpening below works on more pixels
+        k = 900 / min(img.size)
+        img = img.resize((round(img.width * k), round(img.height * k)), Image.LANCZOS)
     # Gentle grey-world white balance (half strength, clamped) removes yellow/blue casts.
     means = ImageStat.Stat(img).mean
     grey = sum(means) / 3
@@ -101,7 +104,9 @@ def studio_finish(img: Image.Image, role: str) -> Image.Image:
     lum = ImageStat.Stat(img.convert("L")).mean[0] / 255
     if lum < 0.45:  # lift dull or dark photos
         img = ImageEnhance.Brightness(img).enhance(min(1.0 + (0.45 - lum) * 1.2, 1.3))
-    img = ImageEnhance.Color(img).enhance(1.12)
+    img = ImageEnhance.Color(img).enhance(1.28 if vibrant else 1.12)
+    if vibrant:  # richer reds/golds and a touch more punch
+        img = ImageEnhance.Contrast(img).enhance(1.08)
     r, g, b = img.split()  # warm wedding tone
     img = Image.merge("RGB", (r.point(lambda v: min(255, int(v * 1.03))), g, b.point(lambda v: int(v * 0.97))))
     img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=70, threshold=3))
@@ -134,7 +139,7 @@ def ai_retouch(img: Image.Image) -> Image.Image:
     raise RuntimeError("Gemini returned no image")
 
 
-def enhance(data: bytes, role: str, use_ai: bool = False) -> tuple[bytes, dict]:
+def enhance(data: bytes, role: str, use_ai: bool = False, vibrant: bool = False) -> tuple[bytes, dict]:
     """Returns (JPEG bytes, info). info: faces found, whether AI was used, any AI error."""
     img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
     img.thumbnail((2400, 2400))
@@ -151,7 +156,7 @@ def enhance(data: bytes, role: str, use_ai: bool = False) -> tuple[bytes, dict]:
         except Exception as exc:  # noqa: BLE001 — fall back to the free studio finish
             log.warning("AI photo retouch failed: %s", exc)
             info["ai_error"] = str(exc)[:200]
-    img = studio_finish(smart_crop(img, role, faces), role)
+    img = studio_finish(smart_crop(img, role, faces), role, vibrant)
     img.thumbnail((1400, 1400))
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=92)
