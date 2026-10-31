@@ -18,7 +18,7 @@
   <div class="card">
     <h2>1. Package</h2>
     <div class="choice-grid">
-      {% for p in packages.values() %}
+      {% for p in packages.values() if p.listed %}
       <label class="choice pkg-choice">
         <input type="radio" name="package" value="{{ p.key }}" data-price="{{ p.price }}"
                data-includes="{{ ['function_cards' if p.function_cards, 'rsvp' if p.rsvp, 'express' if p.express]|select|join(' ') }}"

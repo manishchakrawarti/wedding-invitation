@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Order {{ o.public_id }} · {{ settings.brand_name }}{% endblock %}
 {% block content %}
-{% set step = {'pending_payment': 0, 'queued': 2, 'generating': 2, 'qc_review': 2, 'failed': 2, 'proof_sent': 3, 'changes_requested': 2, 'balance_due': 4, 'delivered': 5, 'cancelled': 0}[o.status] %}
+{% set step = {'pending_payment': 0, 'preview': 0, 'queued': 2, 'generating': 2, 'qc_review': 2, 'failed': 2, 'proof_sent': 3, 'changes_requested': 2, 'balance_due': 4, 'delivered': 5, 'cancelled': 0}[o.status] %}
 <section style="padding-top:36px">
 <div class="narrow">
   <p class="muted" style="margin:0">Order {{ o.public_id }}</p>
@@ -66,13 +66,39 @@
   </div>
   {% endif %}
 
-  {% if o.rsvp_slug and o.status not in ['pending_payment', 'cancelled'] %}
+  {% if o.status == 'delivered' %}
+  <div class="card" id="email">
+    <h2>✉️ Send to email</h2>
+    {% set emailed = request.query_params.get('emailed') %}
+    {% if emailed == 'sent' %}<div class="alert alert-ok">Sent! Check your inbox (and the spam folder, just in case).</div>
+    {% elif emailed == 'logged' %}<div class="alert alert-info">Email sending isn't switched on yet on our side. Please use the Download buttons above for now.</div>
+    {% elif emailed == 'failed' %}<div class="alert alert-error">We couldn't send the email. Please try again or use the Download buttons.</div>
+    {% elif emailed == 'invalid' %}<div class="alert alert-error">Please enter a valid email address.</div>{% endif %}
+    <form method="post" action="/o/{{ o.token }}/email" style="display:flex;gap:10px;flex-wrap:wrap">
+      <input type="email" name="email" required value="{{ o.email }}" placeholder="you@example.com" style="flex:1;min-width:220px" aria-label="Email address">
+      <button class="btn btn-primary" type="submit">Send my invitation</button>
+    </form>
+    <p class="hint">We'll email the HD cards as attachments plus your invite page link.</p>
+  </div>
+  {% endif %}
+
+  {% if o.rsvp_slug and console and o.status not in ['pending_payment', 'cancelled'] %}
   <div class="card" style="border:2px solid var(--gold)">
     <h2>💌 Smart guest invites</h2>
     <p>Add your guest list and send every guest a <strong>personal invitation</strong> on WhatsApp with their name and only their functions. Then watch who opened it, who's coming, headcount per function, food preferences and who needs pickup, all live.</p>
     <p><a class="btn btn-primary" href="/e/{{ o.rsvp_slug }}/guests?key={{ o.token }}">Open family console</a>
        <a class="btn btn-ghost" href="/e/{{ o.rsvp_slug }}" target="_blank">View invitation page ↗</a></p>
     <p class="small muted">General invite link (for WhatsApp groups): {{ settings.base_url }}/e/{{ o.rsvp_slug }}</p>
+  </div>
+  {% endif %}
+
+  {% if o.rsvp_slug and not console and o.status == 'delivered' %}
+  <div class="card" style="border:2px solid var(--gold)">
+    <h2>💌 Your invite page</h2>
+    <p>Share this link in WhatsApp groups. Guests see the palace doors, every function with maps, and can RSVP.</p>
+    <p><a class="btn btn-primary" href="/e/{{ o.rsvp_slug }}" target="_blank">Open invite page ↗</a>
+       <a class="btn btn-wa" href="https://wa.me/?text={{ ('You are invited to the wedding of ' ~ o.bride_name ~ ' & ' ~ o.groom_name ~ ' 💌 ' ~ settings.base_url ~ '/e/' ~ o.rsvp_slug)|urlencode }}">Share on WhatsApp</a></p>
+    <p class="small muted">{{ settings.base_url }}/e/{{ o.rsvp_slug }} · Want a personal link for each guest and live RSVP tracking? <a href="{{ wa_link('Hi, I want to upgrade order ' ~ o.public_id ~ ' to Smart Guest Invites') }}">Upgrade on WhatsApp</a></p>
   </div>
   {% endif %}
 

@@ -11,8 +11,9 @@
           {% for code, l in catalog.LANGUAGES.items() %}<option value="{{ code }}" lang="{{ code }}">{{ l.native }}{% if code != 'en' %} · {{ l.name }}{% endif %}</option>{% endfor %}
         </select>
         <button class="btn" type="submit">✨ Open live demo</button>
-        <a class="btn btn-ghost" style="color:var(--gold-soft)" href="/order?package=premium">Order yours</a>
       </form>
+      <p style="margin:6px 0 0"><a class="btn btn-primary" href="/create" style="font-size:1.08rem">🎨 Create yours free</a>
+        <span style="color:var(--gold-soft);margin-left:8px">See it first, pay ₹{{ catalog.PACKAGES['instant'].price }} only if you love it</span></p>
       <div class="trust">
         <span>✦ From ₹{{ catalog.PACKAGES['basic'].price }}</span>
         <span>✦ {{ catalog.LANGUAGES|length }} languages</span>
@@ -120,7 +121,7 @@
     <h2 class="center">Simple, honest pricing</h2>
     <p class="center muted">One-time price. No hidden charges.</p>
     <div class="pricing" style="margin-top:36px">
-      {% for p in packages.values() %}
+      {% for p in packages.values() if p.listed %}
       <div class="plan {% if p.popular %}popular{% endif %}">
         {% if p.popular %}<span class="badge-pop">Most loved</span>{% endif %}
         <h3>{{ p.name }}</h3>

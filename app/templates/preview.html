@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Creating your invitation…' if working else 'Your invitation preview' }} · {{ settings.brand_name }}{% endblock %}
+{% block head %}
+{% if working %}<meta http-equiv="refresh" content="2">{% endif %}
+<style>
+  .making { min-height: 70vh; display: grid; place-items: center; text-align: center; padding: 40px 16px; }
+  .mandala-spin { width: 120px; height: 120px; margin: 0 auto 24px; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--gold), var(--marigold), var(--maroon), var(--gold)); animation: spin 2.4s linear infinite;
+    -webkit-mask: radial-gradient(circle, transparent 38px, #000 40px); mask: radial-gradient(circle, transparent 38px, #000 40px); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .making .steps-text { color: var(--muted); }
+  .reveal-head { text-align: center; padding: 34px 0 10px; }
+  .reveal-head h1 .script { display: block; }
+  .preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+  .preview-grid figure { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+  .preview-grid img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+  .preview-grid figcaption { padding: 10px 14px; font-weight: 600; }
+  .unlock { background: linear-gradient(135deg, #fff8e6, #fdebd3); border: 2px solid var(--gold); border-radius: 20px; padding: 28px; text-align: center; box-shadow: var(--shadow); }
+  .unlock .price { font: 700 3.2rem var(--serif); color: var(--maroon); line-height: 1; }
+  .unlock .price s { font-size: 1.4rem; color: var(--muted); font-weight: 500; margin-right: 8px; }
+  .unlock ul { list-style: none; padding: 0; margin: 18px auto; max-width: 30em; text-align: left; }
+  .unlock li { padding: 6px 0 6px 28px; position: relative; }
+  .unlock li::before { content: "✓"; position: absolute; left: 4px; color: var(--green); font-weight: 700; }
+  .sticky-unlock { position: sticky; bottom: 0; z-index: 10; background: var(--maroon-dark); padding: 12px 0; }
+  .sticky-unlock .wrap { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--cream); }
+</style>
+{% endblock %}
+{% block content %}
+{% if working %}
+<section class="making">
+  <div>
+    <div class="mandala-spin" aria-hidden="true"></div>
+    <h1>Creating your invitation…</h1>
+    <p class="steps-text">Painting the {{ catalog.STYLES[o.style].name }} design · setting {{ o.bride_name }} &amp; {{ o.groom_name }} in beautiful type · preparing your invite page</p>
+    <p class="small muted">This usually takes a few seconds. The page refreshes by itself.</p>
+  </div>
+</section>
+{% elif o.status == 'failed' %}
+<section class="narrow" style="padding:60px 0;text-align:center">
+  <h1>Something went wrong 😔</h1>
+  <p>We couldn't create your invitation just now. Our team has been alerted.</p>
+  <p><a class="btn" href="/create">Try again</a> <a class="btn btn-wa" href="{{ wa_link('Hi, my invitation preview failed: ' ~ o.public_id) }}">Message us</a></p>
+</section>
+{% else %}
+<section class="reveal-head">
+  <div class="wrap">
+    <h1>Your invitation is ready <span class="script">{{ o.bride_name }} &amp; {{ o.groom_name }}</span></h1>
+    <p class="muted">This is a watermarked preview. Unlock to get the clean HD files and your live invite page.</p>
+  </div>
+</section>
+<section style="padding-top:20px">
+  <div class="wrap">
+    <div class="preview-grid">
+      {% for a in proofs %}
+      <figure><img src="/o/{{ o.token }}/files/{{ a.id }}" alt="Preview: {{ (a.meta or {}).get('title', a.card_key) }}"><figcaption>{{ (a.meta or {}).get('title', a.card_key) }}</figcaption></figure>
+      {% endfor %}
+    </div>
+    {% if o.rsvp_slug %}
+    <p class="center" style="margin-top:22px"><a class="btn btn-ghost" href="/e/{{ o.rsvp_slug }}" target="_blank">✨ Open your invite page preview (palace doors, music, RSVP) ↗</a></p>
+    {% endif %}
+  </div>
+</section>
+
+<section style="padding-top:10px">
+  <div class="narrow">
+    <div class="unlock" id="unlock">
+      <h2 style="margin-bottom:6px">Love it? Make it yours</h2>
+      <div class="price">₹{{ pkg.price }}</div>
+      <ul>{% for f in pkg.features[1:] %}<li>{{ f }}</li>{% endfor %}</ul>
+      {% if unlockable %}
+        <a class="btn btn-primary" href="/o/{{ o.token }}/pay" style="font-size:1.1rem;padding:14px 34px">Unlock for ₹{{ pkg.price }}</a>
+        <p class="small muted" style="margin-top:10px">UPI · Cards · Netbanking. Instant download after payment.</p>
+      {% else %}
+        <div class="alert alert-info">Our designer is giving your card a final check. You'll be able to unlock it here shortly{% if o.email %}, and we'll email you{% endif %}.</div>
+      {% endif %}
+    </div>
+    <p class="center small muted" style="margin-top:18px">Want changes? <a href="/create?style={{ o.style }}&lang={{ o.language }}">Create another version</a> · Need personal invites for every guest with RSVP tracking? <a href="/order?package=premium">See Premium</a></p>
+    <p class="center small muted">Bookmark this page to come back to your preview.</p>
+  </div>
+</section>
+{% if unlockable %}
+<div class="sticky-unlock"><div class="wrap"><span>Unlock HD cards + invite page</span><a class="btn btn-sm" href="/o/{{ o.token }}/pay">₹{{ pkg.price }} · Unlock</a></div></div>
+{% endif %}
+{% endif %}
+{% endblock %}

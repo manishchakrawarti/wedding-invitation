@@ -18,6 +18,8 @@ class Package:
     rsvp: bool = False
     express: bool = False
     popular: bool = False
+    event_page: bool = False  # cinematic invite page + RSVP via the general link
+    listed: bool = True  # shown in the pricing grid / order form
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,22 @@ class Addon:
 PACKAGES: dict[str, Package] = {
     p.key: p
     for p in [
+        Package(
+            "instant",
+            "Instant",
+            99,
+            "Create it yourself in 60 seconds",
+            (
+                "Free preview before you pay",
+                "HD card for the wedding and every function, no watermark",
+                "Cinematic invite page to share on WhatsApp, with RSVP",
+                "Your language, your style",
+                "Sent to your email",
+            ),
+            function_cards=True,
+            event_page=True,
+            listed=False,
+        ),
         Package(
             "basic",
             "Basic",

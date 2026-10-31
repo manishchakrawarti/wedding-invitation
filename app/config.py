@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     final_retention_days: int = 90
     max_free_revisions: int = 2
     referral_discount_inr: int = 100
+    instant_previews_per_hour: int = 6  # free ₹99-funnel previews per visitor (AI images cost money)
 
     # Tests run the pipeline synchronously instead of on a worker thread.
     run_pipeline_inline: bool = False

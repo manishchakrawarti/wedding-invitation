@@ -75,6 +75,12 @@ def ensure_rsvp_slug(db: Session, order: Order) -> None:
     order.rsvp_slug = slug
 
 
+def preview_unlockable(order: Order) -> bool:
+    """An instant preview can be paid for only when every card passed QC, so nobody pays for a broken card."""
+    finals = order.live_assets("final")
+    return order.status == OrderStatus.PREVIEW.value and bool(finals) and all((a.qc or {}).get("passed") for a in finals)
+
+
 # --- state transitions ------------------------------------------------------
 
 def send_proof(db: Session, order: Order, by: str = "admin") -> None:

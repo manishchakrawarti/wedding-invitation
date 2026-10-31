@@ -14,6 +14,7 @@ os.environ.update(
     RAZORPAY_WEBHOOK_SECRET="whsec_test",
     RAZORPAY_ME_URL="",
     TEST_ORDER_CODE="",
+    INSTANT_PREVIEWS_PER_HOUR="1000",
     OWNER_WHATSAPP="",
     OWNER_EMAIL="",
     GEMINI_API_KEY="",

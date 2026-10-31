@@ -36,10 +36,13 @@ def _send_whatsapp(to: str, body: str) -> None:
     resp.raise_for_status()
 
 
-def _send_email(to: str, subject: str, body: str) -> None:
+def _send_email(to: str, subject: str, body: str, attachments: list[tuple[str, bytes, str]] | None = None) -> None:
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = settings.smtp_from, to, subject
     msg.set_content(body)
+    for filename, data, mime in attachments or []:
+        maintype, subtype = mime.split("/", 1)
+        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
         smtp.starttls()
         if settings.smtp_user:
@@ -47,7 +50,8 @@ def _send_email(to: str, subject: str, body: str) -> None:
         smtp.send_message(msg)
 
 
-def send(db: Session, channel: str, recipient: str, body: str, subject: str = "", order: Order | None = None) -> Notification:
+def send(db: Session, channel: str, recipient: str, body: str, subject: str = "", order: Order | None = None,
+         attachments: list[tuple[str, bytes, str]] | None = None) -> Notification:
     note = Notification(order_id=order.id if order else None, channel=channel, recipient=recipient, subject=subject, body=body)
     enabled = settings.whatsapp_enabled if channel == "whatsapp" else settings.email_enabled
     try:
@@ -59,7 +63,7 @@ def send(db: Session, channel: str, recipient: str, body: str, subject: str = ""
             _send_whatsapp(normalize_phone(recipient), body)
             note.status = "sent"
         else:
-            _send_email(recipient, subject or settings.brand_name, body)
+            _send_email(recipient, subject or settings.brand_name, body, attachments)
             note.status = "sent"
     except Exception as exc:  # noqa: BLE001 — never let a notification break the order flow
         log.exception("notification failed")

@@ -209,7 +209,7 @@ th { background: #faf1e2; font-weight: 600; color: var(--maroon-dark); }
 .site-footer .wrap { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; }
 .site-footer a { color: var(--gold-soft); }
 .wa-float { position: fixed; right: 18px; bottom: 18px; z-index: 30; width: 58px; height: 58px; border-radius: 50%; background: #25d366; display: grid; place-items: center; box-shadow: 0 8px 20px rgba(0, 0, 0, .25); }
-body:has(.summary-bar) .wa-float { bottom: 100px; }
+body:has(.summary-bar) .wa-float, body:has(.cta-bar) .wa-float, body:has(.sticky-unlock) .wa-float { bottom: 100px; }
 .wa-float svg { width: 30px; height: 30px; fill: #fff; }
 
 .legal h2 { font-size: 1.5rem; margin-top: 1.6em; }

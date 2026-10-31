@@ -15,6 +15,7 @@ from app.config import settings
 from app.db import SessionLocal, get_db
 from app.models import Asset, Guest, Invitee, Order, OrderStatus, utcnow
 from app.services import demo, invites
+from app.services.cards import has_guest_console
 from app.services.storage import storage
 from app.templating import templates
 
@@ -214,6 +215,8 @@ def demo_invite(lang: str = "en"):
 def _check_key(order: Order, key: str) -> None:
     if not secrets.compare_digest(key or "", order.token):
         raise HTTPException(403, "Invalid link")
+    if not has_guest_console(order):
+        raise HTTPException(403, "Personal guest invites and RSVP tracking are part of Premium. Message us on WhatsApp to upgrade.")
 
 
 def _console(slug: str, key: str, msg: str = "") -> RedirectResponse:

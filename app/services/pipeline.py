@@ -112,7 +112,12 @@ def run_order(order_id: int, notes: str = "") -> None:
             db.commit()
 
         order.current_version = version
-        if all_passed and settings.auto_send_proof_if_qc_pass:
+        if order.source == "instant" and order.amount_paid == 0:
+            orders.set_status(db, order, OrderStatus.PREVIEW, f"Free preview v{version} ready" + ("" if all_passed else " (QC failed)"))
+            db.commit()
+            if not all_passed:
+                notify.alert_owner(db, f"Instant order {order.public_id} failed QC; customer can't unlock it until fixed.", order)
+        elif all_passed and settings.auto_send_proof_if_qc_pass:
             orders.send_proof(db, order, by="auto")
         else:
             orders.set_status(db, order, OrderStatus.QC_REVIEW, f"Draft v{version} ready for review")

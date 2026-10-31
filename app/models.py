@@ -14,6 +14,7 @@ def utcnow() -> datetime:
 
 class OrderStatus(str, enum.Enum):
     PENDING_PAYMENT = "pending_payment"
+    PREVIEW = "preview"  # instant ₹99 invitation generated, waiting for payment to unlock
     QUEUED = "queued"
     GENERATING = "generating"
     QC_REVIEW = "qc_review"  # waiting for the owner to check the draft
@@ -27,6 +28,7 @@ class OrderStatus(str, enum.Enum):
 
 STATUS_LABELS = {
     OrderStatus.PENDING_PAYMENT: "Awaiting payment",
+    OrderStatus.PREVIEW: "Free preview",
     OrderStatus.QUEUED: "In queue",
     OrderStatus.GENERATING: "Designing",
     OrderStatus.QC_REVIEW: "Quality check",

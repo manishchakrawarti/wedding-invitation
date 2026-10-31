@@ -447,3 +447,64 @@ def test_homepage_demo_language_picker(client):
     assert '<html lang="ta">' in page.text
     console = client.get("/demo/console?lang=bn")
     assert console.status_code == 200 and "Rimjhim" in console.text  # Bengali demo couple
+
+
+def create_instant(client, **overrides) -> Order:
+    data = {"bride_name": "Priya", "groom_name": "Rohan", "language": "en", "style": "north_indian",
+            "wedding_date": WEDDING, "wedding_time": "19:30", "venue_name": "ITC Rajputana", "city": "Jaipur"}
+    data.update(overrides)
+    resp = client.post("/create", data=data, follow_redirects=False)
+    assert resp.status_code == 303, resp.text[:1500]
+    assert resp.headers["location"].endswith("/preview")
+    return get(resp.headers["location"].split("/")[2])
+
+
+def test_instant_99_free_preview_then_unlock(client):
+    assert client.get("/create").status_code == 200
+    order = create_instant(client, fn_haldi="on", fn_haldi_date=WEDDING, hosts="The Kapoor family")
+    assert order.status == OrderStatus.PREVIEW.value and order.total == 9900 and order.amount_paid == 0
+    assert sorted(a.card_key for a in order.assets if a.kind == "final") == ["haldi", "main"]
+    wedding = next(f for f in order.functions if f["key"] == "wedding")
+    assert wedding["time"] == "19:30"  # the quick "time" field lands on the ceremony
+
+    # Free preview: watermarked proofs visible, HD finals locked, order page redirects to the preview.
+    page = client.get(f"/o/{order.token}/preview")
+    assert "Unlock for ₹99" in page.text
+    proof = next(a for a in order.assets if a.kind == "proof")
+    final = next(a for a in order.assets if a.kind == "final")
+    assert client.get(f"/o/{order.token}/files/{proof.id}").status_code == 200
+    assert client.get(f"/o/{order.token}/files/{final.id}").status_code == 403
+    assert client.get(f"/o/{order.token}", follow_redirects=False).headers["location"].endswith("/preview")
+
+    # Invite page works as a preview (banner, RSVP disabled); no guest console at ₹99.
+    event = client.get(f"/e/{order.rsvp_slug}").text
+    assert "Free preview" in event and 'disabled title="Available after unlocking"' in event
+    assert client.get(f"/e/{order.rsvp_slug}/guests?key={order.token}").status_code == 403
+
+    # Pay ₹99 → delivered instantly, HD unlocked, send-to-email offered.
+    order = pay(client, order)
+    assert order.status == OrderStatus.DELIVERED.value and order.amount_paid == 9900
+    assert client.get(f"/o/{order.token}/files/{final.id}?download=1").status_code == 200
+    status = client.get(f"/o/{order.token}").text
+    assert "Send to email" in status and "Your invite page" in status
+    resp = client.post(f"/o/{order.token}/email", data={"email": "priya@example.com"}, follow_redirects=False)
+    assert resp.headers["location"].endswith("?emailed=logged#email")  # SMTP not configured in tests
+    with SessionLocal() as db:
+        note = db.scalars(select(Notification).where(Notification.recipient == "priya@example.com")).first()
+    assert "2 card(s) attached" in note.body and f"/e/{order.rsvp_slug}" in note.body
+    assert get(order.token).email == "priya@example.com"
+
+
+def test_instant_validation_rate_limit_and_hidden_package(client, monkeypatch):
+    from app.config import settings
+
+    resp = client.post("/create", data={"bride_name": "", "groom_name": "R", "language": "en", "style": "north_indian",
+                                        "wedding_date": WEDDING, "venue_name": ""})
+    assert resp.status_code == 422 and "Bride&#39;s name is required" in resp.text
+    monkeypatch.setattr(settings, "instant_previews_per_hour", 0)
+    resp = client.post("/create", data={"bride_name": "A", "groom_name": "B", "language": "en", "style": "north_indian",
+                                        "wedding_date": WEDDING, "venue_name": "V"})
+    assert resp.status_code == 422 and "several previews this hour" in resp.text
+    # The ₹99 package can't be bought through the done-for-you order form.
+    resp = client.post("/order", data=order_form(package="instant"))
+    assert resp.status_code == 422

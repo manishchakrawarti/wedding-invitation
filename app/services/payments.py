@@ -91,7 +91,9 @@ def mark_paid(db: Session, payment: Payment, provider_payment_id: str = "") -> N
         db.commit()
         return
 
-    if order.status == OrderStatus.PENDING_PAYMENT.value:
+    if order.status == OrderStatus.PREVIEW.value and order.balance_due == 0:
+        orders.deliver(db, order)
+    elif order.status == OrderStatus.PENDING_PAYMENT.value:
         orders.set_status(db, order, OrderStatus.QUEUED, "Paid — queued for design")
         db.commit()
         notify.notify_customer(db, order, "payment_received")

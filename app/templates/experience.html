@@ -5,6 +5,7 @@
 {% set bride = (o.bride_name_local if local and o.bride_name_local else o.bride_name) %}
 {% set groom = (o.groom_name_local if local and o.groom_name_local else o.groom_name) %}
 {% set lf = i18n.WEB_FONTS.get(o.language) %}
+{% set preview_mode = o.source == 'instant' and o.status != 'delivered' %}
 {% block title %}{{ o.bride_name }} &amp; {{ o.groom_name }}{% if inv %} · Invitation for {{ inv.name }}{% endif %}{% endblock %}
 {% block lang %}{{ o.language }}{% endblock %}
 {% block head %}
@@ -122,6 +123,7 @@
 {% endblock %}
 {% block header %}{% endblock %}
 {% block content %}
+{% if preview_mode %}<div class="preview-bar" style="top:auto;bottom:0;background:var(--maroon-dark);padding:10px">✨ Free preview. Unlock it to share with guests and receive RSVPs. · <a href="/create" style="color:var(--gold-soft)">Create your own</a></div>{% endif %}
 {% if preview %}<div class="preview-bar">👀 Preview of {{ inv.name }}'s invitation. Your visit isn't counted as "opened".</div>{% endif %}
 
 <div class="doors" id="doors" aria-hidden="true">
@@ -264,7 +266,7 @@
       {% endif %}
       <label for="message" style="margin-top:14px">{{ t.blessings_label }}</label>
       <textarea id="message" name="message" maxlength="1000" placeholder="Wishing you a lifetime of love…">{{ inv.message if inv else '' }}</textarea>
-      <button class="btn btn-primary btn-block" type="submit" style="margin-top:14px">{{ t.update_rsvp if inv and inv.attending else t.send_rsvp }}</button>
+      <button class="btn btn-primary btn-block" type="submit" style="margin-top:14px" {% if preview_mode %}disabled title="Available after unlocking"{% endif %}>{{ t.update_rsvp if inv and inv.attending else t.send_rsvp }}</button>
     </form>
   </div>
 </section>

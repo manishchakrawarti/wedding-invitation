@@ -24,6 +24,13 @@ def has_function_cards(order) -> bool:
 
 
 def has_rsvp(order) -> bool:
+    """Has an invite page (general link + RSVP)."""
+    pkg = PACKAGES[order.package]
+    return pkg.rsvp or pkg.event_page or "rsvp" in (order.addons or [])
+
+
+def has_guest_console(order) -> bool:
+    """Smart guest invites: personal links, tracking, headcounts (Premium or the add-on)."""
     return PACKAGES[order.package].rsvp or "rsvp" in (order.addons or [])
 
 
