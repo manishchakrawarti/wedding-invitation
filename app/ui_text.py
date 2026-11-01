@@ -105,6 +105,23 @@ HI = {
     # gallery & wording
     "Invitation Wording & Messages": "निमंत्रण संदेश और शब्द", "More invitation messages": "और निमंत्रण संदेश", "Put it on a card": "इसे कार्ड पर लगाएँ",
     "Make one like this": "ऐसा ही बनाएँ", "Be the first in the gallery ✨": "गैलरी में सबसे पहले आइए ✨", "All": "सभी",
+    # homepage feature cards
+    'Send anywhere in one tap': 'एक टैप में कहीं भी भेजें',
+    '"A special invitation for Sharma Family": each guest gets their own card, PDF and link with their name on it, free.': '"शर्मा परिवार के लिए विशेष निमंत्रण": हर मेहमान को उसके नाम वाला अपना कार्ड, PDF और लिंक, मुफ़्त।',
+    'WhatsApp, SMS, Telegram, Instagram, Facebook or email, straight from your own phone, so it costs nothing.': 'WhatsApp, SMS, Telegram, Instagram, Facebook या ईमेल: सीधे अपने फ़ोन से, बिलकुल मुफ़्त।',
+    'See live who opened, who replied, headcount per function, veg/Jain counts and who needs station pickup. Export it for your caterer.': 'लाइव देखिए किसने खोला, किसने जवाब दिया, हर रस्म में कितने लोग, शाकाहारी/जैन गिनती और किसे स्टेशन से लाना है। कैटरर के लिए डाउनलोड करें।',
+    'Guests send shagun or gifts straight to your bank with any UPI app: add your UPI ID, mobile number or payment QR. Plus Google Maps for every venue, dress codes and add-to-calendar reminders.': 'मेहमान किसी भी UPI ऐप से शगुन सीधे आपके बैंक में भेजते हैं: अपना UPI ID, मोबाइल नंबर या QR जोड़ें। साथ में हर स्थान का Google Maps, ड्रेस कोड और कैलेंडर रिमाइंडर।',
+    'Palace doors open to falling petals and your music. Guests feel the celebration before they arrive.': 'महल के दरवाज़े खुलते हैं, फूल बरसते हैं और आपका संगीत बजता है। मेहमान आने से पहले ही उत्सव महसूस करते हैं।',
+    'In your language, spelled right': 'आपकी भाषा में, सही वर्तनी के साथ',
+    'Hindi and 8 regional languages with every matra correct, names in your own script, and automatic quality checks on every card.': 'हिंदी और 8 क्षेत्रीय भाषाएँ, हर मात्रा सही, नाम आपकी अपनी लिपि में, और हर कार्ड की अपने-आप जाँच।',
+    '"I\'m invited!" selfie frame': '"मुझे निमंत्रण मिला है!" सेल्फ़ी फ्रेम',
+    'Guests take a selfie in a frame with your names and date and post it on their WhatsApp status or Instagram story.': 'मेहमान आपके नाम और तारीख़ वाले फ्रेम में सेल्फ़ी लेकर अपने WhatsApp स्टेटस या Instagram स्टोरी पर लगाते हैं।',
+    'See it as you type': 'लिखते ही देखें',
+    'Your card redraws live while you type the names and date, so you know exactly how it looks before you create it.': 'नाम और तारीख़ लिखते ही कार्ड बदलता है, ताकि बनाने से पहले ही पता चले कि वह कैसा दिखेगा।',
+    '230 ready messages': '230 तैयार संदेश',
+    'Lost for words? Copy beautiful invitation messages and shayari in Hindi and English for every occasion, in one tap.': 'शब्द नहीं सूझ रहे? हर अवसर के लिए हिंदी और अंग्रेज़ी में सुंदर निमंत्रण संदेश और शायरी, एक टैप में कॉपी करें।',
+    'PDF, long image & 4K print': 'PDF, लंबी इमेज और 4K प्रिंट',
+    'One PDF booklet, one long image for WhatsApp, and sizes up to 4K that any local press can print as cards or banners.': 'एक PDF पुस्तिका, WhatsApp के लिए एक लंबी इमेज, और 4K तक के साइज़ जिन्हें कोई भी प्रेस कार्ड या बैनर के रूप में छाप सके।',
     # create form, per occasion (translated in public._create_context)
     "Who's it for?": "किसके लिए?", "When & where": "कब और कहाँ", "Hosted by": "आयोजक", "Second photo": "दूसरी फ़ोटो",
     "Team / venue photo": "टीम / स्थान की फ़ोटो", "The Sharma family": "शर्मा परिवार", "The leadership team": "प्रबंधन टीम",

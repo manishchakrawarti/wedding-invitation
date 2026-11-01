@@ -1558,3 +1558,12 @@ def test_hindi_website_switch(client):
     assert '<html lang="en">' in visitor.get(f"/e/{order.rsvp_slug}").text
     visitor.get("/?ui=en")
     assert "Not just a card." in visitor.get("/").text and "🌐 हिन्दी" in visitor.get("/").text
+
+
+def test_homepage_feature_cards(client):
+    page = client.get("/?ui=en").text
+    section = page[page.index('id="experience"'):page.index('id="occasions"')]
+    assert section.count('<div class="card">') == 10
+    for title in ("selfie frame", "See it as you type", "230 ready messages", "PDF, long image &amp; 4K print"):
+        assert title in section, title
+    assert "(Premium)." not in section and "a real designer checks every invite" not in section
