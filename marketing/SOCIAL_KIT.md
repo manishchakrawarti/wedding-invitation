@@ -1,6 +1,6 @@
 # Invite All · Social media kit
 
-Everything to open the pages and start posting. The images are in [`assets/`](assets/); to remake them, run
+Everything to open the pages and start posting. After the first two weeks, follow [CONTENT_CALENDAR.md](CONTENT_CALENDAR.md) (12 weeks, with tagged links for the stats page). The images are in [`assets/`](assets/); to remake them, run
 `.venv/Scripts/python marketing/make_assets.py`.
 
 - **Website:** https://invite-all.com

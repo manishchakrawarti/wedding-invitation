@@ -179,6 +179,29 @@ def main() -> None:
          lambda im: fan(im, ["st_north_indian.jpg", "st_south_indian.jpg", "en_card.png"], 540, 700, 470, 210),
          footer="Pay by UPI · No sign-up needed")
 
+    # seasonal posts (CONTENT_CALENDAR.md)
+    post("post8_wedding_season", "Shaadi season is here", "Your wedding card, every function", "free to make, ready in a minute",
+         lambda im: fan(im, ["st_south_indian.jpg", "st_muslim_nikah.jpg", "en_card.png"], 540, 700, 470, 210),
+         footer="Haldi · Mehndi · Sangeet · Wedding · Reception")
+    post("post9_christmas", "Hosting this year?", "Christmas & New Year party invites", "food, music & a gift exchange",
+         lambda im: fan(im, ["ev_kitty_party.jpg", "ev_family_reunion.jpg", "ev_christmas_newyear.jpg"], 540, 700, 470, 210))
+    post("post10_lohri", "Lohri di lakh lakh vadhaiyan", "Lohri & Sankranti invitations", "bonfire, rewri & bhangra",
+         lambda im: paste_center(im, card("ev_lohri_sankranti.jpg", 620, -3), 540, 700))
+
+    def wording_post(im):
+        d = ImageDraw.Draw(im)
+        notes = [("Griha Pravesh", "New home, new beginnings! Join us for"), ("Wedding", "Together with their families…"),
+                 ("Birthday", "It's party time! Please join us as"), ("Satyanarayan Puja", "With the blessings of the Almighty…")]
+        for i, (head, line) in enumerate(notes):
+            x, y = 110 + (i % 2) * 450, 390 + (i // 2) * 330
+            d.rounded_rectangle([x, y, x + 410, y + 280], radius=24, fill=CREAM)
+            text(d, (x + 205, y + 60), head, cinzel(34), fill=MAROON, max_w=370)
+            text(d, (x + 205, y + 130), line, serif(30, "Medium"), fill=(70, 50, 45), max_w=370)
+            d.rounded_rectangle([x + 105, y + 190, x + 305, y + 244], radius=27, fill=GOLD)
+            text(d, (x + 205, y + 217), "Copy", serif(30, "Bold"), fill=DARK)
+    post("post11_wording", "Need the right words?", "230 invitation messages", "Hindi & English · copy in one tap", wording_post,
+         footer="invite-all.com/wording")
+
     # Story / reel cover 1080×1920 (leave the bottom free for Instagram's link sticker)
     W, H = 1080, 1920
     img = background(W, H)
