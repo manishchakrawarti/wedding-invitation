@@ -1,4 +1,21 @@
 {% extends "base.html" %}
+{% block title %}{{ settings.brand_name }} · Free Online Invitation Card Maker for Every Occasion{% endblock %}
+{% block description %}Make wedding, birthday, griha pravesh and puja invitation cards online free in 60 seconds, in Hindi and 9 Indian languages. Share on WhatsApp with RSVP.{% endblock %}
+{% block jsonld %}
+<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@graph": [
+    {"@type": "Organization", "@id": settings.base_url ~ "/#org", "name": settings.brand_name, "url": settings.base_url ~ "/",
+     "logo": settings.base_url ~ "/static/icons/icon-512.png", "sameAs": ["https://instagram.com/" ~ settings.instagram_handle]},
+    {"@type": "WebSite", "@id": settings.base_url ~ "/#site", "name": settings.brand_name,
+     "alternateName": [settings.base_url.split("//")[-1], "InviteAll"], "url": settings.base_url ~ "/", "publisher": {"@id": settings.base_url ~ "/#org"},
+     "inLanguage": "en-IN"},
+    {"@type": "WebApplication", "name": settings.brand_name ~ " invitation card maker", "url": settings.base_url ~ "/create",
+     "applicationCategory": "DesignApplication", "operatingSystem": "Any, in the browser",
+     "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"}, "publisher": {"@id": settings.base_url ~ "/#org"}}
+  ]
+}|tojson }}</script>
+{% endblock %}
 {% block content %}
 <section class="hero">
   <div class="wrap">

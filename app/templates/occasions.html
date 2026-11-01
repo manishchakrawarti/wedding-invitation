@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Invitations for every occasion · {{ settings.brand_name }}{% endblock %}
+{% block title %}Invitation Cards for Every Occasion: Wedding, Birthday, Puja & More · {{ settings.brand_name }}{% endblock %}
+{% block description %}Free invitation card maker for {{ types|length + 1 }} occasions: weddings, birthdays, anniversaries, griha pravesh, satyanarayan puja, baby shower, namkaran, inauguration and more. Hindi and 9 Indian languages.{% endblock %}
 {% block head %}
 <style>
   .occ-hero { background: radial-gradient(ellipse at top, #8d2335, var(--maroon-dark) 75%); color: var(--cream); text-align: center; padding: 48px 0 40px; }
@@ -40,14 +41,14 @@
       {% if c.key == 'wedding' %}
         {% for s in styles.values() if 'wedding' in s.occasions %}{% if loop.index <= 4 %}
         <div class="type"><a href="/create?style={{ s.key }}"><img src="/samples/{{ s.key }}.jpg" alt="{{ s.name }} wedding invitation" loading="lazy"></a>
-          <div><strong>{{ s.name }}</strong><span class="small muted">{{ s.description }}</span>
+          <div><strong>{% set lp = seo.for_create_url('/create?style=' ~ s.key) %}{% if lp %}<a href="{{ lp.path }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</strong><span class="small muted">{{ s.description }}</span>
             <span class="type-actions"><a class="btn btn-sm btn-ghost" href="/demo/en" target="_blank">▶ Live demo</a>
               <a class="btn btn-sm btn-primary" href="/create?style={{ s.key }}">Create free</a></span></div></div>
         {% endif %}{% endfor %}
       {% else %}
         {% for key in c.types %}{% set t = types[key] %}
         <div class="type"><a href="/demo/event/{{ t.key }}" target="_blank" aria-label="Live demo: {{ t.name }}"><img src="/samples/event/{{ t.key }}.jpg" alt="{{ t.name }} invitation" loading="lazy"></a>
-          <div><strong>{{ t.icon }} {{ t.name }}</strong><span class="small muted">{{ t.headline_hi }}</span>
+          <div><strong>{{ t.icon }} {% set lp = seo.for_create_url('/create?event=' ~ t.key) %}{% if lp %}<a href="{{ lp.path }}">{{ t.name }}</a>{% else %}{{ t.name }}{% endif %}</strong><span class="small muted">{{ t.headline_hi }}</span>
             <span class="type-actions"><a class="btn btn-sm btn-ghost" href="/demo/event/{{ t.key }}" target="_blank">▶ Live demo</a>
               <a class="btn btn-sm btn-primary" href="/create?event={{ t.key }}">Create free</a></span></div></div>
         {% endfor %}
@@ -56,5 +57,10 @@
   </div>
 </section>
 {% endfor %}
+<section style="padding-top:40px"><div class="narrow center">
+  <h2>Wedding cards in your language</h2>
+  <p class="lang-links">{% for code, l in catalog.LANGUAGES.items() if code != 'en' %}<a href="/{{ l.name|lower }}-wedding-invitation-card" lang="{{ code }}">{{ l.native }} · {{ l.name }}</a>{% endfor %}</p>
+</div></section>
+<style>.lang-links { display: flex; flex-wrap: wrap; gap: 8px 10px; justify-content: center; } .lang-links a { border: 1px solid var(--gold-soft); border-radius: 99px; padding: 6px 14px; text-decoration: none; }</style>
 <section style="padding-top:40px"><div class="narrow center"><p class="muted">Need something custom for a big event? <a href="{{ wa_link('Hi, I need a custom invitation') }}">Message us on WhatsApp</a>.</p></div></section>
 {% endblock %}

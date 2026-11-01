@@ -1,0 +1,109 @@
+{# A search landing page for one occasion, language or style (app/seo.py): what to write, sample wording,
+   how it works, FAQ, and links into the free creator. #}
+{% extends "base.html" %}
+{% block title %}{{ p.title }}{% endblock %}
+{% block description %}{{ p.description }}{% endblock %}
+{% block og_image %}{{ settings.base_url }}{{ p.sample }}{% endblock %}
+{% block jsonld %}
+<script type="application/ld+json">{{ p.jsonld(settings.base_url, settings.brand_name)|tojson }}</script>
+{% endblock %}
+{% block head %}
+<style>
+  .lp-hero { background: radial-gradient(ellipse at top, #8d2335, var(--maroon-dark) 75%); color: var(--cream); padding: 30px 0 40px; }
+  .lp-hero .wrap { display: grid; grid-template-columns: 1.2fr 1fr; gap: 34px; align-items: center; }
+  .lp-hero h1 { color: #fff; margin: 6px 0 4px; }
+  .lp-hero .local { color: var(--gold-soft); font-size: 1.25rem; margin-bottom: 12px; }
+  .lp-hero .lead { color: var(--cream); }
+  .lp-hero img { width: 100%; max-width: 380px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,.45); justify-self: center; }
+  .crumbs { font-size: .85rem; color: var(--gold-soft); } .crumbs a { color: var(--gold-soft); }
+  .lp-ctas { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 10px; }
+  .lp-chips { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--gold-soft); font-size: .92rem; }
+  .lp-sec { padding: 44px 0 0; }
+  .steps3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; counter-reset: s; }
+  .steps3 > div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .steps3 > div::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--maroon); color: #fff; font-weight: 700; margin-bottom: 8px; }
+  .tips li { margin: 6px 0; }
+  .wording { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .wording .w { background: linear-gradient(#fffaf0, #fff3dc); border: 1px solid var(--gold-soft); border-radius: 14px; padding: 22px 16px; text-align: center; line-height: 1.6; }
+  .wording .w b { color: var(--maroon); font-size: 1.15rem; }
+  .feat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .feat > div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .faq details { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 8px 0; }
+  .faq summary { cursor: pointer; font-weight: 600; color: var(--maroon); }
+  .rel { display: flex; flex-wrap: wrap; gap: 8px; } .rel a { border: 1px solid var(--gold-soft); border-radius: 99px; padding: 6px 14px; text-decoration: none; background: #fff; }
+  @media (max-width: 760px) {
+    .lp-hero .wrap, .wording, .steps3, .feat { grid-template-columns: 1fr; }
+    .lp-hero img { max-width: 300px; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<section class="lp-hero">
+  <div class="wrap">
+    <div>
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/occasions">Occasions</a> › {{ p.h1 }}</nav>
+      <h1>{{ p.h1 }}</h1>
+      <div class="local">{{ p.local_name }}</div>
+      <p class="lead">{{ p.intro }}</p>
+      <div class="lp-ctas">
+        <a class="btn btn-primary" href="{{ p.create_url }}" style="font-size:1.06rem">🎨 Create your {{ p.name }} card free</a>
+        <a class="btn" href="{{ p.demo_url }}" target="_blank" rel="noopener">▶ See a live demo</a>
+      </div>
+      <div class="lp-chips"><span>✦ Free download</span><span>✦ HD from ₹{{ catalog.RESOLUTIONS['1080'].price }}</span><span>✦ {{ catalog.LANGUAGES|length }} languages</span><span>✦ Share on WhatsApp</span></div>
+    </div>
+    <img src="{{ p.sample }}" alt="{{ p.h1 }} sample design" width="720" height="900">
+  </div>
+</section>
+
+<section class="lp-sec"><div class="narrow">
+  <h2>How to make a {{ p.name }} invitation online</h2>
+  <div class="steps3">
+    <div><strong>Pick a design</strong><br><span class="muted">Choose a style and language. Add photos if you like: we frame and light them.</span></div>
+    <div><strong>Type the details</strong><br><span class="muted">Names, date, time and venue. The card is ready in about a minute.</span></div>
+    <div><strong>Download &amp; share</strong><br><span class="muted">Save the card or PDF, or send each guest their own card with their name on it.</span></div>
+  </div>
+</div></section>
+
+<section class="lp-sec"><div class="narrow">
+  <h2>What to write on a {{ p.name }} invitation card</h2>
+  <ul class="tips">{% for tip in p.tips %}<li>{{ tip }}</li>{% endfor %}</ul>
+</div></section>
+
+{% if p.wording_en %}
+<section class="lp-sec"><div class="narrow">
+  <h2>Sample {{ p.name }} invitation wording</h2>
+  <p class="muted">Copy it or let the card maker lay it out for you. Change the names, date and venue to yours.</p>
+  <div class="wording">
+    <div class="w" lang="en">{% for line in p.wording_en %}{% if loop.index == 3 %}<b>{{ line }}</b>{% else %}{{ line }}{% endif %}<br>{% endfor %}</div>
+    {% if p.wording_local %}<div class="w" lang="hi">{% for line in p.wording_local %}{% if loop.index == 3 %}<b>{{ line }}</b>{% else %}{{ line }}{% endif %}<br>{% endfor %}</div>{% endif %}
+  </div>
+</div></section>
+{% endif %}
+
+<section class="lp-sec"><div class="narrow">
+  <h2>Everything your {{ p.name }} invitation can do</h2>
+  <div class="feat">
+    <div>💌 <strong>Personal invites</strong><br><span class="small muted">Each guest's name on their own card, sent on WhatsApp, SMS, Telegram, Instagram, Facebook or email.</span></div>
+    <div>📍 <strong>Maps &amp; RSVP</strong><br><span class="small muted">A live invite page with directions, countdown, add-to-calendar and RSVP.</span></div>
+    <div>🪙 <strong>Gifts by UPI</strong><br><span class="small muted">Your UPI ID, mobile number or payment QR, for shagun and gifts.</span></div>
+    <div>📸 <strong>Your photos</strong><br><span class="small muted">Face-centred framing and studio lighting, added for you.</span></div>
+    <div>🗣️ <strong>Your language</strong><br><span class="small muted">English, Hindi, Marathi, Bengali, Gujarati, Punjabi, Tamil, Telugu, Kannada, Malayalam.</span></div>
+    <div>🖨️ <strong>Print sizes</strong><br><span class="small muted">Free {{ catalog.RESOLUTIONS['free'].width }}p, Full HD ₹{{ catalog.RESOLUTIONS['1080'].price }}, 2K ₹{{ catalog.RESOLUTIONS['2k'].price }}, 4K ₹{{ catalog.RESOLUTIONS['4k'].price }} for printing.</span></div>
+  </div>
+</div></section>
+
+<section class="lp-sec faq"><div class="narrow">
+  <h2>Questions</h2>
+  {% for q, a in faqs %}<details {% if loop.first %}open{% endif %}><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}
+</div></section>
+
+<section class="lp-sec"><div class="narrow">
+  <h2>More invitation cards</h2>
+  <div class="rel">{% for r in related %}<a href="{{ r.path }}">{{ r.h1 }}</a>{% endfor %}<a href="/occasions">All occasions →</a></div>
+</div></section>
+
+<section class="lp-sec"><div class="narrow center">
+  <a class="btn btn-primary" href="{{ p.create_url }}" style="font-size:1.08rem">🎨 Create your {{ p.name }} invitation free</a>
+</div></section>
+{% endblock %}

@@ -8,7 +8,7 @@ from datetime import date
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -75,21 +75,6 @@ def event_sample(type_key: str, style: str = ""):
 def occasions(request: Request):
     return templates.TemplateResponse(request, "occasions.html", {"categories": events.CATEGORIES, "types": events.TYPES,
                                                                    "styles": STYLES})
-
-
-@router.get("/robots.txt", response_class=PlainTextResponse)
-def robots() -> str:
-    return ("User-agent: *\nDisallow: /admin\nDisallow: /o/\nDisallow: /i/\nDisallow: /e/\nDisallow: /webhooks/\n"
-            f"Sitemap: {settings.base_url}/sitemap.xml\n")
-
-
-@router.get("/sitemap.xml")
-def sitemap():
-    paths = ["/", "/occasions", "/create", "/order", "/terms", "/privacy", "/refund"]
-    paths += [f"/create?event={k}" for k in events.TYPES] + [f"/demo/{lang}" for lang in LANGUAGES]
-    urls = "".join(f"<url><loc>{settings.base_url}{p.replace('&', '&amp;')}</loc></url>" for p in paths)
-    return Response(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>',
-                    media_type="application/xml")
 
 
 @router.get("/terms", response_class=HTMLResponse)

@@ -90,7 +90,17 @@ cd ~/invite-all && git pull && sudo docker compose up -d --build
 - [ ] **Razorpay**: give `https://invite-all.com` during KYC. If using API keys, add webhook
       `https://invite-all.com/webhooks/razorpay` (events `payment.captured`, `order.paid`).
 - [ ] **UptimeRobot** (free): monitor `https://invite-all.com/healthz` and get an email if the site goes down.
-- [ ] **Google Search Console** (free): submit `https://invite-all.com/sitemap.xml`.
+- [ ] **Google Search Console** (free, the step that gets you into Google):
+      1. Open https://search.google.com/search-console, **Add property → Domain**, type `invite-all.com`.
+      2. Google shows a `google-site-verification=…` TXT record. In Hostinger hPanel → Domains → DNS, add a
+         **TXT** record: name `@`, value exactly as shown. Wait 5–30 minutes, then press **Verify**.
+         (Or choose **URL prefix → HTML tag** and put the content value in `GOOGLE_SITE_VERIFICATION` in `.env`.)
+      3. **Sitemaps** → submit `sitemap.xml`.
+      4. **URL inspection** → paste `https://invite-all.com/` → **Request indexing**. Repeat for a few landing pages,
+         e.g. `/wedding-invitation-card`, `/hindi-wedding-invitation-card`, `/griha-pravesh-invitation-card`.
+- [ ] **Bing Webmaster Tools** (free, also feeds DuckDuckGo and Yahoo): https://www.bing.com/webmasters →
+      **Import from Google Search Console**. The site also pings Bing by itself (IndexNow) after each deploy.
+- [ ] **Google Business Profile** (free): a "service area" business for Invite All helps brand searches.
 - [ ] Every month or so, download a backup: `scp -i <key> ubuntu@<ip>:~/invite-all-backups.tar .` (see below).
 - [ ] Keep `TEST_COUPON_CODE` / `TEST_ORDER_CODE` empty in production (the setup script does this).
 

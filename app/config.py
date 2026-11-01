@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     owner_email: str = ""
 
     base_url: str = "http://localhost:8000"
+    # Search engines: the content="…" value of the meta tag Google Search Console / Bing Webmaster Tools give you
+    google_site_verification: str = ""
+    bing_site_verification: str = ""
     data_dir: Path = BASE_DIR / "data"
     database_url: str = ""  # empty = SQLite file inside data_dir
 

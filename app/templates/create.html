@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% import "_time.html" as tp %}
 {% block title %}{{ c.heading }} free · {{ settings.brand_name }}{% endblock %}
+{% block description %}{{ c.heading }} online free: pick a design, type the details and download or share it on WhatsApp in 60 seconds. Hindi and 9 Indian languages.{% endblock %}
 {% block head %}
+{% if request.query_params %}<meta name="robots" content="noindex, follow">{% endif %}{# the occasion landing pages are what should rank #}
 <style>
   .create-hero { background: radial-gradient(ellipse at top, #8d2335, var(--maroon-dark) 75%); color: var(--cream); padding: 44px 0 36px; text-align: center; }
   .create-hero h1 { color: #fff; margin-bottom: 8px; }

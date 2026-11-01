@@ -946,7 +946,7 @@ def test_audit_homepage_seo_and_sharing(client):
     robots = client.get("/robots.txt").text
     assert "Disallow: /e/" in robots and "Disallow: /i/" in robots and "/sitemap.xml" in robots
     sitemap = client.get("/sitemap.xml").text
-    assert "/create?event=kids_birthday" in sitemap and "/occasions" in sitemap and "/o/" not in sitemap
+    assert "/kids-birthday-invitation-card" in sitemap and "/occasions" in sitemap and "/o/" not in sitemap and "/demo/" not in sitemap
     demo.ensure_demo()
     assert 'id="share-btn"' in client.get("/demo/en").text  # guests can share a live invitation
 
@@ -1386,3 +1386,37 @@ def test_personal_cards_while_creating_for_every_occasion(client):
     assert "send_error=" in resp.headers["location"]
     other = create_instant(client, bride_name="Asha")
     assert client.get(f"/o/{other.token}/guests/{sharma.id}/card.jpg").status_code == 404
+
+
+def test_seo_landing_pages_sitemap_and_meta(client):
+    from app import seo
+    from app.events import TYPES
+
+    pages = seo.pages()
+    assert len(pages) == 1 + 9 + 5 + len(TYPES)  # wedding, 9 language weddings, 5 wedding styles, every occasion
+    sitemap = client.get("/sitemap.xml").text
+    titles, descriptions = set(), set()
+    for p in pages.values():
+        assert f"<loc>http://testserver{p.path}</loc>" in sitemap or f"{p.path}</loc>" in sitemap, p.path
+        import html as htmllib
+
+        html = htmllib.unescape(client.get(p.path).text)
+        title = re.search(r"<title>([^<]*)</title>", html).group(1)
+        desc = re.search(r'<meta name="description" content="([^"]*)"', html).group(1)
+        assert len(title) <= 70 and p.h1 in html and f'href="{p.create_url}"' in html, p.path
+        assert f'<link rel="canonical" href="http://localhost:8000{p.path}">' in html or 'rel="canonical"' in html
+        assert '"@type": "FAQPage"' in html and '"@type": "BreadcrumbList"' in html
+        titles.add(title)
+        descriptions.add(desc)
+    assert len(titles) == len(pages) and len(descriptions) == len(pages)  # every page is its own
+
+    # The occasion page and the footer link to them; the creator's occasion URLs stay out of the index.
+    assert 'href="/griha-pravesh-invitation-card"' in client.get("/occasions").text
+    home = client.get("/").text
+    assert 'href="/hindi-wedding-invitation-card"' in home and '"@type": "Organization"' in home
+    assert "Free Online Invitation Card Maker" in home and 'rel="icon" href="/favicon.ico"' in home
+    assert '<meta name="robots" content="noindex, follow">' in client.get("/create?event=mundan").text
+    assert "noindex" not in client.get("/create").text
+    assert client.get("/favicon.ico").headers["content-type"] == "image/x-icon"
+    assert client.get("/site.webmanifest").json()["icons"]
+    assert client.get("/no-such-page").status_code == 404
