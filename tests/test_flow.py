@@ -1169,3 +1169,16 @@ def test_instant_download_paid_by_razorpay_me_unlocks_after_confirm(client, admi
     order = get(order.token)
     assert order.status == OrderStatus.DELIVERED.value and order.amount_paid == 900
     assert client.get(f"/o/{order.token}/einvite/image/1080").status_code in (200, 503)  # 503 only without Chrome
+
+
+def test_venue_heading_fits_every_occasion_and_language(client):
+    resp = create_event(client, "wedding_anniversary", language="hi")
+    assert resp.status_code == 303, resp.text[:800]
+    order = get(resp.headers["location"].split("/")[2])
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert "कार्यक्रम स्थल" in page and "यहाँ पहुँचें" in page and "विवाह स्थल" not in page
+    assert "Create one for your own celebration" in page and "family's wedding" not in page
+
+    english = create_instant(client)
+    page = client.get(f"/e/{english.rsvp_slug}").text
+    assert "find your way" in page and "The Venue" in page and "Create one for your family's wedding" in page

@@ -99,6 +99,7 @@
   .x-section { padding: 72px 0; }
   .x-title { text-align: center; margin-bottom: 34px; }
   .x-title .script { display: block; font-size: 1.6rem; }
+  .x-title .pre-local { display: block; font: 400 1.05rem var(--sans); color: var(--acc); margin-bottom: 4px; }
   .personal { background: var(--paper); border: 1px solid var(--gold-soft); border-radius: 18px; padding: 38px 30px; text-align: center; box-shadow: var(--shadow); position: relative; }
   .personal::before, .personal::after { content: "❁"; position: absolute; top: 14px; color: var(--gold); font-size: 1.4rem; }
   .personal::before { left: 18px; } .personal::after { right: 18px; }
@@ -286,7 +287,7 @@
 
 <section class="x-section" style="padding-top:{{ '72px' if ev and ev.story else '72px' }}">
   <div class="narrow reveal">
-    <h2 class="x-title">{% if not local %}<span class="script">find your way</span>{% endif %}{{ t.venue }}</h2>
+    <h2 class="x-title">{% if local %}<span class="pre-local">{{ t.find_way }}</span>{% else %}<span class="script">{{ t.find_way }}</span>{% endif %}{{ t.venue }}</h2>
     <iframe class="map" src="{{ map_embed }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Map to {{ o.venue_name }}"></iframe>
     <p class="center"><a class="btn" href="{{ map_link }}" target="_blank" rel="noopener">{{ t.open_maps }}</a></p>
   </div>
@@ -380,7 +381,8 @@
 <footer class="site-footer" style="padding-bottom:40px;text-align:center">
   <div class="wrap" style="justify-content:center;flex-direction:column;align-items:center;gap:6px">
     <div class="logo" style="font-size:1.6rem">{{ settings.brand_name }}</div>
-    <div>Loved this invitation? <a href="/?utm_source=invite&utm_medium={{ o.rsvp_slug }}">Create one for your family's wedding →</a></div>
+    <div>Loved this invitation? {% if o.is_wedding %}<a href="/?utm_source=invite&utm_medium={{ o.rsvp_slug }}">Create one for your family's wedding →</a>
+      {%- else %}<a href="/create?event={{ o.event_type }}&utm_source=invite&utm_medium={{ o.rsvp_slug }}">Create one for your own celebration →</a>{% endif %}</div>
   </div>
 </footer>
 {% endblock %}
