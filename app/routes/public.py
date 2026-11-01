@@ -308,6 +308,15 @@ def pay_simulate(payment_id: int, order: Order = Depends(get_order), db: Session
     return redirect(f"/o/{order.token}?paid=1")
 
 
+@router.get("/o/{token}/pay/status/{payment_id}")
+def pay_status(payment_id: int, order: Order = Depends(get_order)):
+    """Polled by the payment page while a Razorpay.me payment waits for the owner's confirmation."""
+    payment = next((p for p in order.payments if p.id == payment_id), None)
+    if payment is None:
+        raise HTTPException(404)
+    return {"paid": payment.status == "paid"}
+
+
 @router.post("/o/{token}/pay/claim/{payment_id}")
 async def pay_claim(request: Request, payment_id: int, order: Order = Depends(get_order), db: Session = Depends(get_db)):
     payment = next((p for p in order.payments if p.id == payment_id), None)

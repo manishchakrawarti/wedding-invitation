@@ -1146,3 +1146,26 @@ def test_time_picker_and_24_hour_invitations(client):
     # A broken time is dropped instead of breaking the cards.
     bad = create_instant(client, wedding_time="99:99")
     assert next(f for f in bad.functions if f["key"] == "wedding")["time"] == ""
+
+
+def test_instant_download_paid_by_razorpay_me_unlocks_after_confirm(client, admin_auth, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "razorpay_me_url", "https://razorpay.me/@example")
+    order = create_instant(client)
+    r = client.post(f"/o/{order.token}/unlock", data={"res": "1080"}, follow_redirects=False)
+    page = client.get(r.headers["location"]).text
+    assert "enter exactly <strong>₹9</strong>" in page and 'data-copy="9"' in page and "unlock my download" in page
+    payment_id = re.search(r"/pay/claim/(\d+)", page).group(1)
+    assert client.get(f"/o/{order.token}/pay/status/{payment_id}").json() == {"paid": False}
+
+    client.post(f"/o/{order.token}/pay/claim/{payment_id}", data={"reference": "pay_TEST12345678"})
+    waiting = client.get(f"/o/{order.token}/pay?purpose=full").text
+    assert "Full HD download unlocks" in waiting and "design starts" not in waiting
+    assert f"/o/{order.token}/pay/status/{payment_id}" in waiting  # the page checks by itself
+
+    client.post(f"/admin/payments/{payment_id}/confirm", auth=admin_auth)
+    assert client.get(f"/o/{order.token}/pay/status/{payment_id}").json() == {"paid": True}
+    order = get(order.token)
+    assert order.status == OrderStatus.DELIVERED.value and order.amount_paid == 900
+    assert client.get(f"/o/{order.token}/einvite/image/1080").status_code in (200, 503)  # 503 only without Chrome
