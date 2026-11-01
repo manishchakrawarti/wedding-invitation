@@ -32,7 +32,7 @@
     site: {{ settings.base_url.split('//')[-1]|tojson }}, url: {{ (settings.base_url ~ '/e/' ~ o.rsvp_slug)|tojson }},
     local: {{ (lf or '')|tojson }},
   };
-  const script = `"Great Vibes", ${C.local ? `"${C.local}", ` : ''}cursive`, serif = `"Cormorant Garamond", ${C.local ? `"${C.local}", ` : ''}Georgia, serif`;
+  const serif = `"Cormorant Garamond", ${C.local ? `"${C.local}", ` : ''}Georgia, serif`;
   let blob = null;
 
   const fit = (ctx, text, font, size, max) => { do { ctx.font = font.replace('{s}', size); size -= 4; } while (ctx.measureText(text).width > max && size > 24); };
@@ -40,7 +40,7 @@
   async function draw(file) {
     const photo = await createImageBitmap(file).catch(() => null);
     if (!photo) return;
-    await Promise.all([`80px ${script}`, `600 40px ${serif}`].map(f => document.fonts.load(f).catch(() => null)));
+    await Promise.all([`700 80px ${serif}`, `600 40px ${serif}`].map(f => document.fonts.load(f).catch(() => null)));
     const W = 1080, H = 1920, cv = document.createElement('canvas'), ctx = cv.getContext('2d');
     cv.width = W; cv.height = H;
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, C.top); g.addColorStop(1, C.bottom);
@@ -62,7 +62,7 @@
     ctx.strokeStyle = C.acc; ctx.lineWidth = 12; ctx.stroke();
 
     ctx.fillStyle = C.acc; fit(ctx, C.headline, `600 {s}px ${serif}`, 46, 880); ctx.fillText(C.headline, W / 2, 1345);
-    ctx.fillStyle = C.text; fit(ctx, C.names, `{s}px ${script}`, 118, 920); ctx.fillText(C.names, W / 2, 1480);
+    ctx.fillStyle = C.text; fit(ctx, C.names, `700 {s}px ${serif}`, 96, 920); ctx.fillText(C.names, W / 2, 1480);
     ctx.fillStyle = C.text; fit(ctx, C.when, `600 {s}px ${serif}`, 50, 900); ctx.fillText(C.when, W / 2, 1580);
     if (C.tag) { ctx.fillStyle = C.acc; fit(ctx, C.tag, `600 {s}px ${serif}`, 44, 900); ctx.fillText(C.tag, W / 2, 1660); }
     ctx.fillStyle = C.soft; ctx.globalAlpha = .75; ctx.font = `500 30px ${serif}`; ctx.fillText(`💌 ${C.site}`, W / 2, 1830); ctx.globalAlpha = 1;

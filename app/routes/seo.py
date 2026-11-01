@@ -12,14 +12,14 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 
-from app import seo
+from app import seo, wording
 from app.config import APP_DIR, settings
 from app.templating import templates
 
 log = logging.getLogger(__name__)
 router = APIRouter()
 ICONS = APP_DIR / "static" / "icons"
-PUBLIC_PAGES = ["/", "/occasions", "/create", "/order", "/terms", "/privacy", "/refund"]
+PUBLIC_PAGES = ["/", "/occasions", "/create", "/gallery", "/order", "/terms", "/privacy", "/refund"]
 UPDATED = date.today().isoformat()  # pages change with deploys, and the app restarts on every deploy
 
 
@@ -28,7 +28,8 @@ def indexnow_key() -> str:
 
 
 def sitemap_paths() -> list[str]:
-    return PUBLIC_PAGES[:3] + [p.path for p in seo.pages().values()] + PUBLIC_PAGES[3:]
+    return (PUBLIC_PAGES[:4] + [p.path for p in seo.pages().values()] + ["/wording"]
+            + [p.path for p in wording.pages().values()] + PUBLIC_PAGES[4:])
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)
@@ -40,7 +41,8 @@ def robots() -> str:
 @router.get("/sitemap.xml")
 def sitemap():
     def entry(path: str) -> str:
-        priority = "1.0" if path == "/" else "0.9" if path.endswith(seo.SUFFIX) or path in ("/create", "/occasions") else "0.3"
+        priority = ("1.0" if path == "/" else "0.9" if path.endswith(seo.SUFFIX) or path in ("/create", "/occasions")
+                    else "0.8" if path.startswith("/wording") else "0.3")
         return f"<url><loc>{settings.base_url}{path}</loc><lastmod>{UPDATED}</lastmod><priority>{priority}</priority></url>"
 
     urls = "".join(entry(p) for p in sitemap_paths())
@@ -93,6 +95,23 @@ def ping_indexnow() -> None:
 
 def start_indexnow() -> None:
     threading.Thread(target=ping_indexnow, name="indexnow", daemon=True).start()
+
+
+@router.get("/wording", response_class=HTMLResponse)
+def wording_index(request: Request):
+    from app import events
+
+    groups = [(c.name, [p for p in wording.pages().values() if p.category == key]) for key, c in events.CATEGORIES.items()]
+    return templates.TemplateResponse(request, "wording.html", {"w": None, "groups": [g for g in groups if g[1]]})
+
+
+@router.get("/wording/{slug}", response_class=HTMLResponse)
+def wording_page(request: Request, slug: str):
+    page = wording.pages().get(slug)
+    if page is None:
+        raise HTTPException(404)
+    others = [p for p in wording.pages().values() if p.category == page.category and p.slug != slug][:8]
+    return templates.TemplateResponse(request, "wording.html", {"w": page, "pages": others})
 
 
 @router.get("/{slug}", response_class=HTMLResponse)

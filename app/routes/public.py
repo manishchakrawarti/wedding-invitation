@@ -13,12 +13,12 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import events
+from app import events, ui_text
 from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STYLES
 from app.config import settings
 from app.db import get_db
 from app.models import Asset, Invitee, Order, OrderStatus, utcnow
-from app.services import export, gifts, hires, invites, notify, orders, payments, pipeline, stash
+from app.services import export, gifts, hires, invites, notify, orders, payments, pipeline, stash, stats
 from app.services.cards import has_guest_console
 from app.services.maintenance import sample_event_image, sample_image
 from app.services.storage import storage
@@ -50,13 +50,14 @@ def redirect(url: str) -> RedirectResponse:
 
 
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request):
+def home(request: Request, db: Session = Depends(get_db)):
     # name fields for the "see your card in 1 second" box: occasion -> (first label, second label or "")
     try_labels = {"wedding": ["Bride's name", "Groom's name"]}
     try_labels.update({k: [t.primary_label, t.secondary_label] for k, t in events.TYPES.items()})
     return templates.TemplateResponse(request, "index.html", {"packages": PACKAGES, "addons": ADDONS, "styles": STYLES,
                                                                "occasion_categories": events.CATEGORIES,
-                                                               "occasion_types": events.TYPES, "try_labels": try_labels})
+                                                               "occasion_types": events.TYPES, "try_labels": try_labels,
+                                                               "made": invitations_made(db), "gallery": gallery_orders(db, 8)})
 
 
 @router.get("/samples/{style_key}.jpg")
@@ -89,8 +90,64 @@ def try_card(request: Request):
     if len(hits) >= TRY_PER_10_MIN:
         raise HTTPException(429, "Too many previews, please wait a minute")
     hits.append(now)
+    stats.count("try")
     return Response(preview.render(dict(request.query_params)), media_type="image/jpeg",
                     headers={"Cache-Control": "public, max-age=3600"})
+
+
+# --- gallery of real cards (only those the family agreed to show) and the "made so far" counter ---------
+
+_made_cache: dict = {"at": 0.0, "n": 0}
+
+
+def invitations_made(db: Session) -> int:
+    """Real invitations created (not demos or tests), refreshed every 5 minutes."""
+    from sqlalchemy import func
+
+    if time.time() - _made_cache["at"] > 300:
+        _made_cache["n"] = db.scalar(select(func.count(Order.id)).where(Order.source.notin_(("demo", "test")))) or 0
+        _made_cache["at"] = time.time()
+    return _made_cache["n"]
+
+
+def gallery_orders(db: Session, limit: int = 60, category: str = "") -> list[Order]:
+    found = []
+    for o in db.scalars(select(Order).where(Order.gallery_ok.is_(True), Order.status == OrderStatus.DELIVERED.value,
+                                            Order.source.notin_(("demo", "test"))).order_by(Order.delivered_at.desc())):
+        if category and category != ("wedding" if o.is_wedding else getattr(events.TYPES.get(o.event_type), "category", "")):
+            continue
+        if hires.main_final(o) is not None:
+            found.append(o)
+        if len(found) >= limit:
+            break
+    return found
+
+
+@router.get("/gallery", response_class=HTMLResponse)
+def gallery(request: Request, occasion: str = "", db: Session = Depends(get_db)):
+    occasion = occasion if occasion in events.CATEGORIES else ""
+    return templates.TemplateResponse(request, "gallery.html", {
+        "cards": gallery_orders(db, category=occasion), "occasion": occasion, "categories": events.CATEGORIES,
+        "types": events.TYPES, "made": invitations_made(db),
+    })
+
+
+@router.get("/gallery/{public_id}.jpg")
+def gallery_card(public_id: str, db: Session = Depends(get_db)):
+    order = db.scalar(select(Order).where(Order.public_id == public_id))
+    final = hires.main_final(order) if order else None
+    if order is None or final is None or not order.gallery_ok or order.status != OrderStatus.DELIVERED.value:
+        raise HTTPException(404)
+    return Response(hires.render(order, final, "free"), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
+
+
+@router.post("/o/{token}/gallery")
+async def set_gallery(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    """The family adds their card to the public gallery, or takes it out."""
+    order.gallery_ok = (await request.form()).get("show") == "1"
+    orders.log_event(db, order, "Card shown in the gallery" if order.gallery_ok else "Card removed from the gallery")
+    db.commit()
+    return redirect(f"{_back(order)}#gallery")
 
 
 @router.get("/occasions", response_class=HTMLResponse)
@@ -517,8 +574,22 @@ def occasion_form_config() -> dict:
     return cfg
 
 
-def _create_context(values: dict, errors: list[str] | None = None, current: str = "wedding") -> dict:
+def _localized_form_config() -> dict:
+    """occasion_form_config() in the visitor's site language (see ui_text)."""
     cfg = occasion_form_config()
+    if ui_text.lang() != "hi":
+        return cfg
+    out = {}
+    for key, c in cfg.items():
+        c = {f: ui_text.tr(v) if isinstance(v, str) and f not in ("sample",) else v for f, v in c.items()}
+        if key in events.TYPES:
+            c["name"], c["heading"] = events.TYPES[key].headline_hi, f"{events.TYPES[key].headline_hi} का निमंत्रण बनाएँ"
+        out[key] = c
+    return out
+
+
+def _create_context(values: dict, errors: list[str] | None = None, current: str = "wedding") -> dict:
+    cfg = _localized_form_config()
     current = current if current in cfg else "wedding"
     return {
         "styles": STYLES, "languages": LANGUAGES, "functions": FUNCTIONS, "v": values, "errors": errors or [],
@@ -615,7 +686,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
         referral_code=orders.new_referral_code(db, f("bride_name")), payment_option="full",
         subtotal=price, discount=0, total=price,
         event_type=etype.key if etype else "wedding", occasion_detail=f("occasion_detail")[:120] if etype else "",
-        time_format="24h" if f("time_format") == "24h" else "12h",
+        time_format="24h" if f("time_format") == "24h" else "12h", gallery_ok=bool(form.get("gallery_ok")),
     )
     db.add(order)
     db.flush()

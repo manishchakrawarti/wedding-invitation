@@ -81,6 +81,12 @@
 </div></section>
 {% endif %}
 
+{% set wp = wording.for_landing(p.path) %}{% if wp %}
+<section class="lp-sec"><div class="narrow center">
+  <a class="btn btn-ghost" href="{{ wp.path }}">✍️ {{ wp.count }} more {{ p.name }} messages in Hindi &amp; English →</a>
+</div></section>
+{% endif %}
+
 <section class="lp-sec"><div class="narrow">
   <h2>Everything your {{ p.name }} invitation can do</h2>
   <div class="feat">

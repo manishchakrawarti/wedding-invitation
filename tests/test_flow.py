@@ -1455,3 +1455,106 @@ def test_instant_try_preview_prefill_and_selfie_frame(client):
     order = pay(client, get(order.token))
     page = client.get(f"/e/{order.rsvp_slug}").text
     assert 'id="selfie"' in page and "I&#39;m invited! 💌" in page and 'capture="user"' in page
+
+
+def test_admin_stats_count_people_not_bots(client, admin_auth):
+    from app.services import stats
+
+    stats.flush()
+    before = client.get("/admin/stats", auth=admin_auth)
+    assert before.status_code == 200 and "Visitors per day" in before.text
+    with stats._lock:
+        stats._pending.clear()  # other tests' page views
+    browser = {"User-Agent": "Mozilla/5.0 (Linux; Android 14) Mobile Safari"}
+    fresh = __import__("fastapi.testclient", fromlist=["TestClient"]).TestClient(client.app)
+    first = fresh.get("/?utm_source=Instagram", headers=browser)
+    assert stats.VISITOR_COOKIE in first.cookies  # counted once, then remembered for the day
+    fresh.get("/griha-pravesh-invitation-card", headers=browser)
+    fresh.get("/try.jpg", headers=browser)
+    client.get("/", headers={"User-Agent": "Googlebot/2.1"})  # bots don't count
+    with stats._lock:
+        pending = dict(stats._pending)
+    today = date.today().isoformat()
+    assert pending.get((today, "visitor", "all")) == 1 and pending.get((today, "source", "instagram")) == 1
+    assert pending.get((today, "view", "/griha-pravesh-invitation-card")) == 1 and pending.get((today, "try", "all")) == 1
+    assert not any(k[1] == "view" and k[2].startswith("/admin") for k in pending)
+
+    order = create_instant(client)
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    pay(client, get(order.token))
+    page = client.get("/admin/stats", auth=admin_auth).text
+    assert "instagram" in page and "/griha-pravesh-invitation-card" in page
+    revenue = re.search(r'Revenue</div><div class="v">([^<]*)</div>', page).group(1)
+    assert revenue.startswith("₹") and revenue != "₹0"  # other tests' paid orders count too
+
+
+def test_gallery_shows_only_cards_families_chose_to_share(client, admin_auth):
+    from app.routes import public
+
+    shy = create_instant(client, bride_name="Shy")
+    proud = create_instant(client, bride_name="Proud", gallery_ok="on")
+    assert get(proud.token).gallery_ok and not get(shy.token).gallery_ok
+    for o in (shy, proud):
+        client.post(f"/o/{o.token}/unlock", data={"res": "1080"})
+        pay(client, get(o.token))
+    page = client.get("/gallery").text
+    assert f"/gallery/{proud.public_id}.jpg" in page and f"/gallery/{shy.public_id}.jpg" not in page
+    assert client.get(f"/gallery/{proud.public_id}.jpg").headers["content-type"] == "image/jpeg"
+    assert client.get(f"/gallery/{shy.public_id}.jpg").status_code == 404
+    assert "/gallery" in client.get("/sitemap.xml").text
+
+    # the family can take it out (and put it back) from their order page; the owner can hide it in admin
+    assert "Remove it from the gallery" in client.get(f"/o/{proud.token}").text
+    client.post(f"/o/{proud.token}/gallery", data={"show": "0"})
+    assert f"/gallery/{proud.public_id}.jpg" not in client.get("/gallery").text
+    client.post(f"/o/{shy.token}/gallery", data={"show": "1"})
+    assert f"/gallery/{shy.public_id}.jpg" in client.get("/gallery").text
+    client.post(f"/admin/orders/{shy.id}/gallery-hide", auth=admin_auth)
+    assert client.get(f"/gallery/{shy.public_id}.jpg").status_code == 404
+
+    # the counter appears only once there's a number worth showing
+    public._made_cache.update(at=time.time(), n=12)
+    assert "invitations made" not in client.get("/").text
+    public._made_cache.update(at=time.time(), n=1234)
+    assert "1,234 invitations made" in client.get("/").text
+    public._made_cache.update(at=0.0)
+
+
+def test_wording_library_pages(client):
+    from app import wording
+    from app.events import TYPES
+
+    pages = wording.pages()
+    assert len(pages) == 1 + len(TYPES) and all(p.count >= 6 for p in pages.values())
+    index = client.get("/wording").text
+    assert all(p.path in index for p in pages.values())
+    page = client.get("/wording/griha-pravesh-invitation-message").text
+    assert "गृह प्रवेश" in page and "<mark>[" in page and "wa.me/?text=" in page and 'href="/create?event=griha_pravesh"' in page
+    assert '"@type": "BreadcrumbList"' in page and "Griha Pravesh Invitation Message in Hindi" in page
+    wedding = client.get("/wording/wedding-invitation-message").text
+    assert "Wedding card shayari" in wedding and "श्री गणेशाय नमः" in wedding
+    assert client.get("/wording/not-a-page").status_code == 404
+    assert "/wording/griha-pravesh-invitation-message" in client.get("/griha-pravesh-invitation-card").text
+    assert "/wording/wedding-invitation-message" in client.get("/sitemap.xml").text
+
+
+def test_hindi_website_switch(client):
+    from fastapi.testclient import TestClient
+
+    from app import ui_text
+
+    visitor = TestClient(client.app)
+    page = visitor.get("/?ui=hi")
+    assert page.cookies.get(ui_text.COOKIE) == "hi" and '<html lang="hi">' in page.text
+    assert "सिर्फ़ एक कार्ड नहीं," in page.text and "🌐 English" in page.text and "Not just a card." not in page.text
+    assert int(page.headers["content-length"]) == len(page.content)
+    create = visitor.get("/create?event=griha_pravesh").text  # remembered from the cookie
+    assert "गृह प्रवेश का निमंत्रण बनाएँ" in create and "✨ मेरा निमंत्रण बनाएँ" in create
+    assert 'placeholder="जैसे: जयपुर"' in create or "जैसे:" in create
+    # guest invite pages keep the card's own language; admin stays English
+    order = create_instant(client)
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    order = pay(client, get(order.token))
+    assert '<html lang="en">' in visitor.get(f"/e/{order.rsvp_slug}").text
+    visitor.get("/?ui=en")
+    assert "Not just a card." in visitor.get("/").text and "🌐 हिन्दी" in visitor.get("/").text

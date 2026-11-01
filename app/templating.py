@@ -1,10 +1,10 @@
 import hashlib
 from datetime import date
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from fastapi.templating import Jinja2Templates
 
-from app import catalog, i18n, seo
+from app import catalog, i18n, seo, ui_text, wording
 from app.config import APP_DIR, settings
 from app.models import STATUS_LABELS, OrderStatus
 from app.services import telegram
@@ -26,5 +26,10 @@ templates.env.globals.update(
     css_version=CSS_VERSION,
     telegram=telegram,
     seo=seo,
+    wording=wording,
     wa_link=lambda text="": f"https://wa.me/{settings.whatsapp_number}?text={quote(text)}",
+    ui_lang=lambda: ui_text.lang(),
+    ui_switch=lambda request: (
+        ("English", f"{request.url.path}?{urlencode({**dict(request.query_params), 'ui': 'en'})}") if ui_text.lang() == "hi"
+        else ("हिन्दी", f"{request.url.path}?{urlencode({**dict(request.query_params), 'ui': 'hi'})}")),
 )

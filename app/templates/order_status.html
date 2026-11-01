@@ -160,6 +160,19 @@
 
   {% if can_send and not console %}{% include "_send_card.html" %}{% endif %}
 
+  {% if o.status == 'delivered' %}
+  <div class="card" id="gallery">
+    <h2 style="margin-bottom:4px">🌟 Inspire other families</h2>
+    {% if o.gallery_ok %}
+    <p class="muted" style="margin-top:0">Your card is in the <a href="/gallery" target="_blank">Invite All gallery</a> (names and date only, never phone numbers or guests). Thank you!</p>
+    <form method="post" action="/o/{{ o.token }}/gallery"><input type="hidden" name="show" value="0"><button class="btn btn-ghost btn-sm" type="submit">Remove it from the gallery</button></form>
+    {% else %}
+    <p class="muted" style="margin-top:0">Show your card in the <a href="/gallery" target="_blank">Invite All gallery</a>. Only the card is shown (names and date), never phone numbers or guests, and you can remove it any time.</p>
+    <form method="post" action="/o/{{ o.token }}/gallery"><input type="hidden" name="show" value="1"><button class="btn btn-primary btn-sm" type="submit">Show my card in the gallery</button></form>
+    {% endif %}
+  </div>
+  {% endif %}
+
   {% if o.status not in ['cancelled'] %}{% include "_photos_card.html" %}{% include "_gift_card.html" %}{% endif %}
 
   <div class="card">

@@ -17,6 +17,7 @@
   <form method="post" action="/admin/orders/{{ o.id }}/resend"><button class="btn btn-sm btn-ghost" type="submit">✉ Resend message to customer</button></form>
   <form method="post" action="/admin/orders/{{ o.id }}/grant-revision"><button class="btn btn-sm btn-ghost" type="submit">Grant +1 revision ({{ o.revisions_left }} left)</button></form>
   {% if o.status != 'cancelled' %}
+  {% if o.gallery_ok %}<form method="post" action="/admin/orders/{{ o.id }}/gallery-hide" onsubmit="return confirm('Remove this card from the public gallery?')"><button class="btn btn-sm btn-ghost" type="submit">🌟 In gallery: remove</button></form>{% endif %}
   <form method="post" action="/admin/orders/{{ o.id }}/cancel" onsubmit="return confirm('Cancel this order?')"><button class="btn btn-sm btn-ghost" style="color:var(--red)" type="submit">Cancel order</button></form>
   {% endif %}
 

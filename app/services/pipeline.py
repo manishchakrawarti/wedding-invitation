@@ -23,7 +23,7 @@ from app.models import Asset, CostEntry, Order, OrderStatus
 from app.services import notify, orders
 from app.services.cards import cards_for_order
 from app.services.generation import get_generator
-from app.services.overlay import LAYOUT_PHOTO, LAYOUT_PLAIN, add_qr, compose_card, to_bytes, watermark
+from app.services.overlay import CARD_DESIGN, LAYOUT_PHOTO, LAYOUT_PLAIN, add_qr, compose_card, to_bytes, watermark
 from app.services.prompts import build_prompt
 from app.services.qc import run_qc
 from app.services.storage import storage
@@ -111,7 +111,7 @@ def run_order(order_id: int, notes: str = "") -> None:
             qc = run_qc(card, composed, report, style, use_photo)
             final = add_qr(composed, rsvp_url, style) if rsvp_url and card.key == "main" else composed
             meta = {"title": card.title, "style": card.style_key, "provider": result.provider, "prompt": prompt,
-                    "layout": "photo" if use_photo else "plain"}
+                    "layout": "photo" if use_photo else "plain", "design": CARD_DESIGN}
 
             _save(db, order, "background", card.key, version, to_bytes(result.image, "JPEG"), "jpg", meta=meta)
             _save(db, order, "proof", card.key, version, to_bytes(watermark(final, f"PROOF · {settings.brand_name}"), "JPEG", 82), "jpg", qc, meta)
@@ -145,6 +145,37 @@ def run_order(order_id: int, notes: str = "") -> None:
         db.close()
         with _lock:
             _running.discard(order_id)
+
+
+def redraw_text(db, order) -> int:
+    """Redraw the text of an order's current cards over their existing backgrounds, in the current card design:
+    no new artwork, no status change, no alerts. Returns how many cards were redrawn."""
+    from app.catalog import RESOLUTIONS
+
+    rsvp_url = f"{settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug else ""
+    specs = {c.key: c for c in cards_for_order(order)}
+    proofs = {a.card_key: a for a in order.live_assets("proof")}
+    done = 0
+    for final in order.live_assets("final"):
+        card = specs.get(final.card_key)
+        bg = next((a for a in order.assets if a.kind == "background" and a.card_key == final.card_key and a.version == final.version), None)
+        if card is None or bg is None:
+            continue
+        style = STYLES[card.style_key]
+        layout = LAYOUT_PHOTO if (final.meta or {}).get("layout") == "photo" else LAYOUT_PLAIN
+        composed, _ = compose_card(Image.open(io.BytesIO(storage.read(bg.path))), card.items, style, layout)
+        out = add_qr(composed, rsvp_url, style) if rsvp_url and card.key == "main" else composed
+        storage.save(final.path, to_bytes(out))
+        if final.card_key in proofs:
+            storage.save(proofs[final.card_key].path, to_bytes(watermark(out, f"PROOF · {settings.brand_name}"), "JPEG", 82))
+        for res in RESOLUTIONS:  # download sizes cached from the old drawing
+            cached = f"orders/{order.public_id}/v{final.version}/{final.card_key}_{res}.{'png' if res == '1080' else 'jpg'}"
+            if res != "1080" and storage.exists(cached):
+                storage.delete(cached)
+        final.meta = {**(final.meta or {}), "design": CARD_DESIGN}
+        done += 1
+    db.commit()
+    return done
 
 
 def recover_stuck_orders() -> int:

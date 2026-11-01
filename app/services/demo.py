@@ -220,6 +220,21 @@ def ensure_demo() -> None:
     ensure_event_demos()
     ensure_demo_portraits()
     ensure_event_portraits()
+    refresh_demo_designs()
+
+
+def refresh_demo_designs() -> None:
+    """Redraw demo cards made with an older card design (overlay.CARD_DESIGN) so the live samples show the
+    current look. Only the text is redrawn, over the existing artwork, so it costs nothing."""
+    from app.services.overlay import CARD_DESIGN
+
+    redrawn = 0
+    with SessionLocal() as db:
+        for order in db.scalars(select(Order).where(Order.source == "demo")).all():
+            if any((a.meta or {}).get("design", 1) < CARD_DESIGN for a in order.live_assets("final")):
+                redrawn += bool(pipeline.redraw_text(db, order))
+    if redrawn:
+        log.info("redrew %d demo invitation(s) with card design %d", redrawn, CARD_DESIGN)
 
 
 # --- demos for every other occasion (English) ------------------------------------

@@ -39,6 +39,7 @@
       <p style="margin:6px 0 0"><a class="btn btn-primary" href="/create" style="font-size:1.08rem">🎨 Create yours free</a>
         <span style="color:var(--gold-soft);margin-left:8px">Free download · HD from ₹{{ catalog.PACKAGES['instant'].price }}</span></p>
       <div class="trust">
+        {% if made >= 50 %}<span>✦ {{ "{:,}".format(made) }} invitations made</span>{% endif %}{# only once the number is worth showing #}
         <span>✦ Free to create</span>
         <span>✦ {{ occasion_types|length + 1 }} occasions</span>
         <span>✦ {{ catalog.LANGUAGES|length }} languages</span>
@@ -52,6 +53,21 @@
     </div>
   </div>
 </section>
+
+{% if gallery|length >= 3 %}
+<section class="made-strip">
+  <div class="wrap">
+    <h2 class="center">Made on {{ settings.brand_name }} <span class="script">this week</span></h2>
+    <div class="strip">{% for o in gallery %}<a href="/gallery"><img src="/gallery/{{ o.public_id }}.jpg" alt="{{ o.occasion_name }} invitation made on {{ settings.brand_name }}" loading="lazy" width="720" height="900"></a>{% endfor %}</div>
+    <p class="center"><a href="/gallery">See all real invitations →</a></p>
+  </div>
+</section>
+<style>
+  .made-strip { padding: 40px 0 10px; }
+  .made-strip .strip { display: flex; gap: 14px; overflow-x: auto; padding: 10px 2px 16px; scroll-snap-type: x mandatory; }
+  .made-strip .strip img { width: 170px; height: auto; border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,.18); scroll-snap-align: start; }
+</style>
+{% endif %}
 
 <section class="try" id="try">
   <div class="wrap try-grid">

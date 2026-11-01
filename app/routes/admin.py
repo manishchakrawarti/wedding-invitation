@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.catalog import FUNCTIONS, LANGUAGES, PACKAGES, STYLES
 from app.config import settings
 from app.db import get_db
-from app.models import Asset, Notification, Order, OrderStatus, Payment, TelegramChat
+from app.models import Asset, DailyStat, Notification, Order, OrderStatus, Payment, TelegramChat
 from app.services import notify, orders, payments, pipeline
 from app.services.maintenance import cleanup_expired
 from app.services.storage import storage
@@ -82,6 +82,56 @@ def dashboard(request: Request, status: str = "", q: str = "", msg: str = "", db
     tg_owners = db.scalars(select(TelegramChat).where(TelegramChat.role == "owner")).all()
     return templates.TemplateResponse(request, "admin/dashboard.html", {"rows": rows, "stats": stats, "status": status, "q": q, "msg": msg,
                                                                         "to_confirm": to_confirm, "tg_owners": tg_owners})
+
+
+@router.post("/orders/{order_id}/gallery-hide")
+def gallery_hide(order_id: int, db: Session = Depends(get_db)):
+    order = load(order_id, db)
+    order.gallery_ok = False
+    orders.log_event(db, order, "Removed from the gallery by admin")
+    db.commit()
+    return back(order, "Removed from the gallery")
+
+
+@router.get("/stats", response_class=HTMLResponse)
+def stats_page(request: Request, db: Session = Depends(get_db)):
+    """Visitors, where they came from, what they looked at, and how many created and paid: last 30 days."""
+    from datetime import timedelta
+
+    from app.services import stats
+
+    stats.flush()
+    today = date.today()
+    days = [today - timedelta(days=i) for i in range(29, -1, -1)]
+    rows = db.scalars(select(DailyStat).where(DailyStat.day >= days[0])).all()
+    per_day: dict = defaultdict(Counter)
+    pages, sources = Counter(), Counter()
+    for r in rows:
+        if r.kind in ("visitor", "try"):
+            per_day[r.day][r.kind] += r.count
+        elif r.kind == "view":
+            per_day[r.day]["views"] += r.count
+            pages[r.key] += r.count
+        elif r.kind == "source":
+            sources[r.key] += r.count
+    real = [o for o in db.scalars(select(Order).where(Order.created_at >= days[0])).all() if o.source not in ("demo", "test")]
+    for o in real:
+        per_day[o.created_at.date()]["created"] += 1
+    paid = db.scalars(select(Payment).where(Payment.status == "paid", Payment.paid_at >= days[0])).all()
+    for p in paid:
+        if p.order.source not in ("demo", "test"):
+            per_day[p.paid_at.date()]["paid"] += 1
+            per_day[p.paid_at.date()]["revenue"] += p.amount
+
+    def total(key: str, last: int) -> int:
+        return sum(per_day[d][key] for d in days[-last:])
+
+    funnel = {n: {k: total(k, n) for k in ("visitor", "try", "created", "paid", "revenue")} for n in (7, 30)}
+    peak = max([per_day[d]["visitor"] for d in days] + [1])
+    return templates.TemplateResponse(request, "admin/stats.html", {
+        "days": days, "per_day": per_day, "peak": peak, "funnel": funnel,
+        "pages": pages.most_common(15), "sources": sources.most_common(12),
+    })
 
 
 @router.get("/orders/{order_id}", response_class=HTMLResponse)

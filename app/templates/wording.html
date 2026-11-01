@@ -1,0 +1,82 @@
+{# Invitation wording library (app/wording.py): the index (w is None) or one occasion's messages. #}
+{% extends "base.html" %}
+{% block title %}{{ w.title if w else 'Invitation Wording & Messages in Hindi and English: Every Occasion | ' ~ settings.brand_name }}{% endblock %}
+{% block description %}{{ w.description if w else 'Ready invitation messages in Hindi and English for weddings, birthdays, Griha Pravesh, pujas, anniversaries and every occasion. Copy, send on WhatsApp or put on a free card.' }}{% endblock %}
+{% block jsonld %}
+<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+  {"@type": "ListItem", "position": 1, "name": settings.brand_name, "item": settings.base_url ~ "/"},
+  {"@type": "ListItem", "position": 2, "name": "Invitation wording", "item": settings.base_url ~ "/wording"}]
+  + ([{"@type": "ListItem", "position": 3, "name": w.name ~ " invitation message", "item": settings.base_url ~ w.path}] if w else [])}|tojson }}</script>
+{% endblock %}
+{% block head %}
+<style>
+  .wd-hero { background: radial-gradient(ellipse at top, #8d2335, var(--maroon-dark) 75%); color: var(--cream); padding: 30px 0 34px; }
+  .wd-hero h1 { color: #fff; margin: 6px 0; }
+  .wd-hero .local { color: var(--gold-soft); font-size: 1.2rem; }
+  .crumbs { font-size: .85rem; color: var(--gold-soft); } .crumbs a { color: var(--gold-soft); }
+  .msgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .msg { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg p { white-space: pre-line; margin: 0; line-height: 1.6; }
+  .msg mark { background: #fff1d1; color: var(--maroon); border-radius: 4px; padding: 0 2px; }
+  .msg .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+  .wd-sec { padding: 30px 0 0; }
+  .wd-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .wd-list a { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-decoration: none; display: block; }
+  .wd-list small { display: block; color: var(--muted); }
+</style>
+{% endblock %}
+{% block content %}
+<section class="wd-hero"><div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/wording">Invitation wording</a>{% if w %} › {{ w.name }}{% endif %}</nav>
+  {% if w %}
+  <h1>{{ w.name }} Invitation Message in Hindi &amp; English</h1>
+  <div class="local">{{ w.local_name }}</div>
+  <p>{{ w.count }} ready messages. Tap <strong>Copy</strong> or <strong>WhatsApp</strong>, replace the <mark style="background:#fff1d1;color:var(--maroon)">[highlighted]</mark> parts, or put the details on a beautiful card in 60 seconds.</p>
+  <p><a class="btn btn-primary" href="{{ w.create_url }}">🎨 Make a {{ w.name }} card free</a></p>
+  {% else %}
+  <h1>Invitation Wording &amp; Messages</h1>
+  <p>Ready messages in Hindi and English for every occasion: copy them, send them on WhatsApp, or put them on a free invitation card.</p>
+  {% endif %}
+</div></section>
+
+{% if w %}
+{% for title, lang, msgs in w.sections %}
+<section class="wd-sec"><div class="wrap">
+  <h2>{{ title }}</h2>
+  <div class="msgs">
+    {% for m in msgs %}
+    <div class="msg"><p lang="{{ lang }}">{{ wording.marked(m) }}</p>
+      <div class="acts">
+        <button class="btn btn-sm btn-ghost js-copy" type="button" data-text="{{ m }}">Copy</button>
+        <a class="btn btn-sm btn-wa" href="https://wa.me/?text={{ m|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div></section>
+{% endfor %}
+<section class="wd-sec"><div class="narrow center">
+  <h2>Put it on a card</h2>
+  <p class="muted">Type the names, date and venue once: the card, a PDF and a live invite page with maps and RSVP are ready in a minute, and every guest can get their own card with their name on it.</p>
+  <p><a class="btn btn-primary" href="{{ w.create_url }}">🎨 Create your {{ w.name }} invitation free</a> <a class="btn btn-ghost" href="{{ w.landing }}">See designs</a></p>
+</div></section>
+{% if pages %}<section class="wd-sec"><div class="wrap"><h2>More invitation messages</h2>
+  <div class="wd-list">{% for p in pages %}<a href="{{ p.path }}"><strong>{{ p.name }}</strong><small>{{ p.local_name }} · {{ p.count }} messages</small></a>{% endfor %}<a href="/wording"><strong>All occasions →</strong></a></div>
+</div></section>{% endif %}
+{% else %}
+{% for cat in groups %}
+<section class="wd-sec"><div class="wrap">
+  <h2>{{ cat[0] }}</h2>
+  <div class="wd-list">{% for p in cat[1] %}<a href="{{ p.path }}"><strong>{{ p.name }} invitation message</strong><small>{{ p.local_name }} · {{ p.count }} messages</small></a>{% endfor %}</div>
+</div></section>
+{% endfor %}
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.js-copy').forEach(b => b.addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(b.dataset.text); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy', 1800); }
+  catch (e) { prompt('Copy this message:', b.dataset.text); }
+}));
+</script>
+{% endblock %}

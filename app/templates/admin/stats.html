@@ -1,0 +1,51 @@
+{% extends "admin/base.html" %}
+{% block title %}Stats{% endblock %}
+{% block content %}
+<h2 style="margin-top:0">Last 7 and 30 days</h2>
+<p class="muted small">Real people only (search engines and link previews aren't counted). A visitor counts once a day. Demo and test orders are left out.</p>
+{% for n in (7, 30) %}{% set f = funnel[n] %}
+<div class="stats">
+  <div class="stat"><div class="muted small">Visitors · {{ n }} days</div><div class="v">{{ f.visitor }}</div></div>
+  <div class="stat"><div class="muted small">Live previews drawn</div><div class="v">{{ f.try }}</div><div class="small muted">typing in "see your card"</div></div>
+  <div class="stat"><div class="muted small">Invitations created</div><div class="v">{{ f.created }}</div>
+    <div class="small muted">{{ '%.1f' % (100 * f.created / f.visitor) if f.visitor else 0 }}% of visitors</div></div>
+  <div class="stat"><div class="muted small">Paid</div><div class="v">{{ f.paid }}</div>
+    <div class="small muted">{{ '%.0f' % (100 * f.paid / f.created) if f.created else 0 }}% of created</div></div>
+  <div class="stat"><div class="muted small">Revenue</div><div class="v">{{ inr(f.revenue) }}</div></div>
+</div>
+{% endfor %}
+
+<div class="card">
+  <h3>Visitors per day</h3>
+  <div class="bars">
+    {% for d in days %}{% set c = per_day[d] %}
+    <div class="bar" title="{{ d.strftime('%d %b') }}: {{ c.visitor }} visitors, {{ c.views }} page views, {{ c.created }} created, {{ c.paid }} paid">
+      <span style="height:{{ (100 * c.visitor / peak)|round|int }}%"></span>
+      {% if c.created %}<i>{{ c.created }}</i>{% endif %}
+      <small>{{ d.day }}</small>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="small muted">Bar height is visitors; the number above a bar is invitations created that day. Hover a bar for details.</p>
+</div>
+
+<div class="grid2">
+  <div class="card" style="margin:0">
+    <h3>Where visitors came from</h3>
+    {% for name, n in sources %}<div class="row"><span>{{ name }}</span><b>{{ n }}</b></div>{% else %}<p class="muted">No visitors yet.</p>{% endfor %}
+    <p class="small muted">Tip: add <code>?utm_source=instagram</code> (or whatsapp, facebook…) to links you post, to see which channel works.</p>
+  </div>
+  <div class="card" style="margin:0">
+    <h3>Most viewed pages</h3>
+    {% for name, n in pages %}<div class="row"><span>{{ name }}</span><b>{{ n }}</b></div>{% else %}<p class="muted">No page views yet.</p>{% endfor %}
+  </div>
+</div>
+<style>
+  .bars { display: flex; align-items: flex-end; gap: 4px; height: 180px; padding-top: 18px; }
+  .bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
+  .bar span { width: 100%; background: var(--maroon); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .bar i { position: absolute; top: 0; font: 600 .7rem var(--sans); color: var(--green); font-style: normal; }
+  .bar small { font-size: .65rem; color: var(--muted); margin-top: 4px; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+</style>
+{% endblock %}

@@ -38,6 +38,7 @@
       <a href="/#how">How it works</a>
       <a href="/#pricing">Pricing</a>
       <a href="/order">Done-for-you</a>
+      {% set sw = ui_switch(request) %}<a class="ui-switch" href="{{ sw[1] }}" lang="{{ 'en' if sw[0] == 'English' else 'hi' }}" rel="nofollow">🌐 {{ sw[0] }}</a>
       <a class="btn btn-sm" href="/create">Create free</a>
     </nav>
   </div>
@@ -62,6 +63,8 @@
     <div>
       <strong>Popular invitations</strong><br>
       {% for lp in seo.footer_links() %}<a href="{{ lp.path }}">{{ lp.h1 }}</a><br>{% endfor %}
+      <a href="/wording">Invitation wording &amp; messages</a><br>
+      <a href="/gallery">Real invitations</a><br>
       <a href="/occasions">All {{ catalog.LANGUAGES|length }} languages &amp; occasions →</a>
     </div>
     <div>

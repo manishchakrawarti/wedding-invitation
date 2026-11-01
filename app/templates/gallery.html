@@ -1,0 +1,51 @@
+{# Real invitations families chose to share (Order.gallery_ok), newest first. #}
+{% extends "base.html" %}
+{% block title %}Real Invitation Cards Made on {{ settings.brand_name }}: Wedding, Birthday, Puja{% endblock %}
+{% block description %}Real invitation cards families made on {{ settings.brand_name }}: weddings, birthdays, Griha Pravesh, pujas and more, in Hindi and 9 Indian languages. Make yours free.{% endblock %}
+{% block head %}
+<style>
+  .gal-hero { background: radial-gradient(ellipse at top, #8d2335, var(--maroon-dark) 75%); color: var(--cream); text-align: center; padding: 44px 0 34px; }
+  .gal-hero h1 { color: #fff; margin-bottom: 6px; }
+  .gal-filters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+  .gal-filters a { border: 1px solid rgba(234,215,166,.45); color: var(--gold-soft); padding: 6px 14px; border-radius: 99px; text-decoration: none; }
+  .gal-filters a.on { background: var(--gold); color: var(--maroon-dark); border-color: var(--gold); }
+  .gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; padding: 30px 0; }
+  .gal-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+  .gal-card img { width: 100%; height: auto; display: block; aspect-ratio: 4 / 5; object-fit: cover; }
+  .gal-card div { padding: 10px 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+</style>
+{% endblock %}
+{% block content %}
+<section class="gal-hero">
+  <div class="wrap">
+    <h1>Made on {{ settings.brand_name }}</h1>
+    <p>Real invitations families chose to share{% if made >= 50 %}, from {{ "{:,}".format(made) }} made so far{% endif %}.</p>
+    <nav class="gal-filters" aria-label="Filter by occasion">
+      <a href="/gallery" class="{{ 'on' if not occasion }}">All</a>
+      {% for c in categories.values() %}<a href="/gallery?occasion={{ c.key }}" class="{{ 'on' if occasion == c.key }}">{{ c.icon }} {{ c.name }}</a>{% endfor %}
+    </nav>
+  </div>
+</section>
+<section><div class="wrap">
+  {% if cards %}
+  <div class="gal-grid">
+    {% for o in cards %}{% set t = types.get(o.event_type) %}
+    <div class="gal-card">
+      <img src="/gallery/{{ o.public_id }}.jpg" alt="{{ o.occasion_name }} invitation card" loading="lazy" width="720" height="900">
+      <div>
+        <strong>{{ t.icon if t else '💍' }} {{ o.occasion_name }}</strong>
+        <span class="small muted">{{ catalog.LANGUAGES[o.language].name }} · {{ catalog.STYLES[o.style].name }}</span>
+        <a class="btn btn-sm btn-primary" href="/create?{{ ('event=' ~ o.event_type ~ '&') if t else '' }}style={{ o.style }}&amp;lang={{ o.language }}">Make one like this</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="narrow center" style="padding:40px 0">
+    <h2>Be the first in the gallery ✨</h2>
+    <p class="muted">When you create your invitation, tick "Show my card in the gallery" and it will appear here.</p>
+    <p><a class="btn btn-primary" href="/create">Create yours free</a> <a class="btn btn-ghost" href="/occasions">See sample designs</a></p>
+  </div>
+  {% endif %}
+</div></section>
+{% endblock %}

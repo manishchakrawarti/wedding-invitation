@@ -54,7 +54,7 @@
   .door-ui > * { pointer-events: auto; }
   .doors.open + .door-ui { opacity: 0; pointer-events: none; }
   .door-ui .for { font-family: var(--serif); font-size: 1.15rem; letter-spacing: 3px; text-transform: uppercase; color: var(--acc); }
-  .door-ui .guest { font-family: var(--script); font-size: clamp(2.4rem, 9vw, 3.6rem); color: var(--t1); line-height: 1.1; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+  .door-ui .guest { font-family: var(--serif); font-weight: 700; font-size: clamp(2rem, 8vw, 3rem); color: var(--t1); line-height: 1.15; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
   .door-ui .from { font-family: var(--serif); font-size: 1rem; color: var(--t2); margin-top: -12px; }
   .seal { width: 128px; height: 128px; border-radius: 50%; border: 0; cursor: pointer; color: #5a1010;
     background: radial-gradient(circle at 35% 30%, #fff3c4, #e2b65a 45%, #a4752a 100%);
@@ -70,7 +70,8 @@
   .x-hero::before { content: ""; position: absolute; inset: 18px; border: 2px solid var(--acc); opacity: .6; border-radius: 6px; pointer-events: none; }
   .invocation { font-family: var(--serif); color: var(--acc); letter-spacing: 2px; font-size: 1.1rem; margin-bottom: 18px; }
   .x-hero .pre { letter-spacing: 5px; text-transform: uppercase; font-size: .85rem; color: var(--acc); }
-  .x-names { font-family: var(--script); font-weight: 400; color: var(--t1); font-size: clamp(3.4rem, 13vw, 7rem); line-height: 1; margin: 18px 0; text-shadow: 0 4px 20px rgba(0,0,0,.25); }
+  /* names in a clear serif (script names were hard to read); the "&" stays decorative */
+  .x-names { font-family: var(--serif); font-weight: 700; color: var(--t1); font-size: clamp(2.8rem, 11vw, 5.6rem); line-height: 1.1; margin: 18px 0; text-shadow: 0 4px 20px rgba(0,0,0,.25); }
   .couple { display: flex; align-items: center; justify-content: center; gap: clamp(12px, 4vw, 48px); margin: 18px 0 10px; }
   .person { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; }
   .portrait { width: clamp(120px, 26vw, 210px); aspect-ratio: 1; border-radius: 50%; object-fit: cover; object-position: center 30%;
@@ -88,7 +89,7 @@
   .share-btn { margin-top: 16px; background: rgba(255,255,255,.14); color: var(--t1); border: 1.5px solid var(--acc); border-radius: 99px;
     padding: 9px 20px; font: 600 .95rem var(--sans); cursor: pointer; }
   .share-btn:hover { background: rgba(255,255,255,.24); }
-  .x-names .amp { display: block; font-size: .45em; color: var(--acc); margin: 6px 0; }
+  .x-names .amp { display: block; font-family: var(--script); font-weight: 400; font-size: .6em; color: var(--acc); margin: 6px 0; }
   .x-date { font-family: var(--serif); font-size: clamp(1.3rem, 4vw, 1.8rem); letter-spacing: 2px; }
   .countdown { display: flex; gap: 12px; justify-content: center; margin: 30px 0 10px; flex-wrap: wrap; }
   .countdown div { min-width: 78px; padding: 12px 8px; border: 1px solid var(--acc); border-radius: 12px; background: rgba(0,0,0,.12); backdrop-filter: blur(4px); }
@@ -105,7 +106,7 @@
   .personal { background: var(--paper); border: 1px solid var(--gold-soft); border-radius: 18px; padding: 38px 30px; text-align: center; box-shadow: var(--shadow); position: relative; }
   .personal::before, .personal::after { content: "❁"; position: absolute; top: 14px; color: var(--gold); font-size: 1.4rem; }
   .personal::before { left: 18px; } .personal::after { right: 18px; }
-  .personal .dear { font-family: var(--script); font-size: 2.6rem; color: var(--maroon); }
+  .personal .dear { font-family: var(--serif); font-weight: 700; font-size: 2rem; color: var(--maroon); }
   .personal p { font-size: 1.12rem; }
   .sender { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--gold-soft); }
   .sender .who { font-size: 1.05rem; } .sender .who strong { color: var(--maroon); }

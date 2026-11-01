@@ -13,7 +13,7 @@ from app.config import APP_DIR, settings
 from app.models import Asset, Order, utcnow
 from app.services.cards import main_card
 from app.services.generation import offline_generator
-from app.services.overlay import LAYOUT_PLAIN, compose_card, to_bytes
+from app.services.overlay import CARD_DESIGN, LAYOUT_PLAIN, compose_card, to_bytes
 from app.services.storage import storage
 
 log = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ def sample_image(style_key: str) -> bytes:
         custom = CUSTOM_SAMPLE_DIR / f"{style_key}.{ext}"
         if custom.exists():
             return custom.read_bytes()
-    cached = SAMPLE_DIR / f"{style_key}.jpg"
+    cached = SAMPLE_DIR / f"{style_key}_d{CARD_DESIGN}.jpg"
     if cached.exists():
         return cached.read_bytes()
     style = STYLES[style_key]
@@ -103,7 +103,7 @@ def sample_event_image(type_key: str, style_key: str | None = None) -> bytes:
 
     t = TYPES[type_key]
     style_key = style_key or t.styles[0]
-    cached = SAMPLE_DIR / f"event_{type_key}_{style_key}.jpg"
+    cached = SAMPLE_DIR / f"event_{type_key}_{style_key}_d{CARD_DESIGN}.jpg"
     if cached.exists():
         return cached.read_bytes()
     primary, secondary, detail = t.demo

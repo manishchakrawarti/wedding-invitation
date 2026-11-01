@@ -2,7 +2,7 @@
 import enum
 from datetime import date, datetime, timezone
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -77,6 +77,7 @@ class Order(Base):
 
     photo_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     marketing_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+    gallery_ok: Mapped[bool] = mapped_column(Boolean, default=False)  # family agreed to show the card in /gallery
 
     referral_code: Mapped[str] = mapped_column(String(16), unique=True, index=True)
     referred_by_code: Mapped[str] = mapped_column(String(16), default="")
@@ -245,6 +246,19 @@ class Notification(Base):
     status: Mapped[str] = mapped_column(String(20))  # sent | logged | failed
     error: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class DailyStat(Base):
+    """One counter per day: page views per page, new visitors, visitors per source, live previews (services/stats.py)."""
+
+    __tablename__ = "daily_stats"
+    __table_args__ = (UniqueConstraint("day", "kind", "key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    day: Mapped[date] = mapped_column(Date, index=True)
+    kind: Mapped[str] = mapped_column(String(20))  # view | visitor | source | try
+    key: Mapped[str] = mapped_column(String(120), default="all")
+    count: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class TelegramChat(Base):

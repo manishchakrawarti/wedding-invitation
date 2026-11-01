@@ -21,6 +21,9 @@ from app.catalog import Style
 from app.config import APP_DIR
 
 CANVAS = (1080, 1350)
+# Bump when card text styling changes: cached samples and the live demos are redrawn (customers' cards are not).
+# 2: names in a clear serif instead of script.
+CARD_DESIGN = 2
 FONT_DIR = APP_DIR / "assets" / "fonts"
 RAQM = features.check("raqm")
 
@@ -48,7 +51,7 @@ LATIN_FONTS = {"display": "GreatVibes-Regular.ttf", "heading": "Cinzel.ttf", "bo
 ROLE_FAMILY = {
     "headline": "heading",
     "title": "display",
-    "names": "display",
+    "names": "body",  # names in a clear serif: script names were hard to read
     "brand": "heading",
     "connector": "display",
     "invite": "body",
