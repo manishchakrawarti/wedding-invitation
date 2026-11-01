@@ -5,7 +5,7 @@ Everything to open the pages and start posting. The images are in [`assets/`](as
 
 - **Website:** https://invite-all.com
 - **WhatsApp:** +91 87870 35854
-- **Sign-up email:** official.manish.id@gmail.com
+- **Sign-up email:** sales.team.official.id@gmail.com
 - **Handle everywhere:** `@inviteall`. If it's taken, use `@inviteall.in`, then `@invite_all`, then `@inviteallcards`.
   Keep the same one on every platform if you can.
 
@@ -54,6 +54,7 @@ Bengali, Gujarati, Punjabi, Tamil, Telugu, Kannada and Malayalam.
 
 Make yours free: https://invite-all.com
 WhatsApp: +91 87870 35854
+Email: sales.team.official.id@gmail.com
 ```
 
 **X bio** (160 characters max)

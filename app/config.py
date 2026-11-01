@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     x_url: str = ""
     pinterest_url: str = ""
     whatsapp_number: str = "918787035854"  # country code + number, digits only
-    support_email: str = "hello@example.com"
+    support_email: str = "sales.team.official.id@gmail.com"
     business_city: str = "India"
     owner_whatsapp: str = ""  # receives failure / review alerts
     owner_email: str = ""
