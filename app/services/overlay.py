@@ -316,7 +316,8 @@ def name_ribbon(img: Image.Image, kicker: str, name: str) -> Image.Image:
             break
         size -= 2
     w = int(min(max(big.getlength(name), small.getlength(kicker)) + 70 * k, max_w))
-    h = int((size + 62) * k)
+    tall = 18 if detect_script(name) != "latin" or detect_script(kicker) != "latin" else 0
+    h = int((size + 62 + tall) * k)  # Indian scripts: vowel signs above the line need more room
     cx, y = img.width // 2, int(52 * k)
     draw.rounded_rectangle([cx - w // 2, y, cx + w // 2, y + h], radius=int(22 * k), fill=(255, 250, 238, 235),
                            outline=(196, 152, 72, 255), width=max(int(3 * k), 1))
