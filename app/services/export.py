@@ -67,11 +67,13 @@ def _qr_uri(url: str) -> str:
     return _uri(buf.getvalue(), "image/png")
 
 
-def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | None = None) -> tuple[str, int]:
+def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | None = None,
+               invitee=None) -> tuple[str, int]:
     """The print page and its number of pages.
 
     tier sets the card images inside (free = 720 with a credit and no RSVP QR, since the
     invite page only goes live once a paid size is bought). pages_range (first, last) renders only those pages.
+    invitee: a personal copy for one guest, with their name, who sent it and a QR to their own invite link.
     """
     from app.services import hires
     from app.templating import templates
@@ -110,12 +112,17 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
     pages = 1 + len(card_pages) + (1 if schedule else 0) + 1 + (1 if gift else 0)
     free = tier == "free"
     rsvp_url = f"{settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug and not free else ""
+    guest = None
+    if invitee is not None:
+        guest = {"name": invitee.name, "sender": invitee.sent_by, "phone": invites.pretty_phone(invitee.sender_phone)}
+        rsvp_url = invites.invite_url(invitee) if not free else ""
     html = templates.get_template("invite_print.html").render(
         o=order, st=STYLES[order.style], t=i18n.texts(order.language), lang=LANGUAGES[order.language],
         local=order.language != "en", fonts=fonts, card_pages=card_pages, schedule=schedule, ev=order.event,
         qr=_qr_uri(rsvp_url) if rsvp_url else "", rsvp_url=rsvp_url, invocation=i18n.INVOCATIONS.get(order.language, ""),
         W=PAGE_W, H=PAGE_H, settings=settings, credit=f"Made with love · {settings.brand_name}" if free else "",
         pages_range=pages_range, photos=photos, occ=None if order.is_wedding else events.texts(order), gift=gift,
+        guest=guest,
     )
     return html, pages
 
@@ -140,23 +147,24 @@ def _chrome(chrome: str, tmp: str, html: str, out: Path, extra: list[str]) -> No
 _render_slots = threading.BoundedSemaphore(max(1, settings.max_concurrent_renders))
 
 
-def render(order: Order, fmt: str, tier: str = "1080") -> bytes:
+def render(order: Order, fmt: str, tier: str = "1080", invitee=None) -> bytes:
     with _render_slots:
-        return _render(order, fmt, tier)
+        return _render(order, fmt, tier, invitee)
 
 
-def _render(order: Order, fmt: str, tier: str = "1080") -> bytes:
+def _render(order: Order, fmt: str, tier: str = "1080", invitee=None) -> bytes:
     """fmt 'pdf': one page per section. fmt 'image': all pages stacked into one tall JPEG
-    whose width matches the tier (720 / 1080 / 2048 / 3840 px)."""
+    whose width matches the tier (720 / 1080 / 2048 / 3840 px). Personal copies (invitee) aren't cached:
+    one per guest would fill the disk."""
     from PIL import Image
 
     from app.catalog import RESOLUTIONS
 
-    html, pages = build_html(order, tier)
+    html, pages = build_html(order, tier, invitee=invitee)
     digest = hashlib.sha1(html.encode()).hexdigest()[:12]
     ext = "pdf" if fmt == "pdf" else "jpg"
     key = f"orders/{order.public_id}/einvite_{tier}_{digest}.{ext}"
-    if storage.exists(key):
+    if invitee is None and storage.exists(key):
         return storage.read(key)
     chrome = chrome_binary()
     if not chrome:
@@ -178,7 +186,7 @@ def _render(order: Order, fmt: str, tier: str = "1080") -> bytes:
                 shots = []
                 for first in range(1, pages + 1, per_shot):
                     last = min(first + per_shot - 1, pages)
-                    chunk_html, _ = build_html(order, tier, pages_range=(first, last))
+                    chunk_html, _ = build_html(order, tier, pages_range=(first, last), invitee=invitee)
                     out = Path(tmp, f"p{first}.png")
                     _chrome(chrome, tmp, chunk_html, out,
                             [*scale, f"--window-size={PAGE_W},{PAGE_H * (last - first + 1)}", f"--screenshot={out}"])
@@ -194,5 +202,6 @@ def _render(order: Order, fmt: str, tier: str = "1080") -> bytes:
             buf = io.BytesIO()
             img.save(buf, "JPEG", quality=85 if tier == "free" else 92, optimize=True)
             data = buf.getvalue()
-    storage.save(key, data)
+    if invitee is None:
+        storage.save(key, data)
     return data

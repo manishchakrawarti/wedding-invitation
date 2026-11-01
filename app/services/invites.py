@@ -158,6 +158,50 @@ def invite_url(invitee: Invitee) -> str:
     return f"{settings.base_url}/i/{invitee.code}"
 
 
+def clean_phone(raw: str) -> str | None:
+    """A mobile number as digits with country code ("" if blank, None if it isn't a phone number).
+    Bare 10-digit numbers are Indian; guests abroad can be written with their country code."""
+    if not (raw or "").strip():
+        return ""
+    digits = normalize_phone(raw.strip().removeprefix("00"))
+    if len(digits) == 12 and digits.startswith("91"):
+        return digits if digits[2] in "6789" else None
+    return digits if 11 <= len(digits) <= 15 and not digits.startswith("0") else None
+
+
+def pretty_phone(digits: str) -> str:
+    """'+91 98765 43210' for Indian mobiles, '+44 7700900123' style otherwise."""
+    if not digits:
+        return ""
+    if len(digits) == 12 and digits.startswith("91"):
+        return f"+91 {digits[2:7]} {digits[7:]}"
+    return f"+{digits}"
+
+
+def last_sender(order: Order) -> tuple[str, str]:
+    """Who the next personal invite is from: whoever sent the last one, else the person who ordered."""
+    for invitee in reversed(order.invitees):
+        if invitee.sent_by:
+            return invitee.sent_by, invitee.sender_phone
+    return order.customer_name, normalize_phone(order.phone) if order.phone else ""
+
+
+def read_sender(form) -> tuple[dict, str]:
+    """The 'From' fields of a send form: ({sent_by, sender_phone}, error message or "")."""
+    phone = clean_phone(str(form.get("sender_phone", "")))
+    if phone is None:
+        return {}, "Your mobile number doesn't look right. Use 10 digits, or + and the country code."
+    return {"sent_by": str(form.get("sender_name", "")).strip()[:120], "sender_phone": phone}, ""
+
+
+def sender_line(invitee: Invitee) -> str:
+    """'— Manish Kumar, +91 98765 43210' at the end of messages ("" if no sender was given)."""
+    if not getattr(invitee, "sent_by", ""):
+        return ""
+    phone = pretty_phone(invitee.sender_phone or "")
+    return f"— {invitee.sent_by}" + (f", {phone}" if phone else "")
+
+
 def whatsapp_text(order: Order, invitee: Invitee) -> str:
     """Personal WhatsApp message in the card's language."""
     t = i18n.texts(order.language)
@@ -171,16 +215,53 @@ def whatsapp_text(order: Order, invitee: Invitee) -> str:
         from app import events
 
         body = events.texts(order)["para"]
+    sender = sender_line(invitee)
     return (
         f"🙏 {t['dear'].format(name=invitee.name)},\n\n{body}\n"
         f"📅 {pretty_date(order.wedding_date)}\n\n"
-        f"{t['your_invitation']} 💌 {invite_url(invitee)}"
+        f"{t['open_invite']} 💌 {invite_url(invitee)}"
+        + (f"\n\n{sender}" if sender else "")
+    )
+
+
+def sms_text(order: Order, invitee: Invitee) -> str:
+    """A short text message (SMS is charged per 160 characters on some plans, so no long paragraph)."""
+    t = i18n.texts(order.language)
+    what = order.display_names if order.is_wedding else f"{order.display_names} · {order.occasion_name}"
+    sender = sender_line(invitee)
+    return (
+        f"{t['dear'].format(name=invitee.name)}, {t['invited']}: {what}, {pretty_date(order.wedding_date)}.\n"
+        f"{invite_url(invitee)}" + (f"\n{sender}" if sender else "")
     )
 
 
 def whatsapp_link(order: Order, invitee: Invitee) -> str:
     phone = normalize_phone(invitee.phone) if invitee.phone else ""
     return f"https://wa.me/{phone}?text={quote(whatsapp_text(order, invitee))}"
+
+
+def sms_link(order: Order, invitee: Invitee) -> str:
+    """Opens the phone's own messages app with the text filled in, sent from the family's own number.
+    '?&body=' works on both Android ('?body=') and iPhone ('&body=')."""
+    phone = f"+{normalize_phone(invitee.phone)}" if invitee.phone else ""
+    return f"sms:{phone}?&body={quote(sms_text(order, invitee))}"
+
+
+def send_row(order: Order, invitee: Invitee) -> dict:
+    """Everything the send buttons for one guest need."""
+    return {
+        "i": invitee, "url": invite_url(invitee), "wa": whatsapp_link(order, invitee), "sms": sms_link(order, invitee),
+        "text": whatsapp_text(order, invitee), "phone": pretty_phone(invitee.phone),
+        "pdf": f"/o/{order.token}/guests/{invitee.id}/invite.pdf",
+        "fns": [FUNCTIONS.get(k, k) for k in invitee.functions] if invitee.functions else ["All functions"],
+    }
+
+
+def can_send(order: Order) -> bool:
+    """Personal invites can go out once the invite page is live."""
+    from app.models import OrderStatus
+
+    return bool(order.rsvp_slug) and order.status == OrderStatus.DELIVERED.value
 
 
 def new_code(db: Session) -> str:

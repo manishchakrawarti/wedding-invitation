@@ -152,8 +152,54 @@
     <p>Share this link in WhatsApp groups. Guests see the palace doors, every function with maps, and can RSVP.</p>
     <p><a class="btn btn-primary" href="/e/{{ o.rsvp_slug }}" target="_blank">Open invite page ↗</a>
        <a class="btn btn-wa" href="https://wa.me/?text={{ (('You are invited to the wedding of ' if o.is_wedding else 'You are invited: ' ~ o.occasion_name ~ ', ') ~ o.display_names ~ ' 💌 ' ~ settings.base_url ~ '/e/' ~ o.rsvp_slug)|urlencode }}">Share on WhatsApp</a></p>
-    <p class="small muted">{{ settings.base_url }}/e/{{ o.rsvp_slug }} · Want a personal link for each guest and live RSVP tracking? <a href="{{ wa_link('Hi, I want to upgrade order ' ~ o.public_id ~ ' to Smart Guest Invites') }}">Upgrade on WhatsApp</a></p>
+    <p class="small muted">{{ settings.base_url }}/e/{{ o.rsvp_slug }} · Want live RSVP tracking: who opened it, who's coming, headcount per function? <a href="{{ wa_link('Hi, I want to upgrade order ' ~ o.public_id ~ ' to Smart Guest Invites') }}">Upgrade on WhatsApp</a></p>
   </div>
+  {% endif %}
+
+  {% if can_send and not console %}{% import "_send.html" as send %}
+  <div class="card" id="send">
+    <h2 style="margin-bottom:4px">📨 Send a personal invitation</h2>
+    <p class="muted" style="margin-top:0">Each guest gets their own link with <strong>their name</strong> on the invitation and on the PDF, and sees who it's from. It's sent from your own WhatsApp or SMS, so it's free.</p>
+    {% if request.query_params.get('send_error') %}<div class="alert alert-error">{{ request.query_params.get('send_error') }}</div>{% endif %}
+    <form method="post" action="/o/{{ o.token }}/guests" class="send-form">
+      <div class="form-grid">
+        <div><label for="g-name">Guest's name *</label><input id="g-name" name="name" type="text" required maxlength="120" placeholder="Sharma Family / Meena Aunty" autocomplete="off"></div>
+        <div><label for="g-phone">Guest's mobile <span class="hint">for WhatsApp / SMS</span></label><input id="g-phone" name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="98765 43210" autocomplete="off"></div>
+      </div>
+      <details class="send-from" {% if not sender_name %}open{% endif %}>
+        <summary>From: <strong>{{ sender_name or 'add your name' }}</strong>{% if sender_phone %} · {{ sender_phone }}{% endif %} <span class="hint">(shown to the guest · change)</span></summary>
+        <div class="form-grid">
+          <div><label for="s-name">Your name</label><input id="s-name" name="sender_name" type="text" maxlength="120" value="{{ sender_name }}" placeholder="Rajesh Sharma (bride's father)"></div>
+          <div><label for="s-phone">Your mobile <span class="hint">leave empty to hide it</span></label><input id="s-phone" name="sender_phone" type="tel" inputmode="tel" maxlength="20" value="{{ sender_phone }}"></div>
+        </div>
+      </details>
+      <button class="btn btn-primary" type="submit">Create personal invite</button>
+    </form>
+
+    {% if send_rows %}
+    {% set just = request.query_params.get('sent') %}
+    <div class="send-list">
+      {% for r in send_rows %}
+      <div class="send-row{{ ' just' if just == r.i.id|string }}" data-guest>
+        <div class="who"><strong>{{ r.i.name }}</strong> <span class="pill {{ 'proof_sent' if r.i.sent_at else 'skip' }} sent-pill" {% if r.i.sent_at %}data-sent="1"{% endif %}>{{ '✓ Sent' if r.i.sent_at else 'Not sent' }}</span>
+          <div class="small muted">{{ r.phone or 'no mobile: pick the contact in WhatsApp' }}{% if r.i.sent_by %} · from {{ r.i.sent_by }}{% endif %}</div>
+          {% if just == r.i.id|string %}<div class="small" style="color:var(--green,#2e7d32)">✨ Ready. Tap <strong>WhatsApp</strong> or <strong>SMS</strong> to send it to {{ r.i.name }}.</div>{% endif %}
+        </div>
+        {{ send.buttons(r, o) }}
+        <form method="post" action="/o/{{ o.token }}/guests/{{ r.i.id }}/delete" onsubmit="return confirm('Remove {{ r.i.name|e }}? Their link will stop working.')"><button class="btn btn-sm btn-ghost" style="color:var(--red)" type="submit" aria-label="Remove {{ r.i.name }}">✕</button></form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <style>
+    .send-from { margin: 10px 0 14px; } .send-from summary { cursor: pointer; padding: 6px 0; }
+    .send-list { margin-top: 18px; display: grid; gap: 10px; }
+    .send-row { display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; align-items: start; border: 1px solid var(--gold-soft, #e8d3ad); border-radius: 12px; padding: 12px; }
+    .send-row .send-btns { grid-column: 1; } .send-row form { grid-column: 2; grid-row: 1; }
+    .send-row.just { border: 2px solid var(--gold); background: #fffaf0; }
+  </style>
+  {{ send.script(o) }}
   {% endif %}
 
   {% if o.status not in ['cancelled'] %}{% include "_photos_card.html" %}{% include "_gift_card.html" %}{% endif %}

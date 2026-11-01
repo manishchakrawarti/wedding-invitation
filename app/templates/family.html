@@ -20,7 +20,7 @@
   .funnel div { height: 100%; background: var(--gold); }
 </style>
 {% endblock %}
-{% block content %}
+{% block content %}{% import "_send.html" as send %}
 <section style="padding-top:30px">
 <div class="wrap">
   <p class="muted" style="margin:0">Family console · private link, share only with family</p>
@@ -63,6 +63,10 @@
         <textarea id="guests" name="guests" rows="6" required placeholder="Sharma Family, 98765 43210, haldi sangeet wedding, bride&#10;Meena Aunty, 9123456780, reception, groom&#10;Rahul Verma, 9988776655"></textarea>
         <label style="margin-top:10px">If a line has no functions, invite them to:</label>
         {% for s in schedule %}<label class="check" style="display:inline-flex;margin-right:12px"><input type="checkbox" name="default_functions" value="{{ s.key }}" checked> <span>{{ s.icon }} {{ s.label }}</span></label>{% endfor %}
+        <div class="form-grid" style="margin-top:10px">
+          <div><label for="sender_name">From <span class="hint">shown to these guests</span></label><input id="sender_name" name="sender_name" type="text" maxlength="120" value="{{ sender_name }}" placeholder="Rajesh Sharma (bride's father)"></div>
+          <div><label for="sender_phone">Your mobile <span class="hint">leave empty to hide it</span></label><input id="sender_phone" name="sender_phone" type="tel" inputmode="tel" maxlength="20" value="{{ sender_phone }}"></div>
+        </div>
         <button class="btn btn-primary btn-block" type="submit" style="margin-top:10px">Add to guest list</button>
         <p class="hint">Tip: copy names from your Excel or WhatsApp list and paste them all at once.</p>
       </form>
@@ -71,19 +75,19 @@
 
   <div class="card">
     <h2>👨‍👩‍👧 Guest list ({{ rows|length }})</h2>
-    <p class="small muted">Tap <strong>Send</strong> to open WhatsApp with a personal message and link for that guest. Each guest sees their own name and only their functions.</p>
+    <p class="small muted">Tap <strong>WhatsApp</strong> or <strong>SMS</strong> to send a personal message and link from your own phone, or <strong>Share PDF</strong> to send their personal e-invite. Each guest sees their own name, who it's from and only their functions.</p>
     <div class="table-wrap">
     <table>
       <thead><tr><th>Guest</th><th>Invited to</th><th>Status</th><th>Reply</th><th></th></tr></thead>
       <tbody>
       {% for r in rows %}{% set i = r.i %}
-        <tr>
-          <td><span class="name">{{ i.name }}</span> {% if i.side %}<span class="side {{ i.side }}">{{ i.side }}</span>{% endif %}<br><span class="small muted">{{ '+' ~ i.phone if i.phone else 'no phone' }}</span></td>
+        <tr data-guest>
+          <td><span class="name">{{ i.name }}</span> {% if i.side %}<span class="side {{ i.side }}">{{ i.side }}</span>{% endif %}<br><span class="small muted">{{ r.phone or 'no phone' }}{% if i.sent_by %} · from {{ i.sent_by }}{% endif %}</span></td>
           <td class="small">{{ r.fns|join(', ') }}</td>
           <td class="status">
             {% if i.opened_at %}<span class="pill pass">👀 Opened{% if i.open_count > 1 %} ×{{ i.open_count }}{% endif %}</span>
             {% elif i.sent_at %}<span class="pill proof_sent">✓ Sent</span>
-            {% else %}<span class="pill skip">Not sent</span>{% endif %}
+            {% else %}<span class="pill skip sent-pill">Not sent</span>{% endif %}
           </td>
           <td class="small">
             {% if i.attending == 'yes' %}<span class="pill delivered">🎉 Yes · {{ i.headcount }}</span>
@@ -95,9 +99,7 @@
           </td>
           <td>
             <div class="row-actions">
-              <a class="btn btn-sm btn-wa send" href="{{ r.wa }}" target="_blank" rel="noopener" data-id="{{ i.id }}">Send</a>
-              <button class="btn btn-sm btn-ghost copy" type="button" data-url="{{ r.url }}">Copy link</button>
-              <a class="btn btn-sm btn-ghost" href="/i/{{ i.code }}?preview=1" target="_blank">Preview</a>
+              {{ send.buttons(r, o, pdf=can_pdf) }}
               <form method="post" action="/e/{{ o.rsvp_slug }}/guests/{{ i.id }}/delete" onsubmit="return confirm('Remove {{ i.name|e }}?')"><input type="hidden" name="key" value="{{ key }}"><button class="btn btn-sm btn-ghost" style="color:var(--red)" type="submit" aria-label="Remove {{ i.name }}">✕</button></form>
             </div>
           </td>
@@ -160,17 +162,6 @@
 </div>
 </section>
 {% endblock %}
-{% block scripts %}
-<script>
-document.querySelectorAll('.send').forEach(a => a.addEventListener('click', () => {
-  const body = new FormData(); body.append('key', {{ key|tojson }});
-  fetch(`/e/{{ o.rsvp_slug }}/guests/${a.dataset.id}/sent`, { method: 'POST', body });
-  const cell = a.closest('tr').querySelector('.status .pill');
-  if (cell && cell.textContent.includes('Not sent')) { cell.className = 'pill proof_sent'; cell.textContent = '✓ Sent'; }
-}));
-document.querySelectorAll('.copy').forEach(b => b.addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(b.dataset.url); b.textContent = 'Copied ✓'; } catch (e) { prompt('Copy this link:', b.dataset.url); }
-  setTimeout(() => b.textContent = 'Copy link', 1800);
-}));
-</script>
+{% block scripts %}{% import "_send.html" as send %}
+{{ send.script(o) }}
 {% endblock %}

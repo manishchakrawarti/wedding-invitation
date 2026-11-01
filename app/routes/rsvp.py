@@ -74,6 +74,7 @@ def _experience(request: Request, order: Order, invitee: Invitee | None, thanks:
             "countdown_to": invites.main_moment(order), "gift": gifts.info(order), "food_choices": invites.FOOD_CHOICES,
             "blessings": blessings[-40:][::-1], "thanks": thanks, "preview": preview, "photos": invites.portraits(order),
             "occ": None if order.is_wedding else events.texts(order),
+            "sender_phone": invites.pretty_phone(invitee.sender_phone) if invitee else "",
             "action": f"/i/{invitee.code}/rsvp" if invitee else f"/e/{order.rsvp_slug}/rsvp",
         },
     )
@@ -252,16 +253,14 @@ def family_console(request: Request, key: str = "", msg: str = "", order: Order 
     _check_key(order, key)
     invites.event_details(db, order)
     db.commit()
-    rows = [
-        {"i": i, "wa": invites.whatsapp_link(order, i), "url": invites.invite_url(i),
-         "fns": [FUNCTIONS.get(k, k) for k in i.functions] if i.functions else ["All functions"]}
-        for i in order.invitees
-    ]
+    rows = [invites.send_row(order, i) for i in order.invitees]
+    sender_name, sender_phone = invites.last_sender(order)
     return templates.TemplateResponse(request, "family.html", {
         "o": order, "ev": order.event, "rows": rows, "walk_ins": sorted(order.guests, key=lambda g: g.created_at, reverse=True),
         "stats": invites.stats(order), "key": key, "msg": msg, "schedule": invites.schedule(order),
         "music": _music(order), "food_choices": invites.FOOD_CHOICES, "days": invites.days_until(order),
         "photos": invites.portraits(order), "photo_roles": invites.PORTRAIT_ROLES, "gift": gifts.info(order),
+        "sender_name": sender_name, "sender_phone": invites.pretty_phone(sender_phone), "can_pdf": invites.can_send(order),
     })
 
 
@@ -273,8 +272,11 @@ async def add_guests(request: Request, order: Order = Depends(get_event), db: Se
     available = [f["key"] for f in order.functions or []]
     defaults = [k for k in form.getlist("default_functions") if k in available]
     parsed = invites.parse_guest_lines(str(form.get("guests", "")), available, defaults)
+    sender, error = invites.read_sender(form)
+    if error:
+        return _console(order.rsvp_slug, key, error)
     for g in parsed[:2000]:
-        db.add(Invitee(order_id=order.id, code=invites.new_code(db), **g))
+        db.add(Invitee(order_id=order.id, code=invites.new_code(db), **sender, **g))
         db.flush()
     db.commit()
     return _console(order.rsvp_slug, key, f"Added {len(parsed)} guest(s). Tap 'Send' to WhatsApp each personal invite.")

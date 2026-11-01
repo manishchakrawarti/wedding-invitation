@@ -16,7 +16,7 @@ from app import events
 from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STYLES
 from app.config import settings
 from app.db import get_db
-from app.models import Asset, Order, OrderStatus
+from app.models import Asset, Invitee, Order, OrderStatus, utcnow
 from app.services import export, gifts, hires, invites, notify, orders, payments, pipeline, stash
 from app.services.cards import has_guest_console
 from app.services.maintenance import sample_event_image, sample_image
@@ -255,8 +255,81 @@ def order_status(request: Request, order: Order = Depends(get_order)):
     return templates.TemplateResponse(request, "order_status.html", {
         "o": order, "visible": PROOF_VISIBLE, "console": has_guest_console(order), "gift": gifts.info(order),
         "photos": invites.portraits(order), "photo_slots": photo_slots(order),
-        "entitled": hires.entitled(order), "tiers": hires.TIERS,
+        "entitled": hires.entitled(order), "tiers": hires.TIERS, **_send_context(order),
     })
+
+
+# --- personal invites: one guest at a time, by WhatsApp, SMS or the phone's share sheet ---------------
+
+MAX_INVITEES = 2000
+
+
+def _send_context(order: Order) -> dict:
+    if not invites.can_send(order):
+        return {"can_send": False}
+    sender_name, sender_phone = invites.last_sender(order)
+    return {"can_send": True, "send_rows": [invites.send_row(order, i) for i in reversed(order.invitees)],
+            "sender_name": sender_name, "sender_phone": invites.pretty_phone(sender_phone)}
+
+
+def _invitee(order: Order, invitee_id: int) -> Invitee:
+    invitee = next((i for i in order.invitees if i.id == invitee_id), None)
+    if invitee is None:
+        raise HTTPException(404)
+    return invitee
+
+
+@router.post("/o/{token}/guests")
+async def add_invitee(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    """Make a personal invite link for one guest; the page then offers WhatsApp / SMS / Share for it."""
+    if not invites.can_send(order):
+        return redirect(f"/o/{order.token}")
+    form = await request.form()
+    name = str(form.get("name", "")).strip()[:120]
+    phone = invites.clean_phone(str(form.get("phone", "")))
+    sender, error = invites.read_sender(form)
+    if not name:
+        error = "Please enter the guest's name."
+    elif phone is None:
+        error = "The guest's mobile number doesn't look right. Use 10 digits, or + and the country code."
+    elif len(order.invitees) >= MAX_INVITEES:
+        error = f"You can send up to {MAX_INVITEES} personal invites."
+    if error:
+        return redirect(f"/o/{order.token}?send_error={quote(error)}#send")
+    invitee = Invitee(order_id=order.id, code=invites.new_code(db), name=name, phone=phone, functions=[], **sender)
+    db.add(invitee)
+    db.commit()
+    return redirect(f"/o/{order.token}?sent={invitee.id}#send")
+
+
+@router.post("/o/{token}/guests/{invitee_id}/sent")
+def mark_invitee_sent(invitee_id: int, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    invitee = _invitee(order, invitee_id)
+    if not invitee.sent_at:
+        invitee.sent_at = utcnow()
+        db.commit()
+    return {"ok": True}
+
+
+@router.post("/o/{token}/guests/{invitee_id}/delete")
+def delete_invitee(invitee_id: int, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    db.delete(_invitee(order, invitee_id))
+    db.commit()
+    return redirect(f"/o/{order.token}#send")
+
+
+@router.get("/o/{token}/guests/{invitee_id}/invite.pdf")
+def invitee_pdf(invitee_id: int, order: Order = Depends(get_order)):
+    """The e-invite with this guest's name on it, who it's from, and a QR to their own invite link."""
+    invitee = _invitee(order, invitee_id)
+    if not invites.can_send(order):
+        raise HTTPException(403, "Available once your invitation is ready")
+    try:
+        data = export.render(order, "pdf", "1080" if hires.allowed(order, "1080") else "free", invitee=invitee)
+    except export.ExportUnavailable as exc:
+        raise HTTPException(503, f"The e-invite can't be created right now. Please try again shortly. ({exc})") from exc
+    name = f"{slugify(f'{order.display_names}-invitation-for-{invitee.name}') or 'invitation'}.pdf"
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{name}"'})
 
 
 def _allowed_purposes(order: Order) -> list[str]:

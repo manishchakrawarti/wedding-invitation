@@ -65,6 +65,7 @@ PACKAGES: dict[str, Package] = {
                 "Free Standard download, HD from ₹9",
                 "A card for the wedding and every function, no watermark",
                 "Cinematic invite page to share on WhatsApp, with RSVP",
+                "A personal invite for each guest by WhatsApp or SMS, with their name",
                 "Your language, your style",
                 "Sent to your email",
             ),

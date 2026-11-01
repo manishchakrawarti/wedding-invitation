@@ -54,6 +54,7 @@
   .doors.open + .door-ui { opacity: 0; pointer-events: none; }
   .door-ui .for { font-family: var(--serif); font-size: 1.15rem; letter-spacing: 3px; text-transform: uppercase; color: var(--acc); }
   .door-ui .guest { font-family: var(--script); font-size: clamp(2.4rem, 9vw, 3.6rem); color: var(--t1); line-height: 1.1; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+  .door-ui .from { font-family: var(--serif); font-size: 1rem; color: var(--t2); margin-top: -12px; }
   .seal { width: 128px; height: 128px; border-radius: 50%; border: 0; cursor: pointer; color: #5a1010;
     background: radial-gradient(circle at 35% 30%, #fff3c4, #e2b65a 45%, #a4752a 100%);
     box-shadow: 0 0 0 6px rgba(255,255,255,.12), 0 14px 40px rgba(0,0,0,.5); font: 400 2.6rem var(--script); animation: pulse 2.2s infinite; }
@@ -105,6 +106,9 @@
   .personal::before { left: 18px; } .personal::after { right: 18px; }
   .personal .dear { font-family: var(--script); font-size: 2.6rem; color: var(--maroon); }
   .personal p { font-size: 1.12rem; }
+  .sender { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--gold-soft); }
+  .sender .who { font-size: 1.05rem; } .sender .who strong { color: var(--maroon); }
+  .sender .acts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
   .card-img { max-width: 420px; margin: 0 auto; border-radius: 14px; box-shadow: 0 24px 60px rgba(77,15,27,.3); }
 
   .timeline-x { position: relative; max-width: 760px; margin: 0 auto; }
@@ -158,7 +162,7 @@
 </div>
 <div class="door-ui" id="door-ui">
   <div class="for">{% if inv %}{{ t.special_for }}{% else %}{{ t.invited }}{% endif %}</div>
-  {% if inv %}<div class="guest">{{ inv.name }}</div>{% endif %}
+  {% if inv %}<div class="guest">{{ inv.name }}</div>{% if inv.sent_by %}<div class="from">{{ t.sent_by }}: {{ inv.sent_by }}</div>{% endif %}{% endif %}
   {% if occ %}<button class="seal" id="open-btn" type="button" aria-label="Open invitation">{{ occ.type.icon }}</button>
   {% else %}<button class="seal" id="open-btn" type="button" aria-label="Open invitation">{{ o.bride_name[:1] }}<small>&amp;</small>{{ o.groom_name[:1] }}</button>{% endif %}
   <div class="tap">{{ t.tap }}</div>
@@ -237,6 +241,15 @@
       {% if occ and ev and ev.hosts and not photos.family and ev.hosts not in occ.para %}<p class="muted">{{ t.invited_by }}: <strong>{{ ev.hosts }}</strong></p>{% endif %}
       {% if o.is_wedding and (o.bride_family or o.groom_family) %}
       <p class="small muted">{% if o.bride_family %}{{ bride }}, {{ t.daughter_of }} {{ o.bride_family }}{% endif %}{% if o.bride_family and o.groom_family %} · {% endif %}{% if o.groom_family %}{{ groom }}, {{ t.son_of }} {{ o.groom_family }}{% endif %}</p>
+      {% endif %}
+      {% if inv and inv.sent_by %}
+      <div class="sender">
+        <div class="who">{{ t.sent_by }}: <strong>{{ inv.sent_by }}</strong>{% if inv.sender_phone %} · <a href="tel:+{{ inv.sender_phone }}" style="white-space:nowrap">{{ sender_phone }}</a>{% endif %}</div>
+        {% if inv.sender_phone %}<div class="acts">
+          <a class="btn btn-sm btn-wa" href="https://wa.me/{{ inv.sender_phone }}?text={{ ('🙏 ' ~ inv.name ~ ': ')|urlencode }}" target="_blank" rel="noopener">WhatsApp {{ inv.sent_by.split()[0] }}</a>
+          <a class="btn btn-sm btn-ghost" href="tel:+{{ inv.sender_phone }}">📞 {{ t.phone }}</a>
+        </div>{% endif %}
+      </div>
       {% endif %}
     </div>
   </div>

@@ -106,6 +106,12 @@
   .gift-row { background: rgba(255,255,255,.92); color: #3b2320; border-radius: 18px; padding: 14px 30px; font-size: 32px; }
   .gift-row span { font-size: 24px; color: #8a6a3a; margin-right: 14px; }
   .gift-to { margin-top: 24px; font-size: 28px; opacity: .9; }
+  /* personal copy for one guest */
+  .for-guest { margin-top: 30px; background: rgba(255,255,255,.9); color: #3b2320; border-radius: 22px; padding: 14px 40px; }
+  .for-guest small { display: block; font: 500 24px var(--serif); color: #8a6a3a; letter-spacing: 1px; }
+  .for-guest b { font: 700 40px var(--heading); color: var(--maroon); }
+  .dear { font: 400 54px "GreatVibes", var(--serif); color: var(--acc); margin-bottom: 12px; }
+  .sent-by { margin-top: 18px; font-size: 26px; opacity: .9; }
   {% if pages_range %}{% set sel = ':nth-of-type(n+' ~ pages_range[0] ~ '):nth-of-type(-n+' ~ pages_range[1] ~ ')' %}
   .page { display: none; } .page{{ sel }} { display: block; } .page.themed{{ sel }}, .page.sched{{ sel }} { display: flex; }{% endif %}
 </style>
@@ -150,6 +156,7 @@
   <div class="date">{{ pretty_date(o.wedding_date) }}</div>
   <div class="place">{{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}</div>
   {% if ev and ev.hashtag %}<div class="hashtag">{{ ev.hashtag }}</div>{% endif %}
+  {% if guest %}<div class="for-guest"><small>{{ t.special_for }}</small><b>{{ guest.name }}</b></div>{% endif %}
   {% if o.style not in ['christian', 'modern_minimal'] %}<div class="diyas">{% for _ in range(7) %}<div class="diya"></div>{% endfor %}</div>{% endif %}
   {% if credit %}<div class="credit">{{ credit }}</div>{% endif %}
 </section>
@@ -182,6 +189,7 @@
 <section class="page themed">
   <div class="frame"></div>
   <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  {% if guest %}<div class="dear">{{ t.dear.format(name=guest.name) }},</div>{% endif %}
   {% if ev and ev.blessing_line %}<div class="blessing">{{ ev.blessing_line }}</div>{% endif %}
   {% if photos.family %}
   <div class="family"><img src="{{ photos.family }}" alt=""><div class="family-cap">{{ t.invited_by }}: <b>{{ hosts }}</b></div></div>
@@ -195,6 +203,7 @@
   <div class="qr"><img src="{{ qr }}" alt="QR code"><p>{{ t.scan_rsvp }}</p></div>
   <div class="url">{{ rsvp_url }}</div>
   {% endif %}
+  {% if guest and guest.sender %}<div class="sent-by">{{ t.sent_by }}: <b>{{ guest.sender }}</b>{% if guest.phone %} · {{ guest.phone }}{% endif %}</div>{% endif %}
   {% if credit %}<div class="credit">{{ credit }}</div>{% else %}<div class="brand">{{ settings.brand_name }}</div>{% endif %}
 </section>
 

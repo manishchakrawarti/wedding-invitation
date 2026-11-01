@@ -1182,3 +1182,92 @@ def test_venue_heading_fits_every_occasion_and_language(client):
     english = create_instant(client)
     page = client.get(f"/e/{english.rsvp_slug}").text
     assert "find your way" in page and "The Venue" in page and "Create one for your family's wedding" in page
+
+
+def test_send_personal_invite_by_whatsapp_sms_and_pdf(client):
+    from app.services import export, invites
+
+    order = create_instant(client, hosts="The Sharma family")
+    # Before the invite page is live there is nothing to send from.
+    assert "Send a personal invitation" not in client.get(f"/o/{order.token}/preview").text
+    client.post(f"/o/{order.token}/guests", data={"name": "Too early"})
+    assert _invitees(order.id) == []
+
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    order = pay(client, get(order.token))
+    status = client.get(f"/o/{order.token}").text
+    assert "Send a personal invitation" in status and f'value="{order.customer_name}"' in status  # sender prefilled
+
+    # Bad numbers are refused, for the guest and for the sender.
+    for bad in ({"name": "X", "phone": "12345"}, {"name": "X", "sender_phone": "000"}, {"name": " "}):
+        resp = client.post(f"/o/{order.token}/guests", data=bad, follow_redirects=False)
+        assert "send_error=" in resp.headers["location"]
+    assert _invitees(order.id) == []
+
+    resp = client.post(f"/o/{order.token}/guests", data={
+        "name": "Mehta Family", "phone": "98765 43210", "sender_name": "Rajesh Sharma", "sender_phone": "+91 91234-56780",
+    }, follow_redirects=False)
+    [mehta] = _invitees(order.id)
+    assert resp.headers["location"].endswith(f"?sent={mehta.id}#send")
+    assert mehta.phone == "919876543210" and mehta.sent_by == "Rajesh Sharma" and mehta.sender_phone == "919123456780"
+
+    page = client.get(resp.headers["location"]).text.replace("&amp;", "&")
+    assert "Ready. Tap" in page and "wa.me/919876543210?text=" in page and "sms:+919876543210?&body=" in page
+    assert f"/o/{order.token}/guests/{mehta.id}/invite.pdf" in page
+    with SessionLocal() as db:
+        o = db.get(Order, order.id)
+        text, sms = invites.whatsapp_text(o, o.invitees[0]), invites.sms_text(o, o.invitees[0])
+    assert "Dear Mehta Family" in text and f"/i/{mehta.code}" in text and "— Rajesh Sharma, +91 91234 56780" in text
+    assert "Dear Mehta Family" in sms and f"/i/{mehta.code}" in sms and "Rajesh Sharma" in sms and len(sms) < 300
+
+    # The guest's page greets them and says who it's from, with a way to reply.
+    guest = client.get(f"/i/{mehta.code}").text
+    assert "Dear Mehta Family" in guest and "Invitation sent by: <strong>Rajesh Sharma</strong>" in guest
+    assert 'href="tel:+919123456780"' in guest and "wa.me/919123456780" in guest
+    assert "Invitation sent by" not in client.get(f"/e/{order.rsvp_slug}").text  # the general link stays general
+
+    # The next invite is from the same person; an empty mobile hides it; a guest abroad keeps their country code.
+    assert 'value="Rajesh Sharma"' in client.get(f"/o/{order.token}").text
+    client.post(f"/o/{order.token}/guests", data={"name": "Uncle in London", "phone": "+44 7700 900123",
+                                                  "sender_name": "Rajesh Sharma", "sender_phone": ""})
+    uncle = _invitees(order.id)[1]
+    assert uncle.phone == "447700900123" and uncle.sender_phone == ""
+    assert "tel:" not in client.get(f"/i/{uncle.code}").text.split("Invitation sent by", 1)[1].split("</section>")[0]
+
+    # Tapping send marks it sent; another order can't touch these guests.
+    assert client.post(f"/o/{order.token}/guests/{mehta.id}/sent").json() == {"ok": True}
+    assert _invitees(order.id)[0].sent_at is not None
+    other = create_instant(client, bride_name="Asha")
+    assert client.post(f"/o/{other.token}/guests/{mehta.id}/sent").status_code == 404
+    assert client.get(f"/o/{other.token}/guests/{mehta.id}/invite.pdf").status_code == 404
+
+    # The personal e-invite: their name on the cover, "Dear …", who sent it and a QR to their own link.
+    with SessionLocal() as db:
+        o = db.get(Order, order.id)
+        html, _ = export.build_html(o, "1080", invitee=o.invitees[0])
+        plain, _ = export.build_html(o, "1080")
+    assert "Mehta Family" in html and "Dear Mehta Family" in html and "Invitation sent by" in html
+    assert f"/i/{mehta.code}" in html and "Mehta Family" not in plain
+    if export.chrome_binary():
+        pdf = client.get(f"/o/{order.token}/guests/{mehta.id}/invite.pdf")
+        assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+
+    client.post(f"/o/{order.token}/guests/{uncle.id}/delete")
+    assert [i.name for i in _invitees(order.id)] == ["Mehta Family"]
+    assert client.get(f"/i/{uncle.code}").status_code == 404
+
+
+def test_console_guests_carry_the_sender(client, admin_auth):
+    order = place_order(client, package="premium")
+    order = pay(client, order)
+    client.post(f"/admin/orders/{order.id}/send-proof", auth=admin_auth)
+    client.post(f"/o/{order.token}/proof/approve")
+    slug, key = order.rsvp_slug, order.token
+    console = client.get(f"/e/{slug}/guests?key={key}").text
+    assert 'name="sender_name"' in console
+    resp = client.post(f"/e/{slug}/guests/add", data={"key": key, "guests": "Sharma Family, 98765 43210",
+                                                      "sender_name": "Sunita Kapoor", "sender_phone": "9123456780"})
+    assert "Added 1 guest(s)" in resp.text and "sms:+919876543210?&amp;body=" in resp.text and "Share PDF" in resp.text
+    [sharma] = _invitees(order.id)
+    assert sharma.sent_by == "Sunita Kapoor" and sharma.sender_phone == "919123456780"
+    assert "Invitation sent by: <strong>Sunita Kapoor</strong>" in client.get(f"/i/{sharma.code}").text

@@ -297,6 +297,8 @@ class Invitee(Base):
     phone: Mapped[str] = mapped_column(String(20), default="")
     side: Mapped[str] = mapped_column(String(10), default="")  # bride | groom
     functions: Mapped[list] = mapped_column(JSON, default=list)  # invited to; empty = all
+    sent_by: Mapped[str] = mapped_column(String(120), default="")  # who the guest sees the invite is from
+    sender_phone: Mapped[str] = mapped_column(String(20), default="")  # their mobile, digits with country code
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     opened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
