@@ -48,9 +48,11 @@ app.include_router(public.router)
 app.include_router(rsvp.router)
 app.include_router(webhooks.router)
 app.include_router(admin.router)
-app.include_router(seo.router)  # last: its landing pages match /<anything>
 
 
 @app.get("/healthz", include_in_schema=False)
 def healthz() -> dict:
     return {"ok": True}
+
+
+app.include_router(seo.router)  # keep last: its landing pages match /<anything>
