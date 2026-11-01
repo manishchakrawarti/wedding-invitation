@@ -27,7 +27,7 @@
   <h2>6. Payments</h2>
   <p>Prices are in Indian Rupees. Work starts after payment (full, or the advance). Final files are released after full payment. Payments are processed by Razorpay.</p>
   <h2>7. Contact</h2>
-  <p>WhatsApp +{{ settings.whatsapp_number }} · {{ settings.support_email }}</p>
+  <p>WhatsApp {{ settings.whatsapp_pretty }} · {{ settings.support_email }}</p>
 
 {% elif page == 'privacy' %}
   <h1>Privacy policy</h1>
@@ -57,7 +57,7 @@
     <li>Order and payment records: kept as required by Indian tax law.</li>
   </ul>
   <h2>Your rights</h2>
-  <p>You can ask us to access, correct or delete your personal data, or withdraw consent, by messaging +{{ settings.whatsapp_number }} or emailing {{ settings.support_email }}. We respond within 7 working days.</p>
+  <p>You can ask us to access, correct or delete your personal data, or withdraw consent, by messaging {{ settings.whatsapp_pretty }} or emailing {{ settings.support_email }}. We respond within 7 working days.</p>
   <h2>Security</h2>
   <p>Your order page is protected by a private link. Keep it to yourself. Photos are stored privately and never published.</p>
 
@@ -79,7 +79,7 @@
   </ul>
   <p>Approved refunds are returned to the original payment method within 5–7 working days.</p>
   <h2>How to request</h2>
-  <p>WhatsApp +{{ settings.whatsapp_number }} or email {{ settings.support_email }} with your order ID.</p>
+  <p>WhatsApp {{ settings.whatsapp_pretty }} or email {{ settings.support_email }} with your order ID.</p>
 {% endif %}
   {# Starter policy text — have it reviewed by a legal professional before launch. #}
 </div>

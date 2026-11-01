@@ -55,8 +55,8 @@
     </div>
     <div>
       <strong>Contact</strong><br>
-      WhatsApp: <a href="{{ wa_link('Namaste! I want a wedding invitation') }}">+{{ settings.whatsapp_number }}</a><br>
-      Instagram: <a href="https://instagram.com/{{ settings.instagram_handle }}">@{{ settings.instagram_handle }}</a><br>
+      WhatsApp: <a href="{{ wa_link('Namaste! I want an invitation') }}">{{ settings.whatsapp_pretty }}</a><br>
+      {% for name, url in settings.social_links %}{{ name }}: <a href="{{ url }}" target="_blank" rel="noopener me">{{ '@' ~ settings.instagram_handle if name == 'Instagram' else url.split('//')[-1] }}</a><br>{% endfor %}
       Email: <a href="mailto:{{ settings.support_email }}">{{ settings.support_email }}</a>
     </div>
     <div>

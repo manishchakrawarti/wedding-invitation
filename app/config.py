@@ -16,7 +16,12 @@ class Settings(BaseSettings):
     brand_tagline: str = "Beautiful invitations for weddings and every occasion, ready to share on WhatsApp"
     order_prefix: str = "IA"
     instagram_handle: str = "inviteall"
-    whatsapp_number: str = "919999999999"  # country code + number, digits only
+    # Other social pages: full links, shown in the footer and to search engines once set (empty = hidden)
+    facebook_url: str = ""
+    youtube_url: str = ""
+    x_url: str = ""
+    pinterest_url: str = ""
+    whatsapp_number: str = "918787035854"  # country code + number, digits only
     support_email: str = "hello@example.com"
     business_city: str = "India"
     owner_whatsapp: str = ""  # receives failure / review alerts
@@ -82,6 +87,19 @@ class Settings(BaseSettings):
 
     # Tests run the pipeline synchronously instead of on a worker thread.
     run_pipeline_inline: bool = False
+
+    @property
+    def social_links(self) -> list[tuple[str, str]]:
+        """(name, url) of every social page that's set, Instagram first."""
+        links = [("Instagram", f"https://instagram.com/{self.instagram_handle}")] if self.instagram_handle else []
+        return links + [(n, u) for n, u in (("Facebook", self.facebook_url), ("YouTube", self.youtube_url),
+                                             ("X", self.x_url), ("Pinterest", self.pinterest_url)) if u]
+
+    @property
+    def whatsapp_pretty(self) -> str:
+        """'+91 87870 35854' for showing the number on the site."""
+        n = self.whatsapp_number
+        return f"+91 {n[2:7]} {n[7:]}" if len(n) == 12 and n.startswith("91") else f"+{n}"
 
     @property
     def payments_live(self) -> bool:

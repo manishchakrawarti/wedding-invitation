@@ -6,7 +6,9 @@
   "@context": "https://schema.org",
   "@graph": [
     {"@type": "Organization", "@id": settings.base_url ~ "/#org", "name": settings.brand_name, "url": settings.base_url ~ "/",
-     "logo": settings.base_url ~ "/static/icons/icon-512.png", "sameAs": ["https://instagram.com/" ~ settings.instagram_handle]},
+     "logo": settings.base_url ~ "/static/icons/icon-512.png", "sameAs": settings.social_links | map("last") | list,
+     "contactPoint": {"@type": "ContactPoint", "contactType": "customer support", "telephone": settings.whatsapp_pretty.replace(" ", ""),
+                      "availableLanguage": ["English", "Hindi"]}},
     {"@type": "WebSite", "@id": settings.base_url ~ "/#site", "name": settings.brand_name,
      "alternateName": [settings.base_url.split("//")[-1], "InviteAll"], "url": settings.base_url ~ "/", "publisher": {"@id": settings.base_url ~ "/#org"},
      "inLanguage": "en-IN"},
