@@ -1,5 +1,7 @@
-"""Customer and owner notifications over WhatsApp Cloud API and email (B5).
+"""Customer and owner notifications over Telegram, email and (optionally) the WhatsApp Cloud API (B5).
 
+Telegram (services/telegram.py) and Gmail SMTP are free; Meta charges for WhatsApp Cloud API
+messages the business starts, so that channel stays off unless its keys are set.
 Without credentials, messages are only written to the Notification log (visible in
 the admin panel), so you can test every flow locally.
 
@@ -12,10 +14,12 @@ import smtplib
 from email.message import EmailMessage
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Notification, Order
+from app.models import Notification, Order, TelegramChat
+from app.services import telegram
 from app.utils import inr, normalize_phone
 
 log = logging.getLogger(__name__)
@@ -53,7 +57,7 @@ def _send_email(to: str, subject: str, body: str, attachments: list[tuple[str, b
 def send(db: Session, channel: str, recipient: str, body: str, subject: str = "", order: Order | None = None,
          attachments: list[tuple[str, bytes, str]] | None = None) -> Notification:
     note = Notification(order_id=order.id if order else None, channel=channel, recipient=recipient, subject=subject, body=body)
-    enabled = settings.whatsapp_enabled if channel == "whatsapp" else settings.email_enabled
+    enabled = {"whatsapp": settings.whatsapp_enabled, "telegram": settings.telegram_enabled}.get(channel, settings.email_enabled)
     try:
         if not recipient:
             note.status = "skipped"
@@ -61,6 +65,9 @@ def send(db: Session, channel: str, recipient: str, body: str, subject: str = ""
             note.status = "logged"
         elif channel == "whatsapp":
             _send_whatsapp(normalize_phone(recipient), body)
+            note.status = "sent"
+        elif channel == "telegram":
+            telegram.send(recipient, body, attachments)
             note.status = "sent"
         else:
             _send_email(recipient, subject or settings.brand_name, body, attachments)
@@ -113,11 +120,25 @@ def _messages(order: Order, kind: str) -> tuple[str, str]:
     raise ValueError(kind)
 
 
+def telegram_chats(db: Session, role: str, order: Order | None = None) -> list[str]:
+    stmt = select(TelegramChat.chat_id).where(TelegramChat.role == role)
+    if order is not None:
+        stmt = stmt.where(TelegramChat.order_id == order.id)
+    return list(dict.fromkeys(db.scalars(stmt)))
+
+
 def notify_customer(db: Session, order: Order, kind: str) -> None:
     subject, body = _messages(order, kind)
     send(db, "whatsapp", order.phone, body, order=order)
     if order.email:
         send(db, "email", order.email, body, subject=f"{settings.brand_name}: {subject}", order=order)
+    for chat in telegram_chats(db, "order", order):
+        if kind == "delivered":  # the message comes with their e-invite PDF
+            from app.services import pipeline
+
+            pipeline.run_background(telegram_order_files, order.id, chat)
+        else:
+            send(db, "telegram", chat, body, order=order)
 
 
 def alert_owner(db: Session, message: str, order: Order | None = None) -> None:
@@ -126,3 +147,64 @@ def alert_owner(db: Session, message: str, order: Order | None = None) -> None:
         text += f"\n{settings.base_url}/admin/orders/{order.id}"
     send(db, "whatsapp", settings.owner_whatsapp, text, order=order)
     send(db, "email", settings.owner_email, text, subject=f"{settings.brand_name} alert", order=order)
+    owners = telegram_chats(db, "owner") + [c.strip() for c in settings.telegram_owner_chat_id.split(",") if c.strip()]
+    for chat in dict.fromkeys(owners):
+        send(db, "telegram", chat, text, order=order)
+
+
+# --- Telegram: files sent when someone opens the bot, on a worker thread (a PDF takes seconds) --------
+
+def telegram_order_files(order_id: int, chat_id: str) -> None:
+    """The customer's e-invite PDF (Full HD if bought, else the free size while previewing) with their links."""
+    from app.db import SessionLocal
+    from app.models import OrderStatus
+    from app.services import export, hires, orders
+
+    with SessionLocal() as db:
+        order = db.get(Order, order_id)
+        if order is None:
+            return
+        delivered = order.status == OrderStatus.DELIVERED.value
+        if not (delivered or orders.preview_unlockable(order)):
+            send(db, "telegram", chat_id, f"🙏 Namaste! You'll get updates for {order.display_names}'s invitation here, "
+                                          f"and the PDF as soon as it's ready.\n{order_url(order)}", order=order)
+            return
+        page = f"\nInvite page for guests: {settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug and delivered else ""
+        text = (f"💌 Your invitation for {order.display_names}" + (" is ready!" if delivered else " (free preview size)")
+                + f"\nDownload, send personal invites and more: {order_url(order)}{page}")
+        if not delivered:
+            text += f"\nUnlock Full HD and your guest invite page: {order_url(order, '/preview#unlock')}"
+        _send_pdf(db, order, chat_id, text, lambda: export.render(order, "pdf", "1080" if delivered and hires.allowed(order, "1080") else "free"),
+                  f"{order.display_names} invitation.pdf")
+
+
+def telegram_invitee_files(code: str, chat_id: str) -> None:
+    """A guest's personal invitation PDF, with their own link."""
+    from app.db import SessionLocal
+    from app.models import Invitee
+    from app.services import export, hires, invites
+
+    with SessionLocal() as db:
+        invitee = db.scalar(select(Invitee).where(Invitee.code == code))
+        if invitee is None:
+            return
+        order = invitee.order
+        sender = invites.sender_line(invitee)
+        text = f"💌 {invitee.name}, your invitation: {order.display_names}\n{invites.invite_url(invitee)}" + (f"\n{sender}" if sender else "")
+        if not invites.can_send(order):
+            send(db, "telegram", chat_id, text, order=order)
+            return
+        tier = "1080" if hires.allowed(order, "1080") else "free"
+        _send_pdf(db, order, chat_id, text, lambda: export.render(order, "pdf", tier, invitee=invitee),
+                  f"{order.display_names} invitation for {invitee.name}.pdf")
+
+
+def _send_pdf(db: Session, order: Order, chat_id: str, text: str, make_pdf, filename: str) -> None:
+    from app.services import export
+
+    try:
+        pdf = make_pdf()
+    except export.ExportUnavailable:
+        send(db, "telegram", chat_id, text, order=order)  # the links still work without the file
+        return
+    send(db, "telegram", chat_id, text, order=order, attachments=[(filename.replace("/", "-"), pdf, "application/pdf")])

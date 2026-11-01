@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     auto_send_proof_if_qc_pass: bool = False  # Phase 3: skip manual review when QC is green
 
     # --- Notifications (B5, E2) ---
+    # Telegram bot (free): owner alerts, customer updates + PDF, guests' personal PDF. Token from @BotFather.
+    telegram_bot_token: str = ""
+    telegram_bot_username: str = ""  # optional: the bot's @name, otherwise asked from Telegram
+    telegram_owner_chat_id: str = ""  # optional: alerts also go here (or tap "Connect Telegram" in admin)
+    # WhatsApp Cloud API: Meta charges for business-started messages. Leave empty to stay free.
     whatsapp_token: str = ""
     whatsapp_phone_number_id: str = ""
     whatsapp_api_version: str = "v21.0"
@@ -92,6 +97,10 @@ class Settings(BaseSettings):
     @property
     def whatsapp_enabled(self) -> bool:
         return bool(self.whatsapp_token and self.whatsapp_phone_number_id)
+
+    @property
+    def telegram_enabled(self) -> bool:
+        return bool(self.telegram_bot_token)
 
     @property
     def email_enabled(self) -> bool:

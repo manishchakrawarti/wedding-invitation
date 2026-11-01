@@ -1,7 +1,8 @@
-"""Inbound webhooks: Razorpay payment confirmations and WhatsApp auto-replies (E2)."""
+"""Inbound webhooks: Razorpay payment confirmations, WhatsApp auto-replies (E2) and the Telegram bot."""
 import json
 import logging
 import re
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse
@@ -11,8 +12,8 @@ from sqlalchemy.orm import Session
 from app.catalog import PACKAGES
 from app.config import settings
 from app.db import get_db
-from app.models import Order
-from app.services import notify, payments
+from app.models import Invitee, Order, TelegramChat
+from app.services import notify, payments, pipeline, telegram
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks")
@@ -69,4 +70,42 @@ async def whatsapp_inbound(request: Request, db: Session = Depends(get_db)):
                 text = msg.get("text", {}).get("body", "") if msg.get("type") == "text" else ""
                 if sender:
                     notify.send(db, "whatsapp", sender, auto_reply(db, text))
+    return {"ok": True}
+
+
+@router.post("/telegram")
+async def telegram_inbound(request: Request, db: Session = Depends(get_db)):
+    """Messages to the Telegram bot. Opening one of our t.me links sends "/start <payload>" (see services/telegram.py)."""
+    if not settings.telegram_enabled or not secrets.compare_digest(
+            request.headers.get("X-Telegram-Bot-Api-Secret-Token", ""), telegram.webhook_secret()):
+        raise HTTPException(403)
+    msg = (await request.json()).get("message") or {}
+    chat = str((msg.get("chat") or {}).get("id", ""))
+    text = (msg.get("text") or "").strip()
+    if not chat or not text:
+        return {"ok": True}
+    name = str((msg.get("from") or {}).get("first_name", ""))[:120]
+    payload = text.split(maxsplit=1)[1] if text.startswith("/start ") else ""
+
+    def remember(role: str, order_id: int | None = None, code: str = "") -> None:
+        found = db.scalar(select(TelegramChat).where(TelegramChat.chat_id == chat, TelegramChat.role == role,
+                                                     TelegramChat.order_id == order_id, TelegramChat.invitee_code == code))
+        if found is None:
+            db.add(TelegramChat(chat_id=chat, role=role, order_id=order_id, invitee_code=code, name=name))
+            db.commit()
+
+    if payload and secrets.compare_digest(payload, telegram.owner_payload()):
+        remember("owner")
+        notify.send(db, "telegram", chat, f"✅ {settings.brand_name} alerts are connected. New payments to confirm, "
+                                          f"failed orders and change requests will arrive here.")
+    elif payload.startswith("o_") and (order := db.scalar(select(Order).where(Order.token == payload[2:]))):
+        remember("order", order.id)
+        if telegram.pdf_allowed(chat, payload):
+            pipeline.run_background(notify.telegram_order_files, order.id, chat)
+    elif payload.startswith("i_") and (invitee := db.scalar(select(Invitee).where(Invitee.code == payload[2:]))):
+        remember("guest", invitee.order_id, invitee.code)
+        if telegram.pdf_allowed(chat, payload):
+            pipeline.run_background(notify.telegram_invitee_files, invitee.code, chat)
+    else:
+        notify.send(db, "telegram", chat, auto_reply(db, text).replace("*", ""))
     return {"ok": True}

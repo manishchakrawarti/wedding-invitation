@@ -133,6 +133,8 @@
       <button class="btn btn-primary" type="submit">Send my invitation</button>
     </form>
     <p class="hint">We'll email your complete e-invite (PDF), the HD cards and your invite page link.</p>
+    {% set tg = telegram.order_link(o) %}{% if tg %}<p style="margin-bottom:0"><a class="btn btn-tg" href="{{ tg }}" target="_blank" rel="noopener">✈️ Get it on Telegram</a>
+      <span class="hint">Your PDF and links arrive in the Telegram app, free.</span></p>{% endif %}
   </div>
   {% endif %}
 

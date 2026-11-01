@@ -7,6 +7,14 @@
   {% for o in to_confirm %}<a href="/admin/orders/{{ o.id }}">{{ o.public_id }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
 </div>
 {% endif %}
+{% if not telegram.enabled() %}
+<div class="alert alert-info small">✈️ <strong>Free alerts on Telegram:</strong> create a bot with @BotFather and put its token in <code>TELEGRAM_BOT_TOKEN</code> in the server's .env (see DEPLOY.md).</div>
+{% elif not tg_owners %}
+<div class="alert alert-info">✈️ <strong>Get alerts on Telegram, free:</strong> new payments to confirm, failed orders, change requests.
+  {% set tg = telegram.owner_link() %}{% if tg %}<a class="btn btn-sm btn-tg" href="{{ tg }}" target="_blank" rel="noopener">Connect Telegram alerts</a>{% else %}(the bot isn't answering yet: check the token){% endif %}</div>
+{% else %}
+<p class="small muted">✈️ Telegram alerts go to: {{ tg_owners|map(attribute='name')|map('default', 'you', true)|join(', ') }} · <a href="{{ telegram.owner_link() }}" target="_blank" rel="noopener">add another phone</a></p>
+{% endif %}
 <div class="stats">
   <div class="stat"><div class="muted small">Paid orders</div><div class="v">{{ stats.orders }}</div><div class="small muted">{{ stats.this_month }} this month</div></div>
   <div class="stat"><div class="muted small">Revenue collected</div><div class="v">{{ inr(stats.revenue) }}</div></div>

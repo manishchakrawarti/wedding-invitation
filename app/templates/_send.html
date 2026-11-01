@@ -1,6 +1,6 @@
-{# Send one guest their personal invite: WhatsApp, the phone's own SMS app, the share sheet (with their
+{# Send one guest their personal invite: WhatsApp, the phone's own SMS app, Telegram, the share sheet (with their
    personal PDF where the phone can share files) or copy. Free for the family: each message goes from
-   their own WhatsApp / SIM.
+   their own WhatsApp / SIM / Telegram.
 
    {% import "_send.html" as send %}
    {{ send.buttons(r, o, pdf=True) }}   r from invites.send_row()
@@ -11,6 +11,7 @@
      data-file="{{ (r.i.name ~ ' invitation')|replace('/', '-') }}.pdf">
   <a class="btn btn-sm btn-wa js-sent" href="{{ r.wa }}" target="_blank" rel="noopener">WhatsApp</a>
   <a class="btn btn-sm btn-ghost js-sent" href="{{ r.sms }}">💬 SMS</a>
+  <a class="btn btn-sm btn-ghost js-sent" href="https://t.me/share/url?url={{ r.url|urlencode }}&amp;text={{ r.text.replace(r.url, '').strip()|urlencode }}" target="_blank" rel="noopener">✈️ Telegram</a>
   <button class="btn btn-sm btn-ghost js-share" type="button">📤 {{ 'Share PDF' if pdf else 'Share' }}</button>
   <button class="btn btn-sm btn-ghost js-copy" type="button">Copy</button>
   <a class="btn btn-sm btn-ghost" href="/i/{{ r.i.code }}?preview=1" target="_blank">Preview</a>

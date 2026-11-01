@@ -251,6 +251,8 @@
         </div>{% endif %}
       </div>
       {% endif %}
+      {% if inv and o.status == 'delivered' %}{% set tg = telegram.invitee_link(inv) %}{% if tg %}
+      <p class="small" style="margin:16px 0 0"><a href="{{ tg }}" target="_blank" rel="noopener">✈️ Get this invitation as a PDF on Telegram</a></p>{% endif %}{% endif %}
     </div>
   </div>
 </section>

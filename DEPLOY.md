@@ -82,6 +82,11 @@ cd ~/invite-all && git pull && sudo docker compose up -d --build
 ## After launch (all free)
 - [ ] Log in at `/admin` and create a test invitation at `/create`.
 - [ ] **Free email**: Gmail app password → `SMTP_HOST=smtp.gmail.com`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`.
+- [ ] **Free Telegram bot** (alerts, customers' PDFs, guests' personal PDFs): in Telegram open **@BotFather**,
+      send `/newbot`, pick a name and a username ending in `bot` (e.g. `InviteAllBot`). Put the token it gives you in
+      `TELEGRAM_BOT_TOKEN` and the username in `TELEGRAM_BOT_USERNAME`, restart the app
+      (`sudo docker compose up -d`), then tap **Connect Telegram alerts** at the top of `/admin`.
+      The WhatsApp Cloud API is paid per message, so leave `WHATSAPP_TOKEN` empty.
 - [ ] **Razorpay**: give `https://invite-all.com` during KYC. If using API keys, add webhook
       `https://invite-all.com/webhooks/razorpay` (events `payment.captured`, `order.paid`).
 - [ ] **UptimeRobot** (free): monitor `https://invite-all.com/healthz` and get an email if the site goes down.

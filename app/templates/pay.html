@@ -41,6 +41,7 @@
           as soon as we confirm it, usually within a few minutes.{% else %}Your design starts as soon as we confirm it. We'll WhatsApp you.{% endif %}
         </div>
         <p class="small muted" id="pay-wait">⏳ Checking… this page opens your downloads by itself once it's confirmed.</p>
+        {% set tg = telegram.order_link(o) %}{% if tg %}<p><a class="btn btn-sm btn-tg" href="{{ tg }}" target="_blank" rel="noopener">✈️ Get your PDF on Telegram once it's confirmed</a></p>{% endif %}
         <p class="small"><a href="{{ wa_link('Hi, I paid ' ~ inr(p.amount) ~ ' for ' ~ o.public_id ~ ', payment ID ' ~ p.provider_payment_id) }}">Taking long? Message us on WhatsApp</a></p>
       {% else %}
         <ol class="pay-steps">

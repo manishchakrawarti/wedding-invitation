@@ -247,6 +247,20 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class TelegramChat(Base):
+    """Someone who opened the Telegram bot from one of our links (see services/telegram.py)."""
+
+    __tablename__ = "telegram_chats"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chat_id: Mapped[str] = mapped_column(String(32), index=True)
+    role: Mapped[str] = mapped_column(String(10))  # owner | order | guest
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=True, index=True)
+    invitee_code: Mapped[str] = mapped_column(String(24), default="")
+    name: Mapped[str] = mapped_column(String(120), default="")  # their Telegram first name, for the admin page
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class Guest(Base):
     """An RSVP response on the event page (B6)."""
 

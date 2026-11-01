@@ -1271,3 +1271,73 @@ def test_console_guests_carry_the_sender(client, admin_auth):
     [sharma] = _invitees(order.id)
     assert sharma.sent_by == "Sunita Kapoor" and sharma.sender_phone == "919123456780"
     assert "Invitation sent by: <strong>Sunita Kapoor</strong>" in client.get(f"/i/{sharma.code}").text
+
+
+def test_telegram_bot_alerts_and_pdfs(client, admin_auth, monkeypatch):
+    """Owner alerts, customer PDF and a guest's personal PDF over the free Telegram bot (API faked)."""
+    from app.config import settings
+    from app.models import TelegramChat
+    from app.services import export, telegram
+
+    calls = []
+
+    def fake_call(method, data=None, files=None, timeout=60):
+        calls.append((method, dict(data or {}), {k: v[0] for k, v in (files or {}).items()}))
+        return {"username": "InviteAllBot"} if method == "getMe" else {}
+
+    monkeypatch.setattr(telegram, "_call", fake_call)
+    monkeypatch.setattr(settings, "telegram_bot_token", "123:test-token")
+    monkeypatch.setattr(telegram, "_recent", {})
+
+    def tg(text, chat=555, secret=None):
+        return client.post("/webhooks/telegram", json={"message": {"chat": {"id": chat}, "from": {"first_name": "Manish"}, "text": text}},
+                           headers={"X-Telegram-Bot-Api-Secret-Token": secret or telegram.webhook_secret()})
+
+    assert tg("/start hi", secret="wrong").status_code == 403
+
+    # Owner: the admin page links to the bot; opening it connects alerts.
+    page = client.get("/admin", auth=admin_auth).text.replace("&amp;", "&")
+    assert f"https://t.me/InviteAllBot?start={telegram.owner_payload()}" in page
+    assert tg("/start admin_forged").status_code == 200
+    with SessionLocal() as db:
+        assert db.scalars(select(TelegramChat)).all() == []
+    tg(f"/start {telegram.owner_payload()}", chat=777)
+    assert "alerts are connected" in calls[-1][1]["text"]
+    assert "Telegram alerts go to: Manish" in client.get("/admin", auth=admin_auth).text
+
+    # Customer: link on the pay page; a claimed payment alerts the owner on Telegram.
+    order = create_instant(client)
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    monkeypatch.setattr(settings, "razorpay_me_url", "https://razorpay.me/@test")
+    client.get(f"/o/{order.token}/pay")
+    payment = get(order.token).payments[-1]
+    client.post(f"/o/{order.token}/pay/claim/{payment.id}", data={"reference": "pay_TEST123"})
+    assert any(c[1].get("chat_id") == "777" and "pay_TEST123" in c[1].get("text", "") for c in calls)
+    pay_page = client.get(f"/o/{order.token}/pay").text.replace("&amp;", "&")
+    assert f"https://t.me/InviteAllBot?start=o_{order.token}" in pay_page
+
+    # Opening it connects the chat; once confirmed, the Full HD PDF arrives there.
+    calls.clear()
+    tg(f"/start o_{order.token}", chat=555)
+    client.post(f"/admin/payments/{payment.id}/confirm", auth=admin_auth)
+    assert get(order.token).status == OrderStatus.DELIVERED.value
+    sent = [c for c in calls if c[1].get("chat_id") == "555"]
+    assert sent, calls
+    if export.chrome_binary():
+        assert any(c[0] == "sendDocument" and c[2]["document"].endswith(".pdf") and "is ready!" in c[1]["caption"] for c in sent)
+
+    # A guest: Telegram share button for the family, and a bot link on the guest's page for their PDF.
+    client.post(f"/o/{order.token}/guests", data={"name": "Mehta Family", "sender_name": "Rajesh"})
+    [mehta] = _invitees(order.id)
+    assert "t.me/share/url?url=" in client.get(f"/o/{order.token}").text
+    assert f"https://t.me/InviteAllBot?start=i_{mehta.code}" in client.get(f"/i/{mehta.code}").text.replace("&amp;", "&")
+    calls.clear()
+    tg(f"/start i_{mehta.code}", chat=888)
+    tg(f"/start i_{mehta.code}", chat=888)  # a second tap within minutes doesn't render again
+    assert len([c for c in calls if c[1].get("chat_id") == "888"]) == 1
+    assert "Mehta Family" in (calls[0][1].get("caption") or calls[0][1].get("text"))
+
+    # Anything else gets the shop's auto-reply, e.g. an order's status.
+    calls.clear()
+    tg(f"status of {order.public_id}?", chat=999)
+    assert "Delivered" in calls[-1][1]["text"]

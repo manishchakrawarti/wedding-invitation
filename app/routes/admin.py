@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.catalog import FUNCTIONS, LANGUAGES, PACKAGES, STYLES
 from app.config import settings
 from app.db import get_db
-from app.models import Asset, Notification, Order, OrderStatus, Payment
+from app.models import Asset, Notification, Order, OrderStatus, Payment, TelegramChat
 from app.services import notify, orders, payments, pipeline
 from app.services.maintenance import cleanup_expired
 from app.services.storage import storage
@@ -79,7 +79,9 @@ def dashboard(request: Request, status: str = "", q: str = "", msg: str = "", db
         "packages": Counter(o.package for o in paid),
         "occasions": Counter(o.occasion_name for o in paid),
     }
-    return templates.TemplateResponse(request, "admin/dashboard.html", {"rows": rows, "stats": stats, "status": status, "q": q, "msg": msg, "to_confirm": to_confirm})
+    tg_owners = db.scalars(select(TelegramChat).where(TelegramChat.role == "owner")).all()
+    return templates.TemplateResponse(request, "admin/dashboard.html", {"rows": rows, "stats": stats, "status": status, "q": q, "msg": msg,
+                                                                        "to_confirm": to_confirm, "tg_owners": tg_owners})
 
 
 @router.get("/orders/{order_id}", response_class=HTMLResponse)
