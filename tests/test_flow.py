@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import re
+import time
 from datetime import date, timedelta
 
 from sqlalchemy import select
@@ -1420,3 +1421,37 @@ def test_seo_landing_pages_sitemap_and_meta(client):
     assert client.get("/favicon.ico").headers["content-type"] == "image/x-icon"
     assert client.get("/site.webmanifest").json()["icons"]
     assert client.get("/no-such-page").status_code == 404
+
+
+def test_instant_try_preview_prefill_and_selfie_frame(client):
+    from PIL import Image
+
+    from app.routes import public
+
+    # "See your card in 1 second": a card with the typed names, for weddings and any occasion
+    home = client.get("/").text
+    assert 'id="try-form"' in home and "See <span" in home and '"kids_birthday": ["Child' in home
+    card = client.get("/try.jpg", params={"a": "Priyanka", "b": "Manish", "date": "2026-12-21"})
+    assert card.status_code == 200 and card.headers["content-type"] == "image/jpeg"
+    assert Image.open(io.BytesIO(card.content)).size == (540, 675)
+    other = client.get("/try.jpg", params={"event": "griha_pravesh", "a": "The Gupta Family"})
+    assert other.status_code == 200 and other.content != card.content
+    # junk is cleaned, not rendered or crashed on
+    assert client.get("/try.jpg", params={"style": "<script>", "lang": "zz", "event": "nope", "date": "soon",
+                                          "a": "x" * 5000}).status_code == 200
+    public._try_hits.clear()
+    public._try_hits["testclient"] = [time.time()] * public.TRY_PER_10_MIN
+    assert client.get("/try.jpg").status_code == 429
+    public._try_hits.clear()
+
+    # "Make it mine" carries the names and date into the create form, which shows the live preview
+    page = client.get("/create", params={"bride_name": "Priyanka", "groom_name": "Manish", "wedding_date": WEDDING}).text
+    assert 'value="Priyanka"' in page and 'value="Manish"' in page and f'value="{WEDDING}"' in page and 'id="live-prev"' in page
+    assert 'value="Aarav"' in client.get("/create", params={"event": "kids_birthday", "bride_name": "Aarav"}).text
+
+    # Guests get the "I'm invited" selfie frame on the invite page, in the card's language
+    order = create_instant(client, language="en")
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    order = pay(client, get(order.token))
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert 'id="selfie"' in page and "I&#39;m invited! 💌" in page and 'capture="user"' in page

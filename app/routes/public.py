@@ -51,9 +51,12 @@ def redirect(url: str) -> RedirectResponse:
 
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
+    # name fields for the "see your card in 1 second" box: occasion -> (first label, second label or "")
+    try_labels = {"wedding": ["Bride's name", "Groom's name"]}
+    try_labels.update({k: [t.primary_label, t.secondary_label] for k, t in events.TYPES.items()})
     return templates.TemplateResponse(request, "index.html", {"packages": PACKAGES, "addons": ADDONS, "styles": STYLES,
                                                                "occasion_categories": events.CATEGORIES,
-                                                               "occasion_types": events.TYPES})
+                                                               "occasion_types": events.TYPES, "try_labels": try_labels})
 
 
 @router.get("/samples/{style_key}.jpg")
@@ -69,6 +72,25 @@ def event_sample(type_key: str, style: str = ""):
         raise HTTPException(404)
     return Response(sample_event_image(type_key, style or None), media_type="image/jpeg",
                     headers={"Cache-Control": "public, max-age=86400"})
+
+
+_try_hits: dict[str, list[float]] = defaultdict(list)
+TRY_PER_10_MIN = 300  # typing redraws the card every pause; this only stops scripts hammering it
+
+
+@router.get("/try.jpg")
+def try_card(request: Request):
+    """Instant preview of a card while someone types (homepage and create form). Nothing is saved."""
+    from app.services import preview
+
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    hits = _try_hits[ip] = [t for t in _try_hits[ip] if now - t < 600]
+    if len(hits) >= TRY_PER_10_MIN:
+        raise HTTPException(429, "Too many previews, please wait a minute")
+    hits.append(now)
+    return Response(preview.render(dict(request.query_params)), media_type="image/jpeg",
+                    headers={"Cache-Control": "public, max-age=3600"})
 
 
 @router.get("/occasions", response_class=HTMLResponse)
@@ -512,11 +534,15 @@ def _event_context(etype, values: dict, errors: list[str] | None = None) -> dict
 
 @router.get("/create", response_class=HTMLResponse)
 def create_form(request: Request, style: str = "north_indian", lang: str = "en", event: str = ""):
+    # names / date typed into the homepage "try it" come along, so nobody types them twice
+    q = request.query_params
+    prefill = {k: str(q.get(k, "")).strip()[:120] for k in ("bride_name", "groom_name", "wedding_date", "occasion_detail") if q.get(k)}
     if event in events.TYPES:
         etype = events.TYPES[event]
-        values = {"style": style if style in etype.styles else etype.styles[0], "language": lang if lang in LANGUAGES else "en"}
+        values = {"style": style if style in etype.styles else etype.styles[0], "language": lang if lang in LANGUAGES else "en", **prefill}
         return templates.TemplateResponse(request, "create.html", _event_context(etype, values))
-    values = {"style": style if style in STYLES else "north_indian", "language": lang if lang in LANGUAGES else "en", "fn_wedding": "on"}
+    values = {"style": style if style in STYLES else "north_indian", "language": lang if lang in LANGUAGES else "en", "fn_wedding": "on",
+              **prefill}
     return templates.TemplateResponse(request, "create.html", _create_context(values))
 
 

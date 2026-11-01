@@ -240,4 +240,57 @@
   applyEvent({{ current_event|tojson }}, { initial: true });
 })();
 </script>
+{# Live preview: the card redraws as you type (services/preview.py). Beside the form on wide screens,
+   behind a floating button on phones. #}
+<aside class="live-prev" id="live-prev" aria-live="polite">
+  <div class="lp-head"><strong>👁 Live preview</strong><button type="button" class="lp-close" aria-label="Close preview">✕</button></div>
+  <img id="live-prev-img" alt="Live preview of your invitation" width="540" height="675">
+  <p class="hint" style="margin:6px 0 0">Updates as you type. Your final card is designed in full HD.</p>
+</aside>
+<button type="button" class="live-prev-btn" id="live-prev-btn">👁 Live preview</button>
+<style>
+  .live-prev { position: fixed; right: 22px; top: 96px; width: 300px; background: #fff; border: 1px solid var(--line); border-radius: 16px;
+    padding: 12px; box-shadow: 0 18px 40px rgba(0,0,0,.18); z-index: 30; }
+  .live-prev img { width: 100%; height: auto; border-radius: 10px; display: block; background: #f3e7d3; min-height: 200px; transition: opacity .2s; }
+  .live-prev img.loading { opacity: .55; }
+  .live-prev .lp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .live-prev .lp-close { border: 0; background: none; font-size: 1.1rem; cursor: pointer; display: none; }
+  .live-prev-btn { display: none; position: fixed; left: 14px; bottom: 16px; z-index: 31; border: 0; border-radius: 99px; padding: 12px 18px;
+    background: var(--maroon); color: #fff; font: 700 .95rem var(--sans); box-shadow: 0 10px 24px rgba(0,0,0,.25); cursor: pointer; }
+  @media (max-width: 1240px) {
+    .live-prev { display: none; left: 50%; right: auto; top: 50%; transform: translate(-50%, -50%); width: min(340px, 88vw); z-index: 60; }
+    .live-prev.open { display: block; }
+    .live-prev .lp-close { display: block; }
+    .live-prev-btn { display: block; }
+  }
+</style>
+<script>
+(function () {
+  const form = document.getElementById('create-form'), img = document.getElementById('live-prev-img');
+  const panel = document.getElementById('live-prev'), btn = document.getElementById('live-prev-btn');
+  if (!form || !img) return;
+  const val = name => { const el = form.querySelector(`[name="${name}"]:not([type=radio])`) || form.querySelector(`[name="${name}"]:checked`); return el && !el.disabled ? el.value : ''; };
+  let timer, last = '';
+  const draw = () => {
+    const ev = val('event_type');
+    const q = new URLSearchParams({ event: ev === 'wedding' ? '' : ev, style: val('style'), lang: val('language'),
+      a: val('bride_name'), b: val('groom_name'), a_local: val('bride_name_local'), b_local: val('groom_name_local'),
+      detail: val('occasion_detail'), date: val('wedding_date'), time: val('wedding_time'), fmt: val('time_format'),
+      venue: val('venue_name'), city: val('city') });
+    const url = '/try.jpg?' + q.toString();
+    if (url === last) return;
+    last = url; img.classList.add('loading');
+    const next = new Image();
+    next.onload = () => { if (last === url) { img.src = url; img.classList.remove('loading'); } };
+    next.onerror = () => img.classList.remove('loading');
+    next.src = url;
+  };
+  const soon = () => { clearTimeout(timer); timer = setTimeout(draw, 450); };
+  form.addEventListener('input', soon);
+  form.addEventListener('change', soon);
+  btn.addEventListener('click', () => { panel.classList.add('open'); draw(); });
+  panel.querySelector('.lp-close').addEventListener('click', () => panel.classList.remove('open'));
+  draw();
+})();
+</script>
 {% endblock %}

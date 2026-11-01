@@ -1,0 +1,86 @@
+{# "I'm invited!" selfie frame on the invite page: the guest's photo inside a story-sized frame with the
+   names, date and place, ready for a WhatsApp status or Instagram story. Drawn in the browser: the photo
+   never leaves the phone. Expects o, st, t, local, lf, bride, groom, occ, ev. #}
+{% set names = (occ.primary ~ (' & ' ~ occ.secondary if occ.secondary else '')) if occ else (bride ~ ' ' ~ catalog.LANGUAGES[o.language].connector ~ ' ' ~ groom) %}
+<section class="x-section" id="selfie">
+  <div class="narrow reveal center">
+    <h2 class="x-title">{% if not local %}<span class="script">share the joy</span>{% endif %}{{ t.selfie_title }}</h2>
+    <p class="muted">{{ t.selfie_text }}</p>
+    <div class="selfie-acts">
+      <label class="btn btn-primary"><input type="file" accept="image/*" capture="user" hidden data-selfie>{{ t.selfie_btn }}</label>
+      <label class="btn btn-ghost"><input type="file" accept="image/*" hidden data-selfie>{{ t.selfie_pick }}</label>
+    </div>
+    <div class="selfie-out" id="selfie-out" hidden>
+      <img id="selfie-img" alt="{{ t.im_invited }}">
+      <div class="selfie-acts">
+        <button class="btn btn-primary" type="button" id="selfie-share">📤 {{ t.selfie_share }}</button>
+        <a class="btn btn-ghost" id="selfie-save" download="invited-{{ o.rsvp_slug }}.jpg">⬇ {{ t.selfie_save }}</a>
+      </div>
+    </div>
+  </div>
+</section>
+<style>
+  .selfie-acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .selfie-out img { display: block; width: 100%; max-width: 300px; border-radius: 16px; box-shadow: 0 18px 44px rgba(0,0,0,.35); margin: 20px auto 0; }
+</style>
+<script>
+(function () {
+  const C = {
+    top: 'rgb{{ st.bg_top }}', bottom: 'rgb{{ st.bg_bottom }}', acc: 'rgb{{ st.accent }}', text: 'rgb{{ st.text_primary }}', soft: 'rgb{{ st.text_secondary }}',
+    invited: {{ t.im_invited|tojson }}, names: {{ names|tojson }}, headline: {{ (occ.headline if occ else catalog.LANGUAGES[o.language].headline)|tojson }},
+    when: {{ (pretty_date(o.wedding_date) ~ (' · ' ~ o.city if o.city else ''))|tojson }}, tag: {{ (ev.hashtag if ev and ev.hashtag else '')|tojson }},
+    site: {{ settings.base_url.split('//')[-1]|tojson }}, url: {{ (settings.base_url ~ '/e/' ~ o.rsvp_slug)|tojson }},
+    local: {{ (lf or '')|tojson }},
+  };
+  const script = `"Great Vibes", ${C.local ? `"${C.local}", ` : ''}cursive`, serif = `"Cormorant Garamond", ${C.local ? `"${C.local}", ` : ''}Georgia, serif`;
+  let blob = null;
+
+  const fit = (ctx, text, font, size, max) => { do { ctx.font = font.replace('{s}', size); size -= 4; } while (ctx.measureText(text).width > max && size > 24); };
+
+  async function draw(file) {
+    const photo = await createImageBitmap(file).catch(() => null);
+    if (!photo) return;
+    await Promise.all([`80px ${script}`, `600 40px ${serif}`].map(f => document.fonts.load(f).catch(() => null)));
+    const W = 1080, H = 1920, cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+    cv.width = W; cv.height = H;
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, C.top); g.addColorStop(1, C.bottom);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = C.acc; ctx.lineWidth = 6; ctx.strokeRect(40, 40, W - 80, H - 80);
+    ctx.lineWidth = 2; ctx.strokeRect(58, 58, W - 116, H - 116);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+
+    ctx.fillStyle = C.acc; fit(ctx, C.invited, `700 {s}px ${serif}`, 84, 900); ctx.fillText(C.invited, W / 2, 210);
+
+    // the photo in an arch, like a palace window
+    const x = 150, y = 290, w = 780, h = 960, r = w / 2;
+    ctx.save(); ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + r); ctx.arc(x + r, y + r, r, Math.PI, 0); ctx.lineTo(x + w, y + h); ctx.closePath();
+    ctx.clip();
+    const k = Math.max(w / photo.width, h / photo.height), pw = photo.width * k, ph = photo.height * k;
+    ctx.drawImage(photo, x + (w - pw) / 2, y + (h - ph) / 2.6, pw, ph);
+    ctx.restore();
+    ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + r); ctx.arc(x + r, y + r, r, Math.PI, 0); ctx.lineTo(x + w, y + h); ctx.closePath();
+    ctx.strokeStyle = C.acc; ctx.lineWidth = 12; ctx.stroke();
+
+    ctx.fillStyle = C.acc; fit(ctx, C.headline, `600 {s}px ${serif}`, 46, 880); ctx.fillText(C.headline, W / 2, 1345);
+    ctx.fillStyle = C.text; fit(ctx, C.names, `{s}px ${script}`, 118, 920); ctx.fillText(C.names, W / 2, 1480);
+    ctx.fillStyle = C.text; fit(ctx, C.when, `600 {s}px ${serif}`, 50, 900); ctx.fillText(C.when, W / 2, 1580);
+    if (C.tag) { ctx.fillStyle = C.acc; fit(ctx, C.tag, `600 {s}px ${serif}`, 44, 900); ctx.fillText(C.tag, W / 2, 1660); }
+    ctx.fillStyle = C.soft; ctx.globalAlpha = .75; ctx.font = `500 30px ${serif}`; ctx.fillText(`💌 ${C.site}`, W / 2, 1830); ctx.globalAlpha = 1;
+
+    blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.9));
+    const url = URL.createObjectURL(blob);
+    document.getElementById('selfie-img').src = url;
+    document.getElementById('selfie-save').href = url;
+    document.getElementById('selfie-out').hidden = false;
+    document.getElementById('selfie-out').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  document.querySelectorAll('[data-selfie]').forEach(input => input.addEventListener('change', () => input.files[0] && draw(input.files[0])));
+  document.getElementById('selfie-share').addEventListener('click', async () => {
+    if (!blob) return;
+    const file = new File([blob], 'invited.jpg', { type: 'image/jpeg' }), data = { files: [file], text: `${C.invited} ${C.names} ${C.url}` };
+    if (navigator.canShare && navigator.canShare(data)) { try { await navigator.share(data); } catch (e) {} }
+    else document.getElementById('selfie-save').click();
+  });
+})();
+</script>

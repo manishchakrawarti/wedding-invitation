@@ -50,6 +50,77 @@
     </div>
   </div>
 </section>
+
+<section class="try" id="try">
+  <div class="wrap try-grid">
+    <div>
+      <h2>See <span class="script">your</span> card in 1 second</h2>
+      <p class="muted">Type a name and watch the card change as you type. No sign-up, nothing to install.</p>
+      <form class="try-form" id="try-form" action="/create" method="get">
+        <label for="try-event">Occasion</label>
+        <select id="try-event" name="event">
+          <option value="wedding">💍 Wedding</option>
+          {% for c in occasion_categories.values() if c.types %}<optgroup label="{{ c.icon }} {{ c.name }}">{% for k in c.types %}<option value="{{ k }}">{{ occasion_types[k].icon }} {{ occasion_types[k].name }}</option>{% endfor %}</optgroup>{% endfor %}
+        </select>
+        <div class="try-names">
+          <div><label for="try-a" id="try-a-label">Bride's name</label><input id="try-a" name="bride_name" type="text" maxlength="60" placeholder="Ananya" autocomplete="off"></div>
+          <div id="try-b-wrap"><label for="try-b" id="try-b-label">Groom's name</label><input id="try-b" name="groom_name" type="text" maxlength="60" placeholder="Arjun" autocomplete="off"></div>
+        </div>
+        <label for="try-date">Date</label>
+        <input id="try-date" name="wedding_date" type="date">
+        <button class="btn btn-primary btn-block" type="submit" style="margin-top:14px">💖 Make it mine: create free →</button>
+        <p class="hint" style="margin-top:8px">Your names and date carry over. Add photos, functions, gifts and send it in about a minute.</p>
+      </form>
+    </div>
+    <div class="try-card"><img id="try-img" src="/try.jpg" alt="Live preview of your invitation card" width="540" height="675"></div>
+  </div>
+</section>
+<style>
+  .try { padding: 56px 0 30px; background: linear-gradient(#fff8ec, #fdf0dc); }
+  .try-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .try h2 .script { color: var(--maroon); font-size: 1.25em; }
+  .try-names { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+  .try-card img { width: 100%; height: auto; max-width: 400px; display: block; margin: 0 auto; border-radius: 16px; box-shadow: 0 22px 50px rgba(77,15,27,.3);
+    transform: rotate(1.5deg); transition: opacity .2s, transform .3s; }
+  .try-card img.loading { opacity: .6; transform: rotate(0deg) scale(.99); }
+  @media (max-width: 760px) { .try-grid { grid-template-columns: 1fr; } .try-card { order: -1; } .try-card img { max-width: 240px; } }
+</style>
+<script>
+(function () {
+  const form = document.getElementById('try-form'), img = document.getElementById('try-img');
+  const labels = {{ try_labels|tojson }};
+  const ev = form.querySelector('#try-event'), a = form.querySelector('#try-a'), b = form.querySelector('#try-b');
+  const date = form.querySelector('#try-date'), bWrap = document.getElementById('try-b-wrap');
+  date.min = new Date().toISOString().slice(0, 10);
+  let timer, last = '';
+  const draw = () => {
+    const e = ev.value === 'wedding' ? '' : ev.value;
+    const url = '/try.jpg?' + new URLSearchParams({ event: e, a: a.value, b: b.disabled ? '' : b.value, date: date.value });
+    if (url === last) return;
+    last = url; img.classList.add('loading');
+    const next = new Image();
+    next.onload = () => { if (last === url) { img.src = url; img.classList.remove('loading'); } };
+    next.onerror = () => img.classList.remove('loading');
+    next.src = url;
+  };
+  const soon = () => { clearTimeout(timer); timer = setTimeout(draw, 400); };
+  ev.addEventListener('change', () => {
+    const [first, second] = labels[ev.value] || labels.wedding;
+    document.getElementById('try-a-label').textContent = first;
+    document.getElementById('try-b-label').textContent = second;
+    bWrap.hidden = !second; b.disabled = !second;
+    a.placeholder = ev.value === 'wedding' ? 'Ananya' : '';
+    draw();
+  });
+  [a, b, date].forEach(el => el.addEventListener('input', soon));
+  form.addEventListener('submit', () => {
+    if (ev.value === 'wedding') ev.disabled = true;  // the wedding form is /create without ?event
+    form.querySelectorAll('input').forEach(i => { if (!i.value) i.disabled = true; });  // keep the link short
+  });
+  // coming back with the browser's Back button: make the fields usable again
+  window.addEventListener('pageshow', () => form.querySelectorAll('input, select').forEach(i => { i.disabled = i === b && bWrap.hidden; }));
+})();
+</script>
 <div class="toran"></div>
 
 <section id="experience" style="background:var(--paper)">
