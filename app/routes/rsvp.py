@@ -2,6 +2,7 @@
 import csv
 import io
 import secrets
+from functools import lru_cache
 from urllib.parse import quote
 
 import qrcode
@@ -15,7 +16,7 @@ from app.config import settings
 from app.db import SessionLocal, get_db
 from app.models import Asset, Guest, Invitee, Order, OrderStatus, utcnow
 from app import events
-from app.services import demo, gifts, invites
+from app.services import demo, gifts, hires, invites
 from app.services.cards import has_guest_console
 from app.services.storage import storage
 from app.templating import templates
@@ -92,7 +93,34 @@ def personal_invite(request: Request, thanks: bool = False, preview: bool = Fals
         invitee.open_count += 1
         invitee.opened_at = invitee.opened_at or utcnow()
         db.commit()
-    return _experience(request, invitee.order, invitee, thanks, preview)
+    order = invitee.order
+    if not invites.can_send(order):  # free preview: the guest's personal card; the same link becomes the full page once bought
+        main = next((f for f in invites.schedule(order) if f["key"] in ("wedding", "nikah")), None) or next(iter(invites.schedule(order)), None)
+        place = ", ".join(p for p in (order.venue_name, order.venue_address, order.city) if p)
+        return templates.TemplateResponse(request, "guest_card.html", {
+            "o": order, "inv": invitee, "preview": preview, "main": main, "map_link": invites.map_link(place),
+            "sender_phone": invites.pretty_phone(invitee.sender_phone), "has_card": hires.main_final(order) is not None,
+            "occ": None if order.is_wedding else events.texts(order),
+        })
+    return _experience(request, order, invitee, thanks, preview)
+
+
+@lru_cache(maxsize=48)
+def _personal_card(code: str, name: str, status: str, version: int, paid: int) -> bytes:
+    """Rendered once per guest and state: chat apps fetch the link-preview image several times."""
+    with SessionLocal() as db:
+        invitee = db.scalar(select(Invitee).where(Invitee.code == code))
+        return hires.render_personal(invitee.order, hires.main_final(invitee.order), invitee)
+
+
+@router.get("/i/{code}/card.jpg")
+def personal_card(invitee: Invitee = Depends(get_invitee)):
+    """The guest's card with their name on it (also the link-preview image in WhatsApp, Telegram, Facebook…)."""
+    order = invitee.order
+    if hires.main_final(order) is None or not invites.can_personalize(order):
+        raise HTTPException(404)
+    data = _personal_card(invitee.code, invitee.name, order.status, order.current_version, order.amount_paid + order.discount)
+    return Response(data, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=600"})
 
 
 def _int(value, default: int, lo: int, hi: int) -> int:

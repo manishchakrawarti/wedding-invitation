@@ -1,19 +1,24 @@
-{# Send one guest their personal invite: WhatsApp, the phone's own SMS app, Telegram, the share sheet (with their
-   personal PDF where the phone can share files) or copy. Free for the family: each message goes from
-   their own WhatsApp / SIM / Telegram.
+{# Send one guest their personal invite, free: WhatsApp, the phone's own SMS app, Telegram, Facebook,
+   email (their own mail app), or the phone's share sheet with the guest's personal card image, which
+   is how Instagram, Facebook and WhatsApp take pictures. Every message goes from the family's own
+   accounts, so nothing costs anything.
 
    {% import "_send.html" as send %}
    {{ send.buttons(r, o, pdf=True) }}   r from invites.send_row()
-   {{ send.script(o) }}                 once, in the scripts block #}
+   {{ send.script(o) }}                 once, after the buttons #}
 
 {% macro buttons(r, o, pdf=True) %}
-<div class="send-btns" data-id="{{ r.i.id }}" data-text="{{ r.text }}" data-url="{{ r.url }}" data-pdf="{{ r.pdf if pdf else '' }}"
-     data-file="{{ (r.i.name ~ ' invitation')|replace('/', '-') }}.pdf">
+<div class="send-btns" data-id="{{ r.i.id }}" data-text="{{ r.text }}" data-card="{{ r.card if pdf else '' }}"
+     data-file="{{ (r.i.name ~ ' invitation')|replace('/', '-') }}.jpg">
   <a class="btn btn-sm btn-wa js-sent" href="{{ r.wa }}" target="_blank" rel="noopener">WhatsApp</a>
+  <button class="btn btn-sm btn-primary js-share" type="button">📤 Share card <span class="hint-inline">Instagram, Facebook…</span></button>
   <a class="btn btn-sm btn-ghost js-sent" href="{{ r.sms }}">💬 SMS</a>
-  <a class="btn btn-sm btn-ghost js-sent" href="https://t.me/share/url?url={{ r.url|urlencode }}&amp;text={{ r.text.replace(r.url, '').strip()|urlencode }}" target="_blank" rel="noopener">✈️ Telegram</a>
-  <button class="btn btn-sm btn-ghost js-share" type="button">📤 {{ 'Share PDF' if pdf else 'Share' }}</button>
+  <a class="btn btn-sm btn-ghost js-sent" href="{{ r.telegram }}" target="_blank" rel="noopener">✈️ Telegram</a>
+  <a class="btn btn-sm btn-ghost js-sent" href="{{ r.facebook }}" target="_blank" rel="noopener">Facebook</a>
+  <a class="btn btn-sm btn-ghost js-sent" href="{{ r.email }}">✉️ Email</a>
   <button class="btn btn-sm btn-ghost js-copy" type="button">Copy</button>
+  {% if pdf %}<a class="btn btn-sm btn-ghost" href="{{ r.card }}">⬇ Card</a>
+  <a class="btn btn-sm btn-ghost" href="{{ r.pdf }}" target="_blank" rel="noopener">⬇ PDF</a>{% endif %}
   <a class="btn btn-sm btn-ghost" href="/i/{{ r.i.code }}?preview=1" target="_blank">Preview</a>
 </div>
 {% endmacro %}
@@ -21,6 +26,7 @@
 {% macro script(o) %}
 <style>
   .send-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .send-btns .hint-inline { font-weight: 400; opacity: .8; font-size: .8em; }
 </style>
 <script>
 (function () {
@@ -33,35 +39,36 @@
     try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied ✓'; setTimeout(() => btn.textContent = 'Copy', 1800); }
     catch (e) { prompt('Copy this message:', text); }
   };
-  const files = {};  // PDFs already fetched, by guest id: phones only allow sharing straight after a tap
+  const files = {};  // cards already fetched, by guest id: phones only allow sharing straight after a tap
   document.querySelectorAll('.send-btns').forEach(box => {
     box.querySelectorAll('.js-sent').forEach(a => a.addEventListener('click', () => markSent(box)));
     box.querySelector('.js-copy').addEventListener('click', e => copy(box.dataset.text, e.currentTarget));
     box.querySelector('.js-share').addEventListener('click', async e => {
-      const btn = e.currentTarget, text = box.dataset.text, label = btn.textContent;
+      const btn = e.currentTarget, text = box.dataset.text, label = btn.innerHTML;
       try {
-        if (box.dataset.pdf && navigator.canShare) {
+        if (box.dataset.card && navigator.canShare) {
           if (!files[box.dataset.id]) {
-            btn.disabled = true; btn.textContent = '⏳ Making PDF…';
-            const res = await fetch(box.dataset.pdf);
-            btn.disabled = false; btn.textContent = label;
-            if (!res.ok) throw new Error('pdf');
-            files[box.dataset.id] = new File([await res.blob()], box.dataset.file, { type: 'application/pdf' });
+            btn.disabled = true; btn.textContent = '⏳ Preparing card…';
+            const res = await fetch(box.dataset.card);
+            btn.disabled = false; btn.innerHTML = label;
+            if (!res.ok) throw new Error('card');
+            files[box.dataset.id] = new File([await res.blob()], box.dataset.file, { type: 'image/jpeg' });
           }
           const data = { files: [files[box.dataset.id]], text };
           if (navigator.canShare(data)) {
             try { await navigator.share(data); markSent(box); return; }
             catch (err) {
               if (err.name === 'AbortError') return;  // closed the share sheet
-              if (err.name === 'NotAllowedError') { btn.textContent = '📤 PDF ready: tap to share'; return; }
+              if (err.name === 'NotAllowedError') { btn.textContent = '📤 Card ready: tap to share'; return; }
             }
           }
         }
         if (navigator.share) { await navigator.share({ text }); markSent(box); return; }
-        if (box.dataset.pdf) window.open(box.dataset.pdf, '_blank');
+        // computer: download the card to attach, and copy the message to paste
+        if (box.dataset.card) { const a = document.createElement('a'); a.href = box.dataset.card; a.click(); }
         copy(text, box.querySelector('.js-copy'));
       } catch (err) {
-        btn.disabled = false; btn.textContent = label;
+        btn.disabled = false; btn.innerHTML = label;
         if (err.name !== 'AbortError') copy(text, box.querySelector('.js-copy'));
       }
     });

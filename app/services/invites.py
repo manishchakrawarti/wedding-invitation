@@ -247,21 +247,39 @@ def sms_link(order: Order, invitee: Invitee) -> str:
     return f"sms:{phone}?&body={quote(sms_text(order, invitee))}"
 
 
+def email_link(order: Order, invitee: Invitee) -> str:
+    """Opens the family's own mail app (free), addressed to the guest if we have their email."""
+    subject = f"{i18n.texts(order.language)['special_for']} {invitee.name}: {order.display_names}"
+    return f"mailto:{quote(invitee.email or '', safe='@')}?subject={quote(subject)}&body={quote(whatsapp_text(order, invitee))}"
+
+
 def send_row(order: Order, invitee: Invitee) -> dict:
     """Everything the send buttons for one guest need."""
+    url = invite_url(invitee)
     return {
-        "i": invitee, "url": invite_url(invitee), "wa": whatsapp_link(order, invitee), "sms": sms_link(order, invitee),
-        "text": whatsapp_text(order, invitee), "phone": pretty_phone(invitee.phone),
+        "i": invitee, "url": url, "wa": whatsapp_link(order, invitee), "sms": sms_link(order, invitee),
+        "text": whatsapp_text(order, invitee), "phone": pretty_phone(invitee.phone), "email": email_link(order, invitee),
+        "telegram": f"https://t.me/share/url?url={quote(url, safe='')}&text={quote(whatsapp_text(order, invitee).replace(url, '').strip())}",
+        "facebook": f"https://www.facebook.com/sharer/sharer.php?u={quote(url, safe='')}",
         "pdf": f"/o/{order.token}/guests/{invitee.id}/invite.pdf",
+        "card": f"/o/{order.token}/guests/{invitee.id}/card.jpg",
         "fns": [FUNCTIONS.get(k, k) for k in invitee.functions] if invitee.functions else ["All functions"],
     }
 
 
 def can_send(order: Order) -> bool:
-    """Personal invites can go out once the invite page is live."""
+    """The full invite page (RSVP, maps…) is live for guests."""
     from app.models import OrderStatus
 
     return bool(order.rsvp_slug) and order.status == OrderStatus.DELIVERED.value
+
+
+def can_personalize(order: Order) -> bool:
+    """Personal invites can be made as soon as the design is ready, free preview included: the guest's link
+    shows their personal card until a size is bought, then the full invite page with RSVP."""
+    from app.services import orders
+
+    return bool(order.rsvp_slug) and (can_send(order) or (order.source == "instant" and orders.preview_unlockable(order)))
 
 
 def new_code(db: Session) -> str:

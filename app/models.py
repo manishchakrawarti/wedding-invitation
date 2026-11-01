@@ -309,6 +309,7 @@ class Invitee(Base):
     code: Mapped[str] = mapped_column(String(24), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(120))  # "Sharma Family" or "Meena Aunty"
     phone: Mapped[str] = mapped_column(String(20), default="")
+    email: Mapped[str] = mapped_column(String(200), default="")
     side: Mapped[str] = mapped_column(String(10), default="")  # bride | groom
     functions: Mapped[list] = mapped_column(JSON, default=list)  # invited to; empty = all
     sent_by: Mapped[str] = mapped_column(String(120), default="")  # who the guest sees the invite is from

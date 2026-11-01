@@ -300,6 +300,31 @@ def add_qr(img: Image.Image, url: str, style: Style, label: str = "Scan to RSVP"
     return img
 
 
+def name_ribbon(img: Image.Image, kicker: str, name: str) -> Image.Image:
+    """'Specially for / Sharma Family' on a cream ribbon in the empty band above the card's text
+    (both layouts keep text below y=200 of 1350), for a guest's personal copy."""
+    k = img.width / CANVAS[0]
+    img = img.convert("RGBA")
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    small = load_font("detail", detect_script(kicker), int(24 * k))
+    max_w = int(780 * k)
+    size = 46
+    while True:  # shrink long names to fit one line
+        big = load_font("headline", detect_script(name), int(size * k))
+        if big.getlength(name) <= max_w - int(60 * k) or size <= 26:
+            break
+        size -= 2
+    w = int(min(max(big.getlength(name), small.getlength(kicker)) + 70 * k, max_w))
+    h = int((size + 62) * k)
+    cx, y = img.width // 2, int(52 * k)
+    draw.rounded_rectangle([cx - w // 2, y, cx + w // 2, y + h], radius=int(22 * k), fill=(255, 250, 238, 235),
+                           outline=(196, 152, 72, 255), width=max(int(3 * k), 1))
+    draw.text((cx, y + int(10 * k)), kicker, font=small, fill=(138, 106, 58, 255), anchor="ma")
+    draw.text((cx, y + h - int(14 * k)), name, font=big, fill=(110, 22, 32, 255), anchor="md")
+    return Image.alpha_composite(img, layer).convert("RGB")
+
+
 def credit_stamp(img: Image.Image, text: str) -> Image.Image:
     """Small, tasteful credit on the free Standard image (not a watermark over the design)."""
     img = img.convert("RGBA")

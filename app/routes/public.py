@@ -1,5 +1,6 @@
 """Customer-facing pages: landing (B1), order form (B2), payment (B3), proof approval (B4), delivery (B5)."""
 import io
+import re
 import secrets
 import time
 from collections import defaultdict
@@ -259,16 +260,17 @@ def order_status(request: Request, order: Order = Depends(get_order)):
     })
 
 
-# --- personal invites: one guest at a time, by WhatsApp, SMS or the phone's share sheet ---------------
+# --- personal invites: one guest at a time, each with their own card, by any free channel ---------------
 
 MAX_INVITEES = 2000
 
 
 def _send_context(order: Order) -> dict:
-    if not invites.can_send(order):
+    if not invites.can_personalize(order):
         return {"can_send": False}
     sender_name, sender_phone = invites.last_sender(order)
-    return {"can_send": True, "send_rows": [invites.send_row(order, i) for i in reversed(order.invitees)],
+    return {"can_send": True, "page_live": invites.can_send(order), "back": _back(order),
+            "send_rows": [invites.send_row(order, i) for i in reversed(order.invitees)],
             "sender_name": sender_name, "sender_phone": invites.pretty_phone(sender_phone)}
 
 
@@ -281,25 +283,30 @@ def _invitee(order: Order, invitee_id: int) -> Invitee:
 
 @router.post("/o/{token}/guests")
 async def add_invitee(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
-    """Make a personal invite link for one guest; the page then offers WhatsApp / SMS / Share for it."""
-    if not invites.can_send(order):
-        return redirect(f"/o/{order.token}")
+    """Make a personal invite for one guest (their name on the card, PDF and page); the page then offers
+    WhatsApp / SMS / Telegram / Facebook / email / share for it."""
+    back = _back(order)
+    if not invites.can_personalize(order):
+        return redirect(back)
     form = await request.form()
     name = str(form.get("name", "")).strip()[:120]
     phone = invites.clean_phone(str(form.get("phone", "")))
+    email = str(form.get("email", "")).strip()[:200]
     sender, error = invites.read_sender(form)
     if not name:
         error = "Please enter the guest's name."
     elif phone is None:
         error = "The guest's mobile number doesn't look right. Use 10 digits, or + and the country code."
+    elif email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        error = "The guest's email doesn't look right."
     elif len(order.invitees) >= MAX_INVITEES:
         error = f"You can send up to {MAX_INVITEES} personal invites."
     if error:
-        return redirect(f"/o/{order.token}?send_error={quote(error)}#send")
-    invitee = Invitee(order_id=order.id, code=invites.new_code(db), name=name, phone=phone, functions=[], **sender)
+        return redirect(f"{back}?send_error={quote(error)}#send")
+    invitee = Invitee(order_id=order.id, code=invites.new_code(db), name=name, phone=phone, email=email, functions=[], **sender)
     db.add(invitee)
     db.commit()
-    return redirect(f"/o/{order.token}?sent={invitee.id}#send")
+    return redirect(f"{back}?sent={invitee.id}#send")
 
 
 @router.post("/o/{token}/guests/{invitee_id}/sent")
@@ -315,17 +322,29 @@ def mark_invitee_sent(invitee_id: int, order: Order = Depends(get_order), db: Se
 def delete_invitee(invitee_id: int, order: Order = Depends(get_order), db: Session = Depends(get_db)):
     db.delete(_invitee(order, invitee_id))
     db.commit()
-    return redirect(f"/o/{order.token}#send")
+    return redirect(f"{_back(order)}#send")
+
+
+@router.get("/o/{token}/guests/{invitee_id}/card.jpg")
+def invitee_card(invitee_id: int, order: Order = Depends(get_order)):
+    """Download the card with this guest's name on it."""
+    invitee = _invitee(order, invitee_id)
+    final = hires.main_final(order)
+    if final is None or not invites.can_personalize(order):
+        raise HTTPException(403, "Available once your invitation is ready")
+    name = f"{slugify(f'{order.display_names}-card-for-{invitee.name}') or 'invitation'}.jpg"
+    return Response(hires.render_personal(order, final, invitee), media_type="image/jpeg",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @router.get("/o/{token}/guests/{invitee_id}/invite.pdf")
 def invitee_pdf(invitee_id: int, order: Order = Depends(get_order)):
     """The e-invite with this guest's name on it, who it's from, and a QR to their own invite link."""
     invitee = _invitee(order, invitee_id)
-    if not invites.can_send(order):
+    if not invites.can_personalize(order):
         raise HTTPException(403, "Available once your invitation is ready")
     try:
-        data = export.render(order, "pdf", "1080" if hires.allowed(order, "1080") else "free", invitee=invitee)
+        data = export.render(order, "pdf", hires.personal_tier(order), invitee=invitee)
     except export.ExportUnavailable as exc:
         raise HTTPException(503, f"The e-invite can't be created right now. Please try again shortly. ({exc})") from exc
     name = f"{slugify(f'{order.display_names}-invitation-for-{invitee.name}') or 'invitation'}.pdf"
@@ -627,7 +646,7 @@ def preview(request: Request, order: Order = Depends(get_order)):
     return templates.TemplateResponse(request, "preview.html", {
         "o": order, "working": working, "items": [(p, finals.get(p.card_key)) for p in proofs],
         "gift": gifts.info(order), "photos": invites.portraits(order), "photo_slots": photo_slots(order), "unlockable": orders.preview_unlockable(order), "pkg": PACKAGES[order.package], "tiers": hires.TIERS,
-        "free": RESOLUTIONS["free"],
+        "free": RESOLUTIONS["free"], **_send_context(order),
     })
 
 

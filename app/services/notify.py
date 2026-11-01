@@ -191,12 +191,18 @@ def telegram_invitee_files(code: str, chat_id: str) -> None:
         order = invitee.order
         sender = invites.sender_line(invitee)
         text = f"💌 {invitee.name}, your invitation: {order.display_names}\n{invites.invite_url(invitee)}" + (f"\n{sender}" if sender else "")
-        if not invites.can_send(order):
+        final = hires.main_final(order)
+        if not invites.can_personalize(order) or final is None:
             send(db, "telegram", chat_id, text, order=order)
             return
-        tier = "1080" if hires.allowed(order, "1080") else "free"
-        _send_pdf(db, order, chat_id, text, lambda: export.render(order, "pdf", tier, invitee=invitee),
-                  f"{order.display_names} invitation for {invitee.name}.pdf")
+        card = (f"{order.display_names} card for {invitee.name}.jpg".replace("/", "-"), hires.render_personal(order, final, invitee), "image/jpeg")
+        try:
+            pdf = export.render(order, "pdf", hires.personal_tier(order), invitee=invitee)
+        except export.ExportUnavailable:
+            send(db, "telegram", chat_id, text, order=order, attachments=[card])
+            return
+        name = f"{order.display_names} invitation for {invitee.name}.pdf".replace("/", "-")
+        send(db, "telegram", chat_id, text, order=order, attachments=[card, (name, pdf, "application/pdf")])
 
 
 def _send_pdf(db: Session, order: Order, chat_id: str, text: str, make_pdf, filename: str) -> None:

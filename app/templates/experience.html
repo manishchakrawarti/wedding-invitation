@@ -13,7 +13,8 @@
 {% if lf %}<link href="https://fonts.googleapis.com/css2?family={{ lf|replace(' ', '+') }}:wght@400;600;700&display=swap" rel="stylesheet">{% endif %}
 <meta property="og:title" content="{{ o.display_names }} — {{ o.occasion_name }} Invitation{% if inv %} for {{ inv.name }}{% endif %}">
 <meta property="og:description" content="{{ pretty_date(o.wedding_date) }} · {{ o.venue_name }}{% if o.city %}, {{ o.city }}{% endif %}. {{ t.tap }} 💌">
-{% if hero %}<meta property="og:image" content="{{ settings.base_url }}/e/{{ o.rsvp_slug }}/invite">{% endif %}
+{% if hero and inv %}<meta property="og:image" content="{{ settings.base_url }}/i/{{ inv.code }}/card.jpg">
+{% elif hero %}<meta property="og:image" content="{{ settings.base_url }}/e/{{ o.rsvp_slug }}/invite">{% endif %}
 <meta name="theme-color" content="rgb{{ st.bg_bottom }}">
 <meta name="robots" content="noindex, nofollow">
 <style>
@@ -261,7 +262,7 @@
 <section class="x-section" style="padding-top:0">
   <div class="wrap center reveal">
     <img class="card-img" src="/e/{{ o.rsvp_slug }}/invite" alt="{{ o.occasion_name }} invitation card for {{ o.display_names }}">
-    {% if o.status == 'delivered' %}<p style="margin-top:18px"><a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/invite" download="invitation.png">{{ t.save_card }}</a></p>{% endif %}
+    {% if o.status == 'delivered' %}<p style="margin-top:18px">{% if inv %}<a class="btn btn-sm btn-ghost" href="/i/{{ inv.code }}/card.jpg" download="invitation-{{ inv.code }}.jpg">{{ t.save_card }}</a>{% else %}<a class="btn btn-sm btn-ghost" href="/e/{{ o.rsvp_slug }}/invite" download="invitation.png">{{ t.save_card }}</a>{% endif %}</p>{% endif %}
   </div>
 </section>
 {% endif %}

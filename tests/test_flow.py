@@ -1188,11 +1188,6 @@ def test_send_personal_invite_by_whatsapp_sms_and_pdf(client):
     from app.services import export, invites
 
     order = create_instant(client, hosts="The Sharma family")
-    # Before the invite page is live there is nothing to send from.
-    assert "Send a personal invitation" not in client.get(f"/o/{order.token}/preview").text
-    client.post(f"/o/{order.token}/guests", data={"name": "Too early"})
-    assert _invitees(order.id) == []
-
     client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
     order = pay(client, get(order.token))
     status = client.get(f"/o/{order.token}").text
@@ -1333,11 +1328,61 @@ def test_telegram_bot_alerts_and_pdfs(client, admin_auth, monkeypatch):
     assert f"https://t.me/InviteAllBot?start=i_{mehta.code}" in client.get(f"/i/{mehta.code}").text.replace("&amp;", "&")
     calls.clear()
     tg(f"/start i_{mehta.code}", chat=888)
+    first = len(calls)
     tg(f"/start i_{mehta.code}", chat=888)  # a second tap within minutes doesn't render again
-    assert len([c for c in calls if c[1].get("chat_id") == "888"]) == 1
-    assert "Mehta Family" in (calls[0][1].get("caption") or calls[0][1].get("text"))
+    assert len(calls) == first
+    assert calls[0][0] == "sendDocument" and calls[0][2]["document"].endswith(".jpg")  # their personal card first
+    assert "Mehta Family" in calls[0][1]["caption"]
 
     # Anything else gets the shop's auto-reply, e.g. an order's status.
     calls.clear()
     tg(f"status of {order.public_id}?", chat=999)
     assert "Delivered" in calls[-1][1]["text"]
+
+
+def test_personal_cards_while_creating_for_every_occasion(client):
+    """Free preview: name a guest, get their own card with their name on it, send it on any free channel;
+    the same link becomes the full invite page once a size is bought."""
+    from PIL import Image
+
+    for event in ["wedding", "kids_birthday", "griha_pravesh", "grand_opening"]:
+        order = create_instant(client) if event == "wedding" else get(create_event(client, event).headers["location"].split("/")[2])
+        assert order.status == OrderStatus.PREVIEW.value
+        page = client.get(f"/o/{order.token}/preview").text
+        assert "Send a personal invitation" in page and "Free now: their personal card" in page, event
+
+        resp = client.post(f"/o/{order.token}/guests", data={"name": "Sharma Family", "phone": "9876543210",
+                                                             "email": "sharma@example.com", "sender_name": "Rajesh"},
+                           follow_redirects=False)
+        assert resp.headers["location"].startswith(f"/o/{order.token}/preview?sent="), event
+        sharma = _invitees(order.id)[-1]
+        assert sharma.email == "sharma@example.com"
+        page = client.get(resp.headers["location"]).text.replace("&amp;", "&")
+        for channel in ("wa.me/919876543210?text=", "sms:+919876543210", "t.me/share/url?url=", "facebook.com/sharer/sharer.php?u=",
+                        "mailto:sharma@example.com?subject=", "Share card", f"/o/{order.token}/guests/{sharma.id}/card.jpg"):
+            assert channel in page, (event, channel)
+
+        # Their card: free size with their name on it (and the small credit), no QR yet.
+        card = client.get(f"/o/{order.token}/guests/{sharma.id}/card.jpg")
+        assert card.status_code == 200 and Image.open(io.BytesIO(card.content)).size == (720, 900), event
+        assert client.get(f"/i/{sharma.code}/card.jpg").content == card.content
+
+        # Their link shows that card while the family is on the free preview.
+        guest = client.get(f"/i/{sharma.code}").text
+        assert f"/i/{sharma.code}/card.jpg" in guest and "Sharma Family" in guest and 'id="doors"' not in guest
+        assert "Free preview" not in guest and "Invitation sent by: <strong>Rajesh</strong>" in guest, event
+
+    # After buying Full HD the same link is the full invite page, and the card is Full HD with a QR.
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    order = pay(client, get(order.token))
+    assert order.status == OrderStatus.DELIVERED.value
+    full = client.get(f"/i/{sharma.code}").text
+    assert 'id="doors"' in full and f'og:image" content="http://testserver/i/{sharma.code}/card.jpg"' in full
+    card = client.get(f"/o/{order.token}/guests/{sharma.id}/card.jpg")
+    assert Image.open(io.BytesIO(card.content)).size == (1080, 1350)
+
+    # Bad email is refused; another order can't fetch this guest's card.
+    resp = client.post(f"/o/{order.token}/guests", data={"name": "X", "email": "not-an-email"}, follow_redirects=False)
+    assert "send_error=" in resp.headers["location"]
+    other = create_instant(client, bride_name="Asha")
+    assert client.get(f"/o/{other.token}/guests/{sharma.id}/card.jpg").status_code == 404
