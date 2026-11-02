@@ -22,8 +22,8 @@ from app.config import APP_DIR
 
 CANVAS = (1080, 1350)
 # Bump when card text styling changes: cached samples and the live demos are redrawn (customers' cards are not).
-# 2: names in a clear serif instead of script. 3: Lord Ganesha on Hindu cards.
-CARD_DESIGN = 3
+# 2: names in a clear serif instead of script. 3–4: Lord Ganesha on Hindu cards.
+CARD_DESIGN = 4
 FONT_DIR = APP_DIR / "assets" / "fonts"
 RAQM = features.check("raqm")
 

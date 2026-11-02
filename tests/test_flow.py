@@ -1636,6 +1636,7 @@ def test_lord_ganesha_on_hindu_invitations_only(client):
     assert card_has_ganesha(style="christian") == (False, False)
     assert card_has_ganesha(language="pa") == (False, False)  # Sikh weddings open with ੴ
     assert card_has_ganesha(show_ganesha=False) == (False, False)  # the family turned it off
+    assert card_has_ganesha(show_ganesha=None) == (True, True)  # orders from before the option: on
     assert card_has_ganesha(is_wedding=False, event_type="griha_pravesh", occasion_detail="Lunch") == (True, True)
     assert card_has_ganesha(is_wedding=False, event_type="kids_birthday", occasion_detail="5") == (False, False)
 

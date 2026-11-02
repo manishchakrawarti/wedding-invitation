@@ -51,7 +51,7 @@ GANESHA_LINE_EN = "|| Shri Ganeshaya Namah ||"
 def shows_ganesha(order) -> bool:
     """Lord Ganesha and 'Shri Ganeshaya Namah' on Hindu weddings and Ganesh-blessed occasions, unless the family
     turned it off. Never on Nikah or church weddings; not by default on Punjabi cards (Sikh weddings open with ੴ)."""
-    if not getattr(order, "show_ganesha", True):
+    if getattr(order, "show_ganesha", True) is False:  # None: orders from before the option existed, so on
         return False
     if getattr(order, "is_wedding", True):
         return order.style not in ("muslim_nikah", "christian") and order.language != "pa"

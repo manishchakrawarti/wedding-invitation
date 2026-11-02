@@ -44,7 +44,9 @@ def _add_missing_columns() -> None:
                     continue
                 ddl = f"ALTER TABLE {table.name} ADD COLUMN {column.name} {column.type.compile(engine.dialect)}"
                 default = column.default.arg if column.default is not None and not callable(column.default.arg) else None
-                if isinstance(default, str):
+                if isinstance(default, bool):
+                    ddl += f" DEFAULT {int(default)}"
+                elif isinstance(default, str):
                     ddl += f" DEFAULT '{default}'"
                 elif isinstance(default, (int, float)) and not isinstance(default, bool):
                     ddl += f" DEFAULT {default}"
