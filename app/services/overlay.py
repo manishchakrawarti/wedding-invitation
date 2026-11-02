@@ -22,8 +22,8 @@ from app.config import APP_DIR
 
 CANVAS = (1080, 1350)
 # Bump when card text styling changes: cached samples and the live demos are redrawn (customers' cards are not).
-# 2: names in a clear serif instead of script. 3–4: Lord Ganesha on Hindu cards.
-CARD_DESIGN = 4
+# 2: names in a clear serif instead of script. 3–4: Lord Ganesha on Hindu cards. 5: gold foil, vellum panel, family lines.
+CARD_DESIGN = 5
 FONT_DIR = APP_DIR / "assets" / "fonts"
 RAQM = features.check("raqm")
 
@@ -56,11 +56,12 @@ ROLE_FAMILY = {
     "connector": "display",
     "invite": "body",
     "family": "body",
+    "degree": "body",
     "date": "heading",
     "detail": "body",
     "small": "body",
 }
-ROLE_WEIGHT = {"brand": "Bold", "headline": "Bold", "date": "Bold", "names": "Bold", "title": "Bold", "detail": "SemiBold", "invite": "Medium"}
+ROLE_WEIGHT = {"degree": "SemiBold", "brand": "Bold", "headline": "Bold", "date": "Bold", "names": "Bold", "title": "Bold", "detail": "SemiBold", "invite": "Medium"}
 _SYSTEM_FALLBACKS = (
     ["C:/Windows/Fonts/Nirmala.ttc", "C:/Windows/Fonts/georgia.ttf"]
     if platform.system() == "Windows"
@@ -231,6 +232,29 @@ def _soft(layer: Image.Image, radius: float) -> Image.Image:
     return small.resize(layer.size, Image.BILINEAR)
 
 
+FOIL_ROLES = {"names", "headline", "date", "brand", "title"}  # printed in "gold foil" on premium cards
+
+
+def _mix(c: tuple, other: tuple, t: float) -> tuple:
+    return tuple(round(a + (b - a) * t) for a, b in zip(c[:3], other[:3]))
+
+
+def _foil_band(color: tuple, width: int, height: int, soft: bool) -> Image.Image:
+    """A vertical metallic gradient for one line of text: pale highlight a third of the way down, like hot-foil
+    stamping. soft: a gentler ink gradient for dark text on light cards."""
+    white, black = (255, 255, 255), (0, 0, 0)
+    stops = ([(0, _mix(color, white, .18)), (.4, _mix(color, white, .32)), (1, _mix(color, black, .22))] if soft else
+             [(0, _mix(color, white, .30)), (.32, _mix(color, white, .62)), (.55, color), (1, _mix(color, black, .38))])
+    band = Image.new("RGB", (1, max(height, 1)))
+    for y in range(band.height):
+        f = y / max(band.height - 1, 1)
+        for (f0, c0), (f1, c1) in zip(stops, stops[1:]):
+            if f0 <= f <= f1:
+                band.putpixel((0, y), _mix(c0, c1, (f - f0) / (f1 - f0)))
+                break
+    return band.resize((width, band.height))
+
+
 def compose_card(background: Image.Image, items: list, style: Style, layout: Layout, k: float = 1.0) -> tuple[Image.Image, OverlayReport]:
     """Typeset `items` (Line / Divider) onto the background inside layout.box.
 
@@ -269,12 +293,21 @@ def compose_card(background: Image.Image, items: list, style: Style, layout: Lay
     panel = Image.new("RGBA", size, (0, 0, 0, 0))
     ImageDraw.Draw(panel).rounded_rectangle(panel_box, radius=int(36 * k), fill=style.panel)
     img = Image.alpha_composite(img, _soft(panel, 10))
+    # premium "vellum" layer: a fine double gold rule just inside the panel
+    rules = Image.new("RGBA", size, (0, 0, 0, 0))
+    rd = ImageDraw.Draw(rules)
+    for inset, alpha, w in ((int(14 * k), 190, max(int(2 * k), 1)), (int(22 * k), 110, max(int(1 * k), 1))):
+        box = (panel_box[0] + inset, panel_box[1] + inset, panel_box[2] - inset, panel_box[3] - inset)
+        rd.rounded_rectangle(box, radius=max(int(36 * k) - inset, 4), outline=(*style.accent[:3], alpha), width=w)
+    img = Image.alpha_composite(img, rules)
 
     text_dark = _luminance(style.text_secondary) < 0.3
     shadow_rgba = (255, 255, 255, 170) if text_dark else (0, 0, 0, 150)
     shadow = Image.new("RGBA", size, (0, 0, 0, 0))
     text_layer = Image.new("RGBA", size, (0, 0, 0, 0))
-    sdraw, tdraw = ImageDraw.Draw(shadow), ImageDraw.Draw(text_layer)
+    foil_mask = Image.new("L", size, 0)
+    foil = Image.new("RGB", size, (0, 0, 0))
+    sdraw, tdraw, fdraw = ImageDraw.Draw(shadow), ImageDraw.Draw(text_layer), ImageDraw.Draw(foil_mask)
     sx, sy = max(int(2 * k), 1), max(int(3 * k), 1)
 
     y = top
@@ -299,11 +332,20 @@ def compose_card(background: Image.Image, items: list, style: Style, layout: Lay
             report.min_size_ok = False
         for row in rows:
             sdraw.text((cx + sx, y + sy), row, font=font, fill=shadow_rgba, anchor="ma")
-            tdraw.text((cx, y), row, font=font, fill=colors[item.color], anchor="ma")
+            if item.role in FOIL_ROLES:
+                bbox = fdraw.textbbox((cx, y), row, font=font, anchor="ma")
+                fdraw.text((cx, y), row, font=font, fill=255, anchor="ma")
+                band_h = bbox[3] - bbox[1] + 2
+                foil.paste(_foil_band(colors[item.color], size[0], band_h, text_dark), (0, bbox[1]))
+            else:
+                tdraw.text((cx, y), row, font=font, fill=colors[item.color], anchor="ma")
             y += _row_height(font, item.role)
         report.rendered.append(item.text)
 
     img = Image.alpha_composite(img, _soft(shadow, 3))
+    foil_rgba = foil.convert("RGBA")
+    foil_rgba.putalpha(foil_mask)
+    img = Image.alpha_composite(img, foil_rgba)
     img = Image.alpha_composite(img, text_layer)
     report.scripts = sorted(scripts)
     report.shaping_ok = RAQM or scripts <= {"latin"}

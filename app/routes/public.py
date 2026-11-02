@@ -682,6 +682,8 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
         bride_name_local=f("bride_name_local") if language != "en" else "",
         groom_name_local=f("groom_name_local") if language != "en" else "",
         bride_family=f("bride_family"), groom_family=f("groom_family"),
+        **({f"{side}_{part}": f(f"{side}_{part}")[:120] for side in ("bride", "groom")
+            for part in ("degree", "father", "mother", "home")} if not etype else {}),
         wedding_date=wedding_date, venue_name=f("venue_name"), venue_address=f("venue_address"), city=f("city"),
         language=language, style=style, package="instant", addons=[], functions=sorted(functions, key=lambda x: x["date"]),
         referral_code=orders.new_referral_code(db, f("bride_name")), payment_option="full",

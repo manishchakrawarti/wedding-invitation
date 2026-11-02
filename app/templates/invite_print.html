@@ -180,9 +180,9 @@
   <div class="family"><img src="{{ photos.family }}" alt=""><div class="family-cap">{{ t.invited_by }}: <b>{{ hosts }}</b></div></div>
   {% endif %}
   <div class="para{{ ' tight' if photos.family else '' }}">{{ occ.para if occ else t.invite_para.format(hosts=hosts, bride=bride, groom=groom) }}</div>
-  {% if not occ and (o.bride_family or o.groom_family) %}
-  <div class="families">{% if o.bride_family %}{{ bride }}, {{ t.daughter_of }} {{ o.bride_family }}{% endif %}{% if o.bride_family and o.groom_family %}<br>{% endif %}{% if o.groom_family %}{{ groom }}, {{ t.son_of }} {{ o.groom_family }}{% endif %}</div>
-  {% endif %}
+  {% if not occ %}{% for side, nm in (('bride', bride), ('groom', groom)) %}{% set dg, fl = degree_of(o, side), family_line(o, side) %}
+  {% if dg or fl %}<div class="families"><b>{{ nm }}</b>{% if dg %} · <i>{{ dg }}</i>{% endif %}{% if fl %}<br>{{ fl }}{% endif %}</div>{% endif %}
+  {% endfor %}{% endif %}
   {% if ev and ev.welcomers %}<div class="divider"></div><div class="extra"><b>{{ t.welcomers_label }}</b><br>{{ ev.welcomers }}</div>{% endif %}
   {% if ev and ev.kids_note %}<div class="extra"><i>“{{ ev.kids_note }}”</i></div>{% endif %}
   {% if credit %}<div class="credit">{{ credit }}</div>{% else %}<div class="brand">{{ settings.brand_name }}</div>{% endif %}

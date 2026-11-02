@@ -48,6 +48,31 @@ def _function_label(order, key: str) -> str:
 GANESHA_LINE_EN = "|| Shri Ganeshaya Namah ||"
 
 
+def parents_of(order, side: str) -> str:
+    """'Smt. Sunita & Shri Rakesh Sharma' from the mother's and father's names, else the one free-text field."""
+    mother, father = (getattr(order, f"{side}_{p}", "") or "" for p in ("mother", "father"))
+    if mother or father:
+        joiner = i18n.texts(order.language).get("and_word", "&")
+        return f" {joiner} ".join(x for x in (mother, father) if x)
+    return getattr(order, f"{side}_family", "") or ""
+
+
+def family_line(order, side: str) -> str:
+    """'Daughter of Smt. Sunita & Shri Rakesh Sharma, Jaipur' / 'सुपुत्री … , निवासी जयपुर' ("" if nothing given)."""
+    t = i18n.texts(order.language)
+    parents, home = parents_of(order, side), getattr(order, f"{side}_home", "") or ""
+    word = {"bride": ("Daughter of", t["daughter_of"]), "groom": ("Son of", t["son_of"])}[side][order.language != "en"]
+    text = f"{word} {parents}" if parents else ""
+    if home:
+        prefix = t.get("resident_of", "")
+        text += (", " if text else "") + (f"{prefix} {home}" if prefix else home)
+    return text
+
+
+def degree_of(order, side: str) -> str:
+    return getattr(order, f"{side}_degree", "") or ""
+
+
 def shows_ganesha(order) -> bool:
     """Lord Ganesha and 'Shri Ganeshaya Namah' on Hindu weddings and Ganesh-blessed occasions, unless the family
     turned it off. Never on Nikah or church weddings; not by default on Punjabi cards (Sikh weddings open with ੴ)."""
@@ -80,15 +105,14 @@ def main_card(order) -> CardSpec:
         Line(lang.invite_line or ENGLISH_INVITE_LINE, "invite", 34, "secondary", max_lines=3, gap_before=14),
         Line(bride, "names", 128, "primary", gap_before=26),
     ]
-    t = i18n.texts(order.language)
-    daughter_of = "Daughter of" if order.language == "en" else t["daughter_of"]
-    son_of = "Son of" if order.language == "en" else t["son_of"]
-    if order.bride_family:
-        items.append(Line(f"{daughter_of} {order.bride_family}", "family", 28, gap_before=2))
-    items.append(Line(lang.connector, "connector", 64, "accent", gap_before=6))
-    items.append(Line(groom, "names", 128, "primary", gap_before=6))
-    if order.groom_family:
-        items.append(Line(f"{son_of} {order.groom_family}", "family", 28, gap_before=2))
+    for side in ("bride", "groom"):
+        if side == "groom":
+            items.append(Line(lang.connector, "connector", 64, "accent", gap_before=6))
+            items.append(Line(groom, "names", 128, "primary", gap_before=6))
+        if degree_of(order, side):
+            items.append(Line(degree_of(order, side), "degree", 27, "accent", gap_before=2))
+        if family_line(order, side):
+            items.append(Line(family_line(order, side), "family", 27, max_lines=2, gap_before=2))
     items += [Divider(gap_before=26), Line(pretty_date(order.wedding_date), "date", 38, "accent", gap_before=14)]
     if ceremony and ceremony.get("time"):
         items.append(Line(f"at {pretty_time(ceremony['time'], order.time_format)}", "detail", 32, gap_before=4))

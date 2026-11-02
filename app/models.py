@@ -59,8 +59,17 @@ class Order(Base):
     groom_name: Mapped[str] = mapped_column(String(120))
     bride_name_local: Mapped[str] = mapped_column(String(120), default="")
     groom_name_local: Mapped[str] = mapped_column(String(120), default="")
-    bride_family: Mapped[str] = mapped_column(String(200), default="")
+    bride_family: Mapped[str] = mapped_column(String(200), default="")  # parents, as printed: "Smt. Sunita & Shri Rakesh Sharma"
     groom_family: Mapped[str] = mapped_column(String(200), default="")
+    # optional extras printed under each name, like traditional cards
+    bride_degree: Mapped[str] = mapped_column(String(120), default="")  # "B.Tech · Software Engineer"
+    groom_degree: Mapped[str] = mapped_column(String(120), default="")
+    bride_father: Mapped[str] = mapped_column(String(100), default="")
+    bride_mother: Mapped[str] = mapped_column(String(100), default="")
+    groom_father: Mapped[str] = mapped_column(String(100), default="")
+    groom_mother: Mapped[str] = mapped_column(String(100), default="")
+    bride_home: Mapped[str] = mapped_column(String(100), default="")  # home town / short address
+    groom_home: Mapped[str] = mapped_column(String(100), default="")
     wedding_date: Mapped[date] = mapped_column(Date)
     venue_name: Mapped[str] = mapped_column(String(200))
     venue_address: Mapped[str] = mapped_column(String(300), default="")

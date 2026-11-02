@@ -1655,3 +1655,36 @@ def test_lord_ganesha_on_hindu_invitations_only(client):
     plain = pay(client, get(plain.token))
     assert 'class="ganesha-hero"' not in client.get(f"/e/{plain.rsvp_slug}").text
     assert "Lord Ganesha" in client.get("/create").text
+
+
+def test_bride_and_groom_degree_parents_and_home(client):
+    from app.services import export
+    from app.services.cards import cards_for_order, family_line
+
+    resp = client.post("/create", data={
+        "bride_name": "Priyanka", "groom_name": "Manish", "language": "en", "style": "north_indian", "wedding_date": WEDDING,
+        "venue_name": "ITC Rajputana", "city": "Jaipur",
+        "bride_degree": "B.Tech · Software Engineer", "bride_father": "Shri Rakesh Sharma", "bride_mother": "Smt. Sunita Sharma",
+        "bride_home": "Jaipur", "groom_degree": "MBA", "groom_father": "Shri Vikram Mehta", "groom_home": "Lucknow",
+    }, follow_redirects=False)
+    order = get(resp.headers["location"].split("/")[2])
+    with SessionLocal() as db:
+        o = db.get(Order, order.id)
+        assert family_line(o, "bride") == "Daughter of Smt. Sunita Sharma & Shri Rakesh Sharma, Jaipur"
+        assert family_line(o, "groom") == "Son of Shri Vikram Mehta, Lucknow"
+        texts = [i.text for i in cards_for_order(o)[0].items if hasattr(i, "text")]
+        assert "B.Tech · Software Engineer" in texts and "MBA" in texts and family_line(o, "bride") in texts
+        qc = next(a for a in o.live_assets("final") if a.card_key == "main").qc
+        assert next(c for c in qc["checks"] if c["name"] == "text_match")["status"] == "pass"
+        # Hindi: एवं between the parents, निवासी before the home town
+        o.language = "hi"
+        assert family_line(o, "bride") == "सुपुत्री Smt. Sunita Sharma एवं Shri Rakesh Sharma, निवासी Jaipur"
+        db.rollback()
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    order = pay(client, get(order.token))
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert "B.Tech · Software Engineer" in page and "Daughter of Smt. Sunita Sharma &amp; Shri Rakesh Sharma, Jaipur" in page
+    with SessionLocal() as db:
+        html, _ = export.build_html(db.get(Order, order.id), "1080")
+    assert "Son of Shri Vikram Mehta, Lucknow" in html and "B.Tech · Software Engineer" in html
+    assert "Bride&#39;s side" in client.get("/create").text or "Bride's side" in client.get("/create").text

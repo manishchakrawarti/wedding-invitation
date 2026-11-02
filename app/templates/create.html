@@ -26,6 +26,10 @@
   .cta-bar small { color: var(--gold-soft); }
   #create-form [hidden] { display: none !important; }
   /* step-by-step flow */
+  .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+  .side-box { border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px 14px; display: grid; gap: 10px; margin: 0; }
+  .side-box legend { font-weight: 700; color: var(--maroon); padding: 0 6px; }
+  @media (max-width: 640px) { .sides { grid-template-columns: 1fr; } }
   .wz-progress { position: sticky; top: 0; z-index: 12; background: var(--cream); padding: 10px 0 8px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
   .wz-bar { height: 5px; background: #f1e3c8; border-radius: 9px; overflow: hidden; margin-bottom: 10px; }
   .wz-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--maroon)); transition: width .3s; }
@@ -98,12 +102,26 @@
       <div class="local-names" id="secondary-local-field" {% if not c.secondary %}hidden{% endif %}><label for="groom_name_local"><span id="secondary-local-label">{{ c.secondary }}</span> in your script</label>
         <input id="groom_name_local" name="groom_name_local" type="text" value="{{ v.groom_name_local }}" maxlength="80" placeholder="e.g. अर्जुन"></div>
     </div>
-    <details class="more wedding-only" {% if not c.wedding %}hidden{% endif %} {% if v.bride_family or v.groom_family %}open{% endif %}>
-      <summary>+ Add parents' names <span class="hint">(optional)</span></summary>
-      <div class="form-grid" style="margin-top:12px">
-        <div><label for="bride_family">Bride's parents</label><input id="bride_family" name="bride_family" type="text" value="{{ v.bride_family }}" maxlength="80" placeholder="Mrs &amp; Mr Rakesh Sharma"></div>
-        <div><label for="groom_family">Groom's parents</label><input id="groom_family" name="groom_family" type="text" value="{{ v.groom_family }}" maxlength="80" placeholder="Mrs &amp; Mr Vikram Mehta"></div>
+    <details class="more wedding-only" {% if not c.wedding %}hidden{% endif %}
+             {% if v.bride_degree or v.bride_father or v.bride_mother or v.bride_home or v.groom_degree or v.groom_father or v.groom_mother or v.groom_home %}open{% endif %}>
+      <summary>+ Add parents, degree &amp; home town <span class="hint">(optional, printed under each name like a traditional card)</span></summary>
+      <div class="sides">
+      <fieldset class="side-box">
+        <legend>👰 Bride's side</legend>
+        <div><label for="bride_degree">Degree / profession</label><input id="bride_degree" name="bride_degree" type="text" value="{{ v.bride_degree }}" maxlength="120" placeholder="e.g. B.Tech · Software Engineer"></div>
+        <div><label for="bride_father">Father's name</label><input id="bride_father" name="bride_father" type="text" value="{{ v.bride_father }}" maxlength="100" placeholder="e.g. Shri Rakesh Sharma"></div>
+        <div><label for="bride_mother">Mother's name</label><input id="bride_mother" name="bride_mother" type="text" value="{{ v.bride_mother }}" maxlength="100" placeholder="e.g. Smt. Sunita Sharma"></div>
+        <div><label for="bride_home">Home town / address <span class="hint">short</span></label><input id="bride_home" name="bride_home" type="text" value="{{ v.bride_home }}" maxlength="100" placeholder="e.g. Malviya Nagar, Jaipur"></div>
+      </fieldset>
+      <fieldset class="side-box">
+        <legend>🤵 Groom's side</legend>
+        <div><label for="groom_degree">Degree / profession</label><input id="groom_degree" name="groom_degree" type="text" value="{{ v.groom_degree }}" maxlength="120" placeholder="e.g. MBA · Chartered Accountant"></div>
+        <div><label for="groom_father">Father's name</label><input id="groom_father" name="groom_father" type="text" value="{{ v.groom_father }}" maxlength="100" placeholder="e.g. Shri Vikram Mehta"></div>
+        <div><label for="groom_mother">Mother's name</label><input id="groom_mother" name="groom_mother" type="text" value="{{ v.groom_mother }}" maxlength="100" placeholder="e.g. Smt. Anita Mehta"></div>
+        <div><label for="groom_home">Home town / address <span class="hint">short</span></label><input id="groom_home" name="groom_home" type="text" value="{{ v.groom_home }}" maxlength="100" placeholder="e.g. Civil Lines, Lucknow"></div>
+      </fieldset>
       </div>
+      <p class="hint" style="margin-top:8px">Printed as: <em>Priyanka · B.Tech</em>, <em>Daughter of Smt. Sunita &amp; Shri Rakesh Sharma, Jaipur</em> (in your card's language).</p>
     </details>
   </div>
 
