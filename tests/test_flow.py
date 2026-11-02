@@ -1444,9 +1444,9 @@ def test_instant_try_preview_prefill_and_selfie_frame(client):
     assert client.get("/try.jpg").status_code == 429
     public._try_hits.clear()
 
-    # "Make it mine" carries the names and date into the create form, which shows the live preview
+    # "Make it mine" carries the names and date into the create form (no preview panel over the form)
     page = client.get("/create", params={"bride_name": "Priyanka", "groom_name": "Manish", "wedding_date": WEDDING}).text
-    assert 'value="Priyanka"' in page and 'value="Manish"' in page and f'value="{WEDDING}"' in page and 'id="live-prev"' in page
+    assert 'value="Priyanka"' in page and 'value="Manish"' in page and f'value="{WEDDING}"' in page and 'id="live-prev"' not in page
     assert 'value="Aarav"' in client.get("/create", params={"event": "kids_birthday", "bride_name": "Aarav"}).text
 
     # Guests get the "I'm invited" selfie frame on the invite page, in the card's language

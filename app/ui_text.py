@@ -95,8 +95,8 @@ HI = {
     "Pick a style": "डिज़ाइन चुनें", "Where should we send it?": "कहाँ भेजें?", "Your name": "आपका नाम", "Email": "ईमेल",
     "You can also add this later. By continuing you accept our": "यह बाद में भी जोड़ सकते हैं। आगे बढ़कर आप हमारी इन बातों से सहमत हैं:",
     "terms": "नियम", "and": "और", "Free to create": "बनाना मुफ़्त", "HD from ₹9": "HD ₹9 से",
-    "✨ Create my invitation": "✨ मेरा निमंत्रण बनाएँ", "👁 Live preview": "👁 लाइव झलक",
-    "Updates as you type. Your final card is designed in full HD.": "लिखते ही बदलता है। आपका असली कार्ड फ़ुल HD में बनेगा।",
+    "✨ Create my invitation": "✨ मेरा निमंत्रण बनाएँ",
+   
     # preview / order pages
     "Your cards": "आपके कार्ड", "Download your e-invite": "अपना ई-निमंत्रण डाउनलोड करें",
     "📨 Send a personal invitation": "📨 व्यक्तिगत निमंत्रण भेजें", "Guest's name *": "मेहमान का नाम *",
