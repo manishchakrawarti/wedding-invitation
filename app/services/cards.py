@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from app import i18n
 from app.catalog import ENGLISH_INVITE_LINE, FUNCTIONS, LANGUAGES, PACKAGES, card_style_for
-from app.services.overlay import Divider, Line
+from app.services.overlay import Divider, Emblem, Line
 from app.utils import pretty_date, pretty_time
 
 MAIN_CEREMONIES = ("wedding", "nikah")
@@ -45,14 +45,37 @@ def _function_label(order, key: str) -> str:
     return i18n.function_name(order.language, key, FUNCTIONS[key])
 
 
+GANESHA_LINE_EN = "|| Shri Ganeshaya Namah ||"
+
+
+def shows_ganesha(order) -> bool:
+    """Lord Ganesha and 'Shri Ganeshaya Namah' on Hindu weddings and Ganesh-blessed occasions, unless the family
+    turned it off. Never on Nikah or church weddings; not by default on Punjabi cards (Sikh weddings open with ੴ)."""
+    if not getattr(order, "show_ganesha", True):
+        return False
+    if getattr(order, "is_wedding", True):
+        return order.style not in ("muslim_nikah", "christian") and order.language != "pa"
+    from app import events
+
+    t = events.TYPES.get(getattr(order, "event_type", ""))
+    return bool(t and t.invocation == "ganesh")
+
+
+def ganesha_items(order) -> list:
+    if not shows_ganesha(order):
+        return []
+    line = GANESHA_LINE_EN if order.language == "en" else i18n.INVOCATIONS.get(order.language, GANESHA_LINE_EN)
+    return [Emblem(), Line(line, "small", 26, "accent", gap_before=6)]
+
+
 def main_card(order) -> CardSpec:
     lang = LANGUAGES[order.language]
     bride, groom = _names(order)
     headline = STYLE_HEADLINES_EN.get(order.style, lang.headline) if order.language == "en" else lang.headline
     ceremony = next((f for f in order.functions or [] if f["key"] in MAIN_CEREMONIES), None)
 
-    items: list = [
-        Line(headline, "headline", 46, "accent"),
+    items: list = ganesha_items(order) + [
+        Line(headline, "headline", 46, "accent", gap_before=14 if shows_ganesha(order) else 0),
         Divider(gap_before=10),
         Line(lang.invite_line or ENGLISH_INVITE_LINE, "invite", 34, "secondary", max_lines=3, gap_before=14),
         Line(bride, "names", 128, "primary", gap_before=26),
@@ -99,8 +122,8 @@ def event_card(order) -> CardSpec:
     e = events.texts(order)
     t = e["type"]
     name_size = 112 if t.name_role == "names" else 64
-    items: list = [
-        Line(e["kicker"], "invite", 34, "secondary"),
+    items: list = ganesha_items(order) + [
+        Line(e["kicker"], "invite", 34, "secondary", gap_before=14 if shows_ganesha(order) else 0),
         Line(e["headline"], "headline", 52, "accent", max_lines=2, gap_before=8),
         Divider(gap_before=12),
         Line(e["primary"], t.name_role, name_size, "primary", max_lines=2 if t.name_role == "brand" else 1, gap_before=22),

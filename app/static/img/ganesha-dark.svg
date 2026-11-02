@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Lord Ganesha, original deep-gold line art (for light backgrounds) for Invite All (Hindu invitations: cards, PDF cover, invite page) -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9932e"/><stop offset=".55" stop-color="#a86f1c"/><stop offset="1" stop-color="#7a4a10"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#g)" stroke-width="5">
+    <!-- halo -->
+    <circle cx="100" cy="92" r="84" stroke-width="2.5" opacity=".55"/>
+    <!-- crown (mukut) -->
+    <path d="M70 62 Q100 8 130 62"/>
+    <path d="M78 46 L100 18 L122 46" stroke-width="3.5"/>
+    <circle cx="100" cy="13" r="5" fill="url(#g)" stroke="none"/>
+    <path d="M66 64 H134" stroke-width="6"/>
+    <!-- ears -->
+    <path d="M66 70 C30 52 14 90 26 118 C34 138 56 136 66 120"/>
+    <path d="M134 70 C170 52 186 90 174 118 C166 138 144 136 134 120"/>
+    <path d="M40 90 C38 104 44 116 56 118" stroke-width="2.5" opacity=".8"/>
+    <path d="M160 90 C162 104 156 116 144 118" stroke-width="2.5" opacity=".8"/>
+    <!-- head -->
+    <path d="M66 66 C62 92 66 116 82 128"/>
+    <path d="M134 66 C138 92 134 116 118 128"/>
+    <!-- tilak and eyes -->
+    <path d="M100 70 V84" stroke-width="4"/>
+    <circle cx="100" cy="66" r="3" fill="url(#g)" stroke="none"/>
+    <path d="M80 92 Q86 87 92 92" stroke-width="4"/>
+    <path d="M108 92 Q114 87 120 92" stroke-width="4"/>
+    <!-- trunk: from between the eyes, curving down and curling to the left -->
+    <path d="M94 100 C92 128 90 150 104 166 C116 180 134 174 132 160 C130 150 118 150 116 158" stroke-width="7"/>
+    <path d="M106 100 C108 120 110 136 118 146" stroke-width="3" opacity=".7"/>
+    <!-- tusk -->
+    <path d="M82 128 C78 140 80 148 86 152" stroke-width="4"/>
+    <!-- lotus base -->
+    <path d="M100 214 C86 200 86 192 100 184 C114 192 114 200 100 214 Z" stroke-width="3"/>
+    <path d="M100 214 C80 210 70 198 72 190 C84 192 94 200 100 214" stroke-width="3"/>
+    <path d="M100 214 C120 210 130 198 128 190 C116 192 106 200 100 214" stroke-width="3"/>
+  </g>
+</svg>

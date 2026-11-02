@@ -78,6 +78,7 @@ class Order(Base):
     photo_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     marketing_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     gallery_ok: Mapped[bool] = mapped_column(Boolean, default=False)  # family agreed to show the card in /gallery
+    show_ganesha: Mapped[bool] = mapped_column(Boolean, default=True)  # see cards.shows_ganesha
 
     referral_code: Mapped[str] = mapped_column(String(16), unique=True, index=True)
     referred_by_code: Mapped[str] = mapped_column(String(16), default="")

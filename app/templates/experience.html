@@ -69,6 +69,7 @@
     background: radial-gradient(ellipse at top, var(--bg1), var(--bg2) 75%); color: var(--t2); position: relative; overflow: hidden; }
   .x-hero::before { content: ""; position: absolute; inset: 18px; border: 2px solid var(--acc); opacity: .6; border-radius: 6px; pointer-events: none; }
   .invocation { font-family: var(--serif); color: var(--acc); letter-spacing: 2px; font-size: 1.1rem; margin-bottom: 18px; }
+  .ganesha-hero { display: block; width: clamp(90px, 22vw, 130px); height: auto; margin: 0 auto 8px; filter: drop-shadow(0 6px 16px rgba(0,0,0,.3)); }
   .x-hero .pre { letter-spacing: 5px; text-transform: uppercase; font-size: .85rem; color: var(--acc); }
   /* names in a clear serif (script names were hard to read); the "&" stays decorative */
   .x-names { font-family: var(--serif); font-weight: 700; color: var(--t1); font-size: clamp(2.8rem, 11vw, 5.6rem); line-height: 1.1; margin: 18px 0; text-shadow: 0 4px 20px rgba(0,0,0,.25); }
@@ -181,7 +182,7 @@
 <section class="x-hero">
   {% if occ %}
   {% if occ.type.invocation == 'bismillah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
-  {% elif occ.type.invocation == 'ganesh' %}<div class="invocation">{{ i18n.INVOCATIONS.get(o.language, i18n.INVOCATIONS['en']) }}</div>{% endif %}
+  {% elif ganesha %}<img class="ganesha-hero" src="/static/img/{{ ganesha }}.svg" alt="Shri Ganesha" width="120" height="132"><div class="invocation">{{ i18n.INVOCATIONS.get(o.language, i18n.INVOCATIONS['en']) }}</div>{% endif %}
   <div class="pre">{{ occ.kicker }}</div>
   <div class="event-headline">{{ occ.headline }}</div>
   {% if photos.bride or photos.groom %}
@@ -204,7 +205,7 @@
   {% if occ.detail %}<div class="event-detail">{{ occ.detail }}</div>{% endif %}
   {% else %}
   {% if o.style == 'muslim_nikah' %}<div class="invocation">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
-  {% elif o.style != 'christian' %}<div class="invocation">{{ i18n.INVOCATIONS.get(o.language, i18n.INVOCATIONS['en']) }}</div>{% endif %}
+  {% elif o.style != 'christian' and (ganesha or o.language == 'pa') %}{% if ganesha %}<img class="ganesha-hero" src="/static/img/{{ ganesha }}.svg" alt="Shri Ganesha" width="120" height="132">{% endif %}<div class="invocation">{{ i18n.INVOCATIONS.get(o.language, i18n.INVOCATIONS['en']) }}</div>{% endif %}
   <div class="pre">{{ 'Nikah' if o.style == 'muslim_nikah' and not local else t.pre }}</div>
   {% if photos.bride or photos.groom %}
   <div class="couple">

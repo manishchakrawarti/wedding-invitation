@@ -143,6 +143,9 @@ HI = {
     'PH:Dress code (e.g. yellow for Haldi)': 'ड्रेस कोड (जैसे: हल्दी में पीला)',
     'PH:Rakesh Sharma (Papa)': 'राकेश शर्मा (पापा)',
     'PH:Rohit (Bhaiya)': 'रोहित (भैया)',
+    'Lord Ganesha & "Shri Ganeshaya Namah"': 'भगवान गणेश और "श्री गणेशाय नमः"',
+    'on the card, cover and invite page.': 'कार्ड, कवर और निमंत्रण पेज पर।',
+    'For Hindu weddings and pujas; not added to Nikah, church or Punjabi designs. Untick if your family prefers without.': 'हिंदू शादी और पूजा के लिए; निकाह, चर्च या पंजाबी डिज़ाइन पर नहीं जुड़ता। अगर आपका परिवार नहीं चाहता तो टिक हटा दें।',
     # homepage feature cards
     'Send anywhere in one tap': 'एक टैप में कहीं भी भेजें',
     '"A special invitation for Sharma Family": each guest gets their own card, PDF and link with their name on it, free.': '"शर्मा परिवार के लिए विशेष निमंत्रण": हर मेहमान को उसके नाम वाला अपना कार्ड, PDF और लिंक, मुफ़्त।',

@@ -576,10 +576,10 @@ def test_einvite_pdf_and_long_image_in_sizes(client):
     assert f'<iframe src="/e/{order.rsvp_slug}"' in page and "Download your e-invite" in page
     free_pdf = client.get(f"{base}/pdf/free")
     assert free_pdf.status_code == 200 and free_pdf.content.startswith(b"%PDF")
-    # cover + main card + haldi card + celebrations + venue
-    assert len(re.findall(rb"/Type\s*/Page[^s]", free_pdf.content)) == 5
+    # cover + invitation (shloka, families) + main card + haldi card + celebrations + venue + closing
+    assert len(re.findall(rb"/Type\s*/Page[^s]", free_pdf.content)) == 7
     free_img = client.get(f"{base}/image/free")
-    assert free_img.headers["content-type"] == "image/jpeg" and _image_size(free_img) == (720, 900 * 5)
+    assert free_img.headers["content-type"] == "image/jpeg" and _image_size(free_img) == (720, 900 * 7)
     assert client.get(f"{base}/pdf/1080").status_code == 403
 
     # Buy Full HD (₹9): 1080 unlocked, 2K still locked.
@@ -589,7 +589,7 @@ def test_einvite_pdf_and_long_image_in_sizes(client):
     status = client.get(f"/o/{order.token}").text
     assert "Your complete e-invite" in status and f"{base}/pdf/1080" in status and f"{base}/pdf/2k" not in status
     assert client.get(f"{base}/pdf/1080").content.startswith(b"%PDF")
-    assert _image_size(client.get(f"{base}/image/1080")) == (1080, 1350 * 5)
+    assert _image_size(client.get(f"{base}/image/1080")) == (1080, 1350 * 7)
     assert client.get(f"{base}/image/2k").status_code == 403
     assert client.get(f"{base}/gif/1080").status_code == 404
 
@@ -1612,3 +1612,45 @@ def test_create_with_family_details_and_guest_list(client):
     bad = client.post("/create", data={"bride_name": "A", "groom_name": "B", "language": "en", "style": "north_indian",
                                        "wedding_date": WEDDING, "venue_name": "X", "contact_phone_1": "12"})
     assert bad.status_code == 422 and "Contact number 1" in bad.text and 'id="wz-next"' in bad.text
+
+
+def test_lord_ganesha_on_hindu_invitations_only(client):
+    from types import SimpleNamespace as NS
+
+    from app.services import export
+    from app.services.cards import cards_for_order, shows_ganesha
+    from app.services.overlay import Emblem
+
+    def card_has_ganesha(**kw):
+        o = NS(language="en", style="north_indian", is_wedding=True, event_type="wedding", show_ganesha=True, bride_name="A",
+               groom_name="B", bride_name_local="", groom_name_local="", bride_family="", groom_family="", package="instant",
+               addons=[], functions=[{"key": "wedding", "time": "19:00"}], wedding_date=date(2026, 12, 12), venue_name="V",
+               venue_address="", city="", time_format="12h", occasion_detail="", event=None)
+        for k, v in kw.items():
+            setattr(o, k, v)
+        main = cards_for_order(o)[0]
+        return shows_ganesha(o), any(isinstance(i, Emblem) for i in main.items)
+
+    assert card_has_ganesha() == (True, True)
+    assert card_has_ganesha(style="muslim_nikah") == (False, False)
+    assert card_has_ganesha(style="christian") == (False, False)
+    assert card_has_ganesha(language="pa") == (False, False)  # Sikh weddings open with ੴ
+    assert card_has_ganesha(show_ganesha=False) == (False, False)  # the family turned it off
+    assert card_has_ganesha(is_wedding=False, event_type="griha_pravesh", occasion_detail="Lunch") == (True, True)
+    assert card_has_ganesha(is_wedding=False, event_type="kids_birthday", occasion_detail="5") == (False, False)
+
+    # invite page and booklet: Ganesha, the shloka and the closing page; turned off when the family unticks it
+    order = create_instant(client)
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    order = pay(client, get(order.token))
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert 'class="ganesha-hero"' in page
+    with SessionLocal() as db:
+        html, pages = export.build_html(db.get(Order, order.id), "1080")
+    assert "वक्रतुण्ड महाकाय" in html and 'class="ganesha"' in html and "Your presence will make our celebration complete" in html
+    plain = create_instant(client, bride_name="Jain", ganesha="off")
+    assert get(plain.token).show_ganesha is False
+    client.post(f"/o/{plain.token}/unlock", data={"res": "1080"})
+    plain = pay(client, get(plain.token))
+    assert 'class="ganesha-hero"' not in client.get(f"/e/{plain.rsvp_slug}").text
+    assert "Lord Ganesha" in client.get("/create").text

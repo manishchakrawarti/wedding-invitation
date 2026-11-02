@@ -22,8 +22,8 @@ from app.config import APP_DIR
 
 CANVAS = (1080, 1350)
 # Bump when card text styling changes: cached samples and the live demos are redrawn (customers' cards are not).
-# 2: names in a clear serif instead of script.
-CARD_DESIGN = 2
+# 2: names in a clear serif instead of script. 3: Lord Ganesha on Hindu cards.
+CARD_DESIGN = 3
 FONT_DIR = APP_DIR / "assets" / "fonts"
 RAQM = features.check("raqm")
 
@@ -82,6 +82,19 @@ class Line:
 class Divider:
     gap_before: int = 14
     width: int = 280
+
+
+@dataclass
+class Emblem:
+    """A picture centred above the text, e.g. Lord Ganesha on Hindu invitations (assets/art/<name>.png)."""
+    name: str = "ganesha"
+    height: int = 150
+    gap_before: int = 0
+
+
+@lru_cache(maxsize=4)
+def _emblem_art(name: str) -> Image.Image:
+    return Image.open(APP_DIR / "assets" / "art" / f"{name}.png").convert("RGBA")
 
 
 @dataclass
@@ -173,7 +186,10 @@ def _row_height(font: ImageFont.FreeTypeFont, role: str) -> int:
 def _measure(items: list, scale: float, width: int, k: float = 1.0):
     plan, total = [], 0
     for item in items:
-        if isinstance(item, Divider):
+        if isinstance(item, Emblem):
+            h = int(item.gap_before * scale * k) + int(item.height * scale * k)
+            plan.append((item, None, None, h))
+        elif isinstance(item, Divider):
             h = int(item.gap_before * scale * k) + int(18 * k)
             plan.append((item, None, None, h))
         else:
@@ -243,7 +259,7 @@ def compose_card(background: Image.Image, items: list, style: Style, layout: Lay
     for item, font, rows, _ in plan:
         if font:
             widest = max(widest, *(int(font.getlength(r)) for r in rows))
-        else:
+        elif isinstance(item, Divider):
             widest = max(widest, int(item.width * k))
     pad_x, pad_y, margin = int(56 * k), int(44 * k), int(70 * k)
     panel_box = (cx - widest // 2 - pad_x, top - pad_y, cx + widest // 2 + pad_x, top + total + pad_y)
@@ -264,6 +280,14 @@ def compose_card(background: Image.Image, items: list, style: Style, layout: Lay
     y = top
     scripts = set()
     for item, font, rows, h in plan:
+        if isinstance(item, Emblem):
+            # deep gold on light panels, bright gold on dark ones
+            art = _emblem_art(f"{item.name}-dark" if text_dark else item.name)
+            eh = int(item.height * scale * k)
+            ew = int(art.width * eh / art.height)
+            text_layer.alpha_composite(art.resize((ew, eh), Image.LANCZOS), (cx - ew // 2, y + int(item.gap_before * scale * k)))
+            y += h
+            continue
         if isinstance(item, Divider):
             yy = y + int(item.gap_before * scale * k) + int(9 * k)
             _draw_divider(tdraw, cx, yy, int(item.width * k * min(scale + 0.1, 1)), style.accent, k)

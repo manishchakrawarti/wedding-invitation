@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.catalog import FUNCTIONS
+from app.catalog import FUNCTIONS, STYLES
 from app.config import settings
 from app.db import SessionLocal, get_db
 from app.models import Asset, Guest, Invitee, Order, OrderStatus, utcnow
@@ -57,6 +57,16 @@ def _hero(order: Order):
     return None
 
 
+def _ganesha_art(order: Order) -> str:
+    """Which Ganesha drawing the page shows ("" for none): deep gold on light designs, bright gold on dark ones."""
+    from app.services.cards import shows_ganesha
+    from app.services.overlay import _luminance
+
+    if not shows_ganesha(order):
+        return ""
+    return "ganesha-dark" if _luminance(STYLES[order.style].text_primary) < 0.3 else "ganesha"
+
+
 def _music(order: Order):
     return next(iter(sorted(order.live_assets("music"), key=lambda a: a.id, reverse=True)), None)
 
@@ -76,7 +86,7 @@ def _experience(request: Request, order: Order, invitee: Invitee | None, thanks:
             "blessings": blessings[-40:][::-1], "thanks": thanks, "preview": preview, "photos": invites.portraits(order),
             "occ": None if order.is_wedding else events.texts(order),
             "sender_phone": invites.pretty_phone(invitee.sender_phone) if invitee else "",
-            "contacts": invites.contact_rows(order),
+            "contacts": invites.contact_rows(order), "ganesha": _ganesha_art(order),
             "action": f"/i/{invitee.code}/rsvp" if invitee else f"/e/{order.rsvp_slug}/rsvp",
         },
     )

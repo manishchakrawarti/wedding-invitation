@@ -232,6 +232,13 @@
     </div>
   </div>
 
+  <div class="card" id="ganesha-card">
+    <input type="hidden" name="ganesha" value="off">
+    <label class="check" style="margin:0"><input type="checkbox" name="ganesha" value="on" {% if v.get('ganesha', 'on') != 'off' %}checked{% endif %}>
+      <span><img src="/static/img/ganesha-dark.svg" alt="" width="34" height="37" style="vertical-align:middle;margin-right:6px"><strong>Lord Ganesha &amp; "Shri Ganeshaya Namah"</strong> on the card, cover and invite page.
+      <span class="hint">For Hindu weddings and pujas; not added to Nikah, church or Punjabi designs. Untick if your family prefers without.</span></span></label>
+  </div>
+
   <div class="card">
     <h2 class="step-title"><b>✅</b> Your invitation will include</h2>
     <ul class="wz-summary" id="wz-summary"></ul>

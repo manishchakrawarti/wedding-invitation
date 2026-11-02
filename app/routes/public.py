@@ -688,6 +688,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
         subtotal=price, discount=0, total=price,
         event_type=etype.key if etype else "wedding", occasion_detail=f("occasion_detail")[:120] if etype else "",
         time_format="24h" if f("time_format") == "24h" else "12h", gallery_ok=bool(form.get("gallery_ok")),
+        show_ganesha=f("ganesha") != "off",
     )
     db.add(order)
     db.flush()

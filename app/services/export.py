@@ -20,7 +20,7 @@ import qrcode
 
 from app import events, i18n
 from app.catalog import LANGUAGES, STYLES
-from app.config import settings
+from app.config import APP_DIR, settings
 from app.models import Order
 from app.services import gifts, invites
 from app.services.cards import cards_for_order
@@ -96,6 +96,15 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
     }
     if script:
         fonts["LocalScript"] = _font_uri(SCRIPT_FONTS[script])
+    from app.services.cards import shows_ganesha
+    from app.services.overlay import _luminance
+
+    ganesha = shows_ganesha(order)
+    ganesha_src = ""
+    if ganesha:
+        fonts["Deva"] = _font_uri(SCRIPT_FONTS["devanagari"])  # the shloka, on every Hindu invitation
+        variant = "ganesha-dark" if _luminance(STYLES[order.style].text_primary) < 0.3 else "ganesha"
+        ganesha_src = _uri((APP_DIR / "static" / "img" / f"{variant}.svg").read_bytes(), "image/svg+xml")
     photos = {}
     for role, asset in invites.portraits(order).items():
         from PIL import Image
@@ -109,7 +118,7 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
     if gift:
         found = gifts.qr_bytes(order)
         gift = {**gift, "qr": _uri(*found) if found else ""}
-    pages = 1 + len(card_pages) + (1 if schedule else 0) + 1 + (1 if gift else 0)
+    pages = 2 + len(card_pages) + (1 if schedule else 0) + 1 + (1 if gift else 0) + 1  # cover, invitation, cards, schedule, venue, gift, closing
     free = tier == "free"
     rsvp_url = f"{settings.base_url}/e/{order.rsvp_slug}" if order.rsvp_slug and not free else ""
     guest = None
@@ -122,7 +131,7 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
         qr=_qr_uri(rsvp_url) if rsvp_url else "", rsvp_url=rsvp_url, invocation=i18n.INVOCATIONS.get(order.language, ""),
         W=PAGE_W, H=PAGE_H, settings=settings, credit=f"Made with love · {settings.brand_name}" if free else "",
         pages_range=pages_range, photos=photos, occ=None if order.is_wedding else events.texts(order), gift=gift,
-        guest=guest, contacts=invites.contact_rows(order),
+        guest=guest, contacts=invites.contact_rows(order), ganesha=ganesha, ganesha_src=ganesha_src,
     )
     return html, pages
 
