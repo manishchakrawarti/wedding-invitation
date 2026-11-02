@@ -25,6 +25,28 @@
   .cta-bar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--cream); }
   .cta-bar small { color: var(--gold-soft); }
   #create-form [hidden] { display: none !important; }
+  /* step-by-step flow */
+  .wz-progress { position: sticky; top: 0; z-index: 12; background: var(--cream); padding: 10px 0 8px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .wz-bar { height: 5px; background: #f1e3c8; border-radius: 9px; overflow: hidden; margin-bottom: 10px; }
+  .wz-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--maroon)); transition: width .3s; }
+  .wz-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .wz-chips button { flex: 1 0 auto; border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 6px 12px; font: 600 .85rem var(--sans);
+    color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .wz-chips button b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #f1e3c8; color: var(--maroon); margin-right: 6px; font-size: .75rem; }
+  .wz-chips button.on { border-color: var(--maroon); color: var(--maroon); box-shadow: 0 0 0 2px rgba(122,26,43,.12); }
+  .wz-chips button.on b, .wz-chips button.done b { background: var(--maroon); color: #fff; }
+  .wz-step > .card:first-child { margin-top: 0; }
+  .wz-intro { margin: -4px 0 14px; color: var(--muted); }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip-row button { border: 1px dashed var(--gold); background: #fffaf0; border-radius: 99px; padding: 5px 12px; font: .85rem var(--sans); cursor: pointer; color: var(--maroon-dark); }
+  .radio-row { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .radio-row label { display: flex; gap: 6px; align-items: center; font-weight: 400; margin: 0; cursor: pointer; }
+  .wz-summary { list-style: none; padding-left: 0; } .wz-summary li { margin: 6px 0; } .wz-summary li.no { color: var(--muted); } .wz-summary a { font-size: .9rem; }
+  .cta-bar .wz-nav { display: flex; gap: 8px; align-items: center; flex: none; } .cta-bar .wz-nav .btn { white-space: nowrap; }
+  .cta-bar .wz-where { color: var(--gold-soft); font-size: .9rem; }
+  .cta-bar .btn-back { background: transparent; color: var(--cream); border: 1px solid rgba(234,215,166,.5); }
+  @media (max-width: 600px) { .cta-bar .wz-where small { display: none; } .cta-bar .wz-where strong { font-size: .82rem; }
+    .cta-bar .wz-nav .btn { padding: 10px 13px; font-size: .92rem; } .cta-bar .wrap { gap: 8px; } }
   .switched { animation: flash 1s ease; }
   @keyframes flash { 0% { box-shadow: 0 0 0 3px var(--gold); } 100% { box-shadow: 0 2px 10px rgba(77, 15, 27, .04); } }
 </style>
@@ -40,7 +62,16 @@
 </section>
 
 <section style="padding-top:30px">
-<form class="narrow" method="post" action="/create" id="create-form" enctype="multipart/form-data">
+<form class="narrow" method="post" action="/create" id="create-form" enctype="multipart/form-data" novalidate>
+  <div class="wz-progress" aria-label="Steps">
+    <div class="wz-bar"><span id="wz-bar" style="width:20%"></span></div>
+    <div class="wz-chips">
+      {% for title in ['Names', 'Family & blessings', 'Functions', 'Guests & gifts', 'Design'] %}
+      <button type="button" data-go="{{ loop.index0 }}" class="{{ 'on' if loop.first }}"><b>{{ loop.index }}</b>{{ title }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="wz-step" data-title="Names">
   {% include "_occasion_picker.html" %}
   <input type="hidden" name="event_type" value="{{ current_event }}" id="event_type">
   <input type="hidden" name="photo_stash" value="{{ v.photo_stash or '' }}">
@@ -62,8 +93,6 @@
         <select id="language" name="language">
           {% for l in languages.values() %}<option value="{{ l.code }}" {% if v.language == l.code %}selected{% endif %}>{{ l.native }}{% if l.code != 'en' %} · {{ l.name }}{% endif %}</option>{% endfor %}
         </select></div>
-      <div><label for="hosts"><span id="hosts-label">{{ c.hosts }}</span> <span class="hint">optional</span></label>
-        <input id="hosts" name="hosts" type="text" value="{{ v.hosts }}" maxlength="120" placeholder="{{ c.hosts_ph }}"></div>
       <div class="local-names"><label for="bride_name_local"><span id="primary-local-label">{{ c.primary }}</span> in your script <span class="hint">recommended</span></label>
         <input id="bride_name_local" name="bride_name_local" type="text" value="{{ v.bride_name_local }}" maxlength="80" placeholder="e.g. अनन्या"></div>
       <div class="local-names" id="secondary-local-field" {% if not c.secondary %}hidden{% endif %}><label for="groom_name_local"><span id="secondary-local-label">{{ c.secondary }}</span> in your script</label>
@@ -76,6 +105,36 @@
         <div><label for="groom_family">Groom's parents</label><input id="groom_family" name="groom_family" type="text" value="{{ v.groom_family }}" maxlength="80" placeholder="Mrs &amp; Mr Vikram Mehta"></div>
       </div>
     </details>
+  </div>
+
+  </div>
+
+  <div class="wz-step" data-title="Family & blessings" hidden>
+  <div class="card">
+    <h2 class="step-title"><b>🙏</b> Family &amp; blessings <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional</span></h2>
+    <p class="wz-intro">Everything a traditional card says besides the names. It appears on your invite page and PDF.</p>
+    <div class="form-grid">
+      <div class="full"><label for="blessing_line">With the blessings of <span class="hint">आशीर्वाद</span></label>
+        <input id="blessing_line" name="blessing_line" type="text" value="{{ v.blessing_line }}" maxlength="300" placeholder="Late Smt. &amp; Shri Ram Prasad Sharma (Dada-Dadi)"></div>
+      <div class="full"><label for="hosts"><span id="hosts-label">{{ c.hosts }}</span> <span class="hint">निवेदक</span></label>
+        <input id="hosts" name="hosts" type="text" value="{{ v.hosts }}" maxlength="120" placeholder="{{ c.hosts_ph }}"></div>
+      <div class="full"><label for="welcomers">Eagerly awaiting you <span class="hint">स्वागतोत्सुक / दर्शनाभिलाषी</span></label>
+        <input id="welcomers" name="welcomers" type="text" value="{{ v.welcomers }}" maxlength="300" placeholder="Chacha-Chachi, Mama-Mami, Bua-Phupha and all the Sharma family"></div>
+      <div class="full"><label for="kids_note">The children's line <span class="hint">बाल मनुहार</span></label>
+        <input id="kids_note" name="kids_note" type="text" value="{{ v.kids_note }}" maxlength="200" placeholder="मेरे चाचा की शादी में ज़रूर आना! — Aarav, Myra">
+        <div class="chip-row">
+          <span class="wedding-only" {% if not c.wedding %}hidden{% endif %}>
+            <button type="button" data-fill="kids_note">मेरे चाचा की शादी में ज़रूर आना!</button>
+            <button type="button" data-fill="kids_note">मेरी बुआ की शादी में ज़रूर आना!</button>
+            <button type="button" data-fill="kids_note">मेरे मामा की शादी में ज़रूर आना!</button>
+            <button type="button" data-fill="kids_note">Do come to my didi's wedding!</button>
+          </span>
+          <span class="event-only" {% if c.wedding %}hidden{% endif %}>
+            <button type="button" data-fill="kids_note">आप ज़रूर आना, हम इंतज़ार करेंगे!</button>
+            <button type="button" data-fill="kids_note">Please come, we'll be waiting for you!</button>
+          </span>
+        </div></div>
+    </div>
   </div>
 
   <div class="card">
@@ -94,14 +153,11 @@
     <label class="check"><input type="checkbox" name="photo_consent" id="photo_consent" {% if v.photo_consent %}checked{% endif %}> <span>I have permission from everyone in these photos to show them on this invitation (<a href="/terms#photos" target="_blank">photo terms</a>).</span></label>
   </div>
 
-  <div class="card" id="card-gift">
-    <h2 class="step-title"><b>🎁</b> Receive gifts &amp; shagun <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional</span></h2>
-    <p class="hint" style="margin-top:-6px">Guests who can't come, or want to send their blessings, can pay you directly from the invitation with any UPI app. Add any one of these.</p>
-    {% with gv = {"upi": v.gift_upi, "phone": v.gift_phone, "name": v.gift_name}, gift_qr_src = ("/create/kept/" ~ v.photo_stash ~ "/gift_qr") if "gift_qr" in kept else "" %}{% include "_gift_fields.html" %}{% endwith %}
   </div>
 
+  <div class="wz-step" data-title="Functions" hidden>
   <div class="card">
-    <h2 class="step-title"><b>2</b> <span id="step2-title">{{ c.step2 }}</span></h2>
+    <h2 class="step-title"><b>📅</b> <span id="step2-title">{{ c.step2 }}</span></h2>
     <div class="form-grid">
       <div><label for="wedding_date"><span id="date-label">{{ c.date }}</span> *</label><input id="wedding_date" name="wedding_date" type="date" min="{{ today }}" value="{{ v.wedding_date }}" required></div>
       <div><label for="wedding_time">Time <span class="hint">optional</span></label>{{ tp.time_input("wedding_time", v.wedding_time, "Time", id="wedding_time") }}</div>
@@ -109,6 +165,7 @@
       <div class="full"><label for="venue_name">Venue *</label><input id="venue_name" name="venue_name" type="text" value="{{ v.venue_name }}" required maxlength="100" placeholder="e.g. The Royal Palace Gardens"></div>
       <div><label for="city">City</label><input id="city" name="city" type="text" value="{{ v.city }}" maxlength="60" placeholder="e.g. Jaipur"></div>
       <div><label for="venue_address">Address <span class="hint">for the map</span></label><input id="venue_address" name="venue_address" type="text" value="{{ v.venue_address }}" maxlength="160"></div>
+      <div class="full"><label for="dress_main">Dress code <span class="hint">optional</span></label><input id="dress_main" name="dress_main" type="text" value="{{ v.dress_main }}" maxlength="120" placeholder="e.g. Traditional / pastel ethnic"></div>
     </div>
     <details class="more wedding-only" {% if not c.wedding %}hidden{% endif %} {% if v.fn_haldi or v.fn_mehndi or v.fn_sangeet or v.fn_reception or v.fn_engagement %}open{% endif %}>
       <summary>+ Add Haldi, Mehndi, Sangeet, Reception… <span class="hint">(each gets its own matching card)</span></summary>
@@ -120,6 +177,7 @@
             <input type="date" name="fn_{{ key }}_date" value="{{ v.get('fn_' ~ key ~ '_date', '') }}" aria-label="{{ label }} date">
             {{ tp.time_input("fn_" ~ key ~ "_time", v.get("fn_" ~ key ~ "_time", ""), label ~ " time") }}
             <input type="text" name="fn_{{ key }}_venue" value="{{ v.get('fn_' ~ key ~ '_venue', '') }}" placeholder="Venue (if different)" aria-label="{{ label }} venue">
+            <input type="text" name="fn_{{ key }}_dress" value="{{ v.get('fn_' ~ key ~ '_dress', '') }}" placeholder="Dress code (e.g. yellow for Haldi)" aria-label="{{ label }} dress code" style="grid-column:1 / -1">
           </div>
         </div>
         {% endfor %}
@@ -127,8 +185,43 @@
     </details>
   </div>
 
+  </div>
+
+  <div class="wz-step" data-title="Guests & gifts" hidden>
   <div class="card">
-    <h2 class="step-title"><b>3</b> Pick a style</h2>
+    <h2 class="step-title"><b>💌</b> Your guest list <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional, saves hours</span></h2>
+    <p class="wz-intro">No more writing names on every card. Paste your list once: after you create, each guest has their own card with their name on it, ready to send on WhatsApp in one tap.</p>
+    <label for="guest_list">One guest or family per line: <span class="hint">name, mobile (mobile optional)</span></label>
+    <textarea id="guest_list" name="guest_list" rows="5" placeholder="Sharma Family, 98765 43210&#10;Meena Bua, 9123456780&#10;Rahul Verma">{{ v.guest_list }}</textarea>
+    <p class="hint"><span id="guest-count">0</span> guests · copy straight from Excel, your phone contacts or a WhatsApp message. You can add more later.</p>
+  </div>
+
+  <div class="card">
+    <h2 class="step-title"><b>📞</b> Contact for guests <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional</span></h2>
+    <p class="wz-intro">Who should guests call for directions, stay or pickup? Shown with call and WhatsApp buttons.</p>
+    <div class="form-grid">
+      {% for i in (1, 2) %}
+      <div><label for="contact_name_{{ i }}">Name {{ i }}</label><input id="contact_name_{{ i }}" name="contact_name_{{ i }}" type="text" value="{{ v.get('contact_name_' ~ i, '') }}" maxlength="80" placeholder="{{ 'Rakesh Sharma (Papa)' if i == 1 else 'Rohit (Bhaiya)' }}"></div>
+      <div><label for="contact_phone_{{ i }}">Mobile {{ i }}</label><input id="contact_phone_{{ i }}" name="contact_phone_{{ i }}" type="tel" inputmode="tel" value="{{ v.get('contact_phone_' ~ i, '') }}" maxlength="20" placeholder="98765 43210"></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card" id="card-gift">
+    <h2 class="step-title"><b>🎁</b> Gifts &amp; shagun <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional</span></h2>
+    <div class="radio-row" style="margin-bottom:12px">
+      <label><input type="radio" name="gift_note" value="" {% if not v.gift_note %}checked{% endif %}> No note</label>
+      <label><input type="radio" name="gift_note" value="blessings_only" {% if v.gift_note == 'blessings_only' %}checked{% endif %}> "Your blessings are our gift"</label>
+      <label><input type="radio" name="gift_note" value="no_boxed" {% if v.gift_note == 'no_boxed' %}checked{% endif %}> "No boxed gifts please"</label>
+    </div>
+    <p class="hint" style="margin-top:0">Guests who can't come, or want to send their blessings, can pay you directly from the invitation with any UPI app. Add any one of these.</p>
+    {% with gv = {"upi": v.gift_upi, "phone": v.gift_phone, "name": v.gift_name}, gift_qr_src = ("/create/kept/" ~ v.photo_stash ~ "/gift_qr") if "gift_qr" in kept else "" %}{% include "_gift_fields.html" %}{% endwith %}
+  </div>
+  </div>
+
+  <div class="wz-step" data-title="Design" hidden>
+  <div class="card">
+    <h2 class="step-title"><b>🎨</b> Pick a style</h2>
     <div class="choice-grid" id="style-grid">
       {% for s in styles.values() %}{% set shown = s.key in c.styles %}
       <label class="choice" data-style="{{ s.key }}" {% if not shown %}hidden{% endif %}>
@@ -140,7 +233,12 @@
   </div>
 
   <div class="card">
-    <h2 class="step-title"><b>4</b> Where should we send it? <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional</span></h2>
+    <h2 class="step-title"><b>✅</b> Your invitation will include</h2>
+    <ul class="wz-summary" id="wz-summary"></ul>
+  </div>
+
+  <div class="card">
+    <h2 class="step-title"><b>📧</b> Where should we send it? <span class="hint" style="font-family:var(--sans);font-size:.9rem">optional</span></h2>
     <div class="form-grid">
       <div><label for="customer_name">Your name</label><input id="customer_name" name="customer_name" type="text" value="{{ v.customer_name }}" maxlength="80"></div>
       <div><label for="email">Email</label><input id="email" name="email" type="email" value="{{ v.email }}" placeholder="you@example.com"></div>
@@ -148,11 +246,16 @@
     <p class="hint">You can also add this later. By continuing you accept our <a href="/terms" target="_blank">terms</a> and <a href="/privacy" target="_blank">privacy policy</a>.</p>
     <label class="check" style="margin-top:8px"><input type="checkbox" name="gallery_ok" {% if v.gallery_ok %}checked{% endif %}> <span>🌟 Show my card in the <a href="/gallery" target="_blank">Invite All gallery</a> to inspire others (names and date visible, never phone numbers or guests). You can remove it any time.</span></label>
   </div>
+  </div>
 
   <div class="cta-bar">
     <div class="wrap">
-      <div><strong>Free to create</strong><br><small>HD from ₹{{ pkg.price }}</small></div>
-      <button class="btn" type="submit">✨ Create my invitation</button>
+      <div class="wz-where"><strong id="wz-where">Step 1 of 5 · Names</strong><br><small>Free to create · HD from ₹{{ pkg.price }}</small></div>
+      <div class="wz-nav">
+        <button class="btn btn-back" type="button" id="wz-back" hidden>← Back</button>
+        <button class="btn" type="button" id="wz-next">Next →</button>
+        <button class="btn" type="submit" id="wz-submit" hidden>✨ Create my invitation</button>
+      </div>
     </div>
   </div>
 </form>
@@ -194,6 +297,7 @@
     $('photo1-label').textContent = c.photo1; $('photo2-label').textContent = c.photo2; $('photo3-label').textContent = c.photo3;
     field($('photo2-field'), hasSecond);
     document.querySelectorAll('.wedding-only').forEach(el => field(el, c.wedding));
+    document.querySelectorAll('.event-only').forEach(el => show(el, !c.wedding));
     // styles: only the ones that suit this occasion, with matching sample cards
     let checkedOk = false;
     document.querySelectorAll('#style-grid .choice').forEach(label => {
@@ -237,8 +341,65 @@
   const keptPhotos = {{ ((v.kept or []) | reject('equalto', 'gift_qr') | list | length > 0) | tojson }};
   const needConsent = () => { $('photo_consent').required = keptPhotos || photoInputs.some(i => !i.disabled && i.files.length > 0); };
   photoInputs.forEach(i => i.addEventListener('change', needConsent)); needConsent();
-  form.addEventListener('submit', () => { const b = form.querySelector('button[type=submit]'); b.disabled = true; b.textContent = '✨ Creating…'; });
+  // --- step by step -----------------------------------------------------------------------------------
+  const steps = [...form.querySelectorAll('.wz-step')], chips = [...form.querySelectorAll('.wz-chips button')];
+  let at = 0;
+  const visibleInputs = step => [...step.querySelectorAll('input, select, textarea')].filter(i => !i.disabled && i.offsetParent !== null);
+  const stepValid = (i, report) => {
+    const was = steps[i].hidden; steps[i].hidden = false;
+    const bad = visibleInputs(steps[i]).find(el => !el.checkValidity());
+    if (!bad || !report) steps[i].hidden = was && i !== at;
+    if (bad && report) { go(i, true); bad.reportValidity(); }
+    return !bad;
+  };
+  function go(i, quiet) {
+    at = Math.max(0, Math.min(i, steps.length - 1));
+    steps.forEach((s, n) => { s.hidden = n !== at; });
+    chips.forEach((c, n) => { c.classList.toggle('on', n === at); c.classList.toggle('done', n < at); });
+    $('wz-bar').style.width = `${(at + 1) / steps.length * 100}%`;
+    $('wz-where').textContent = `Step ${at + 1} of ${steps.length} · ${chips[at].textContent.slice(1)}`;
+    $('wz-back').hidden = at === 0;
+    $('wz-next').hidden = at === steps.length - 1;
+    $('wz-submit').hidden = at !== steps.length - 1;
+    if (at === steps.length - 1) summary();
+    if (!quiet) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  $('wz-next').addEventListener('click', () => { if (stepValid(at, true)) go(at + 1); });
+  $('wz-back').addEventListener('click', () => go(at - 1));
+  chips.forEach((c, n) => c.addEventListener('click', () => {
+    for (let i = at; i < n; i++) if (!stepValid(i, true)) return;  // forward: earlier steps must be complete
+    go(n);
+  }));
+  form.querySelectorAll('[data-fill]').forEach(b => b.addEventListener('click', () => { const el = $(b.dataset.fill); el.value = b.textContent; el.focus(); }));
+  const guests = $('guest_list'), countGuests = () => { $('guest-count').textContent = guests.value.split('\n').filter(l => l.trim()).length; };
+  guests.addEventListener('input', countGuests); countGuests();
+
+  function summary() {
+    const val = id => ($(id) && !$(id).disabled ? $(id).value.trim() : '');
+    const fns = [...form.querySelectorAll('.fn-row input[type=checkbox]:checked')].length;
+    const n = guests.value.split('\n').filter(l => l.trim()).length;
+    const photos = [...form.querySelectorAll('.photo-pick input[type=file]')].filter(i => i.files.length).length || ({{ ((v.kept or []) | reject('equalto', 'gift_qr') | list | length) }});
+    const gift = val('gift_upi') || val('gift_phone') || form.querySelector('[name=gift_qr]')?.files?.length;
+    const items = [
+      [true, `💍 ${[val('bride_name'), val('groom_name')].filter(Boolean).join(' & ') || 'Names'}`, 0],
+      [!!val('wedding_date'), `📅 ${val('wedding_date') || 'Date'}, ${val('venue_name') || 'venue'}${fns ? ` + ${fns} more function(s)` : ''}`, 2],
+      [!!(val('blessing_line') || val('welcomers') || val('kids_note') || val('hosts')), '🙏 Blessings & family', 1],
+      [photos > 0, `📸 ${photos || 'No'} photo(s)`, 1],
+      [n > 0, `💌 ${n || 'No'} guests with their own named card`, 3],
+      [!!(val('contact_name_1') || val('contact_phone_1')), '📞 Contact for guests', 3],
+      [!!gift, '🎁 UPI for gifts & shagun', 3],
+    ];
+    $('wz-summary').innerHTML = items.map(([ok, text, step]) =>
+      `<li class="${ok ? '' : 'no'}">${ok ? '✓' : '○'} ${text.replace(/</g, '&lt;')} ${ok ? '' : `<a href="#" data-step="${step}">add</a>`}</li>`).join('');
+    $('wz-summary').querySelectorAll('[data-step]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); go(+a.dataset.step); }));
+  }
+
+  form.addEventListener('submit', e => {
+    for (let i = 0; i < steps.length; i++) if (!stepValid(i, true)) { e.preventDefault(); return; }
+    const b = $('wz-submit'); b.disabled = true; b.textContent = '✨ Creating…';
+  });
   applyEvent({{ current_event|tojson }}, { initial: true });
+  go(0, true);
 })();
 </script>
 {% endblock %}

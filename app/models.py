@@ -309,6 +309,11 @@ class EventDetails(Base):
     gift_phone: Mapped[str] = mapped_column(String(15), default="")  # UPI-linked mobile, 10 digits
     gift_name: Mapped[str] = mapped_column(String(100), default="")  # account holder shown to guests
     livestream_url: Mapped[str] = mapped_column(String(300), default="")
+    # what traditional Indian cards carry besides names and dates (shown on the invite page and PDF)
+    welcomers: Mapped[str] = mapped_column(String(300), default="")  # स्वागतोत्सुक: relatives eager to welcome you
+    kids_note: Mapped[str] = mapped_column(String(200), default="")  # बाल मनुहार: the children's line
+    rsvp_contacts: Mapped[list] = mapped_column(JSON, default=list)  # [{"name": "Rakesh Sharma", "phone": "919876543210"}]
+    gift_note: Mapped[str] = mapped_column(String(20), default="")  # blessings_only | no_boxed | ""
 
     order: Mapped[Order] = relationship(back_populates="event")
 

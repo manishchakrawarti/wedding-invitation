@@ -76,6 +76,7 @@ def _experience(request: Request, order: Order, invitee: Invitee | None, thanks:
             "blessings": blessings[-40:][::-1], "thanks": thanks, "preview": preview, "photos": invites.portraits(order),
             "occ": None if order.is_wedding else events.texts(order),
             "sender_phone": invites.pretty_phone(invitee.sender_phone) if invitee else "",
+            "contacts": invites.contact_rows(order),
             "action": f"/i/{invitee.code}/rsvp" if invitee else f"/e/{order.rsvp_slug}/rsvp",
         },
     )
@@ -341,6 +342,10 @@ async def save_details(request: Request, order: Order = Depends(get_event), db: 
         setattr(ev, field, str(form.get(field, "")).strip()[:limit])
     ev.dress_codes = {f["key"]: str(form.get(f"dress_{f['key']}", "")).strip()[:120] for f in order.functions or []}
     errors: list[str] = []
+    family = invites.read_family_details(form, errors)
+    family.pop("blessing_line")  # saved with the other text fields above
+    if not errors:
+        invites.save_family_details(db, order, family)
     gift = await gifts.read_gift_form(form, errors)
     if not errors:
         gifts.save(db, order, gift)

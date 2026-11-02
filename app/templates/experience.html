@@ -108,6 +108,11 @@
   .personal::before { left: 18px; } .personal::after { right: 18px; }
   .personal .dear { font-family: var(--serif); font-weight: 700; font-size: 2rem; color: var(--maroon); }
   .personal p { font-size: 1.12rem; }
+  .welcomers { margin-top: 16px; } .welcomers span { display: block; font-family: var(--serif); font-weight: 700; color: var(--maroon); }
+  .kids-note { font-style: italic; background: #fff6e0; border-radius: 14px; padding: 10px 14px; display: inline-block; }
+  .contacts { margin-top: 22px; text-align: center; } .contacts .lbl { font-family: var(--serif); font-weight: 700; font-size: 1.15rem; color: var(--maroon); }
+  .contacts .contact { margin-top: 8px; display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .gift-note { text-align: center; margin-top: 18px; font-style: italic; color: var(--maroon); }
   .sender { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--gold-soft); }
   .sender .who { font-size: 1.05rem; } .sender .who strong { color: var(--maroon); }
   .sender .acts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
@@ -244,6 +249,8 @@
       {% if o.is_wedding and (o.bride_family or o.groom_family) %}
       <p class="small muted">{% if o.bride_family %}{{ bride }}, {{ t.daughter_of }} {{ o.bride_family }}{% endif %}{% if o.bride_family and o.groom_family %} · {% endif %}{% if o.groom_family %}{{ groom }}, {{ t.son_of }} {{ o.groom_family }}{% endif %}</p>
       {% endif %}
+      {% if ev and ev.welcomers %}<p class="welcomers"><span>{{ t.welcomers_label }}</span>{{ ev.welcomers }}</p>{% endif %}
+      {% if ev and ev.kids_note %}<p class="kids-note">🧒 “{{ ev.kids_note }}”</p>{% endif %}
       {% if inv and inv.sent_by %}
       <div class="sender">
         <div class="who">{{ t.sent_by }}: <strong>{{ inv.sent_by }}</strong>{% if inv.sender_phone %} · <a href="tel:+{{ inv.sender_phone }}" style="white-space:nowrap">{{ sender_phone }}</a>{% endif %}</div>
@@ -358,6 +365,14 @@
       <textarea id="message" name="message" maxlength="1000" placeholder="Wishing you a lifetime of love…">{{ inv.message if inv else '' }}</textarea>
       <button class="btn btn-primary btn-block" type="submit" style="margin-top:14px" {% if preview_mode %}disabled title="Available after unlocking"{% endif %}>{{ t.update_rsvp if inv and inv.attending else t.send_rsvp }}</button>
     </form>
+    {% if contacts %}
+    <div class="contacts">
+      <div class="lbl">📞 {{ t.contacts_label }}</div>
+      {% for c in contacts %}<div class="contact"><strong>{{ c.name }}</strong>{% if c.tel %} · <a href="{{ c.tel }}">{{ c.pretty }}</a>
+        <a class="btn btn-sm btn-wa" href="{{ c.wa }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}</div>{% endfor %}
+    </div>
+    {% endif %}
+    {% if ev and ev.gift_note %}<p class="gift-note">{{ t['gift_' ~ ev.gift_note] }}</p>{% endif %}
   </div>
 </section>
 

@@ -1567,3 +1567,48 @@ def test_homepage_feature_cards(client):
     for title in ("selfie frame", "See it as you type", "230 ready messages", "PDF, long image &amp; 4K print"):
         assert title in section, title
     assert "(Premium)." not in section and "a real designer checks every invite" not in section
+
+
+def test_create_with_family_details_and_guest_list(client):
+    """What traditional cards carry (blessing, welcomers, children's line, contacts, gift note, dress codes)
+    and a guest list pasted while creating, so every guest's named card is ready to send."""
+    from app.services import export
+
+    resp = client.post("/create", data={
+        "bride_name": "Priya", "groom_name": "Rohan", "language": "en", "style": "north_indian", "wedding_date": WEDDING,
+        "venue_name": "ITC Rajputana", "city": "Jaipur", "hosts": "The Sharma family", "customer_name": "Rakesh Sharma",
+        "blessing_line": "Late Shri Ram Prasad Sharma", "welcomers": "Chacha-Chachi and all the family",
+        "kids_note": "Do come to my didi's wedding! — Aarav", "contact_name_1": "Rakesh Sharma", "contact_phone_1": "98765 43210",
+        "contact_name_2": "Rohit", "gift_note": "blessings_only", "dress_main": "Traditional",
+        "fn_haldi": "on", "fn_haldi_date": WEDDING, "fn_haldi_dress": "Yellow",
+        "guest_list": "Mehta Family, 9123456780\nMeena Bua\n\nRahul Verma",
+    }, follow_redirects=False)
+    assert resp.status_code == 303, resp.text[:800]
+    order = get(resp.headers["location"].split("/")[2])
+    with SessionLocal() as db:
+        ev = db.get(Order, order.id).event
+        assert ev.welcomers.startswith("Chacha") and ev.kids_note.startswith("Do come") and ev.gift_note == "blessings_only"
+        assert ev.rsvp_contacts == [{"name": "Rakesh Sharma", "phone": "919876543210"}, {"name": "Rohit", "phone": ""}]
+        assert ev.dress_codes == {"wedding": "Traditional", "haldi": "Yellow"} and ev.blessing_line.startswith("Late")
+    guests = _invitees(order.id)
+    assert [g.name for g in guests] == ["Mehta Family", "Meena Bua", "Rahul Verma"]
+    assert guests[0].phone == "919123456780" and guests[0].sent_by == "Rakesh Sharma"
+
+    # the preview page lists them ready to send with their own card
+    preview = client.get(f"/o/{order.token}/preview").text
+    assert "Mehta Family" in preview and f"/o/{order.token}/guests/{guests[0].id}/card.jpg" in preview
+
+    # shown on the invite page and in the PDF once live
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    order = pay(client, get(order.token))
+    page = client.get(f"/e/{order.rsvp_slug}").text
+    assert "Eagerly awaiting you" in page and "Chacha-Chachi" in page and "Do come to my didi" in page
+    assert 'href="tel:+919876543210"' in page and "Your blessings are our gift" in page and "Late Shri Ram Prasad" in page
+    with SessionLocal() as db:
+        html, _ = export.build_html(db.get(Order, order.id), "1080")
+    assert "Chacha-Chachi" in html and "+91 98765 43210" in html
+
+    # a wrong contact number is refused, with the form kept
+    bad = client.post("/create", data={"bride_name": "A", "groom_name": "B", "language": "en", "style": "north_indian",
+                                       "wedding_date": WEDDING, "venue_name": "X", "contact_phone_1": "12"})
+    assert bad.status_code == 422 and "Contact number 1" in bad.text and 'id="wz-next"' in bad.text

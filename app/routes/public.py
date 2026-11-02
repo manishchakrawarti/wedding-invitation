@@ -630,6 +630,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     kept = stash.kept(stash_token)
     portrait_uploads = await invites.read_portrait_uploads(form, errors, kept)
     gift = await gifts.read_gift_form(form, errors, None if form.get("gift_qr_remove") else kept.get("gift_qr"))
+    family = invites.read_family_details(form, errors)
     etype = events.TYPES.get(f("event_type"))
     required = [("bride_name", "Bride's name"), ("groom_name", "Groom's name"), ("venue_name", "Venue")]
     if etype:
@@ -692,13 +693,16 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     db.flush()
     if f("hosts"):
         invites.event_details(db, order).hosts = f("hosts")[:200]
+    invites.save_family_details(db, order, family, form)
+    guests = invites.add_guest_list(db, order, f("guest_list"), sent_by=f("customer_name") or f("hosts"))
     gifts.save(db, order, gift)
     enhance = f("enhance_photos") != "off"
     for role, data in portrait_uploads.items():
         invites.save_portrait(db, order, role, data, enhance=enhance)
     order.photo_consent = bool(portrait_uploads)
     stash.drop(stash_token)
-    orders.log_event(db, order, f"Instant invitation created: {order.occasion_name}, {STYLES[style].name}, {LANGUAGES[language].name}")
+    orders.log_event(db, order, f"Instant invitation created: {order.occasion_name}, {STYLES[style].name}, {LANGUAGES[language].name}"
+                     + (f", {guests} guests" if guests else ""))
     db.commit()
     pipeline.enqueue(order.id)
     if portrait_uploads and enhance:

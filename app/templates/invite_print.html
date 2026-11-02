@@ -112,6 +112,7 @@
   .for-guest b { font: 700 40px var(--heading); color: var(--maroon); }
   .dear { font: 700 50px var(--serif); color: var(--acc); margin-bottom: 12px; }
   .sent-by { margin-top: 18px; font-size: 26px; opacity: .9; }
+  .extra { margin-top: 12px; font-size: 26px; max-width: 860px; opacity: .95; }
   {% if pages_range %}{% set sel = ':nth-of-type(n+' ~ pages_range[0] ~ '):nth-of-type(-n+' ~ pages_range[1] ~ ')' %}
   .page { display: none; } .page{{ sel }} { display: block; } .page.themed{{ sel }}, .page.sched{{ sel }} { display: flex; }{% endif %}
 </style>
@@ -199,6 +200,10 @@
   <div style="font-family:var(--heading);font-size:30px;color:var(--acc)">{{ t.venue }}</div>
   <div class="venue-name">{{ o.venue_name }}</div>
   <div class="place">{{ [o.venue_address, o.city]|select|join(', ') }}</div>
+  {% if ev and ev.welcomers %}<div class="extra"><b>{{ t.welcomers_label }}:</b> {{ ev.welcomers }}</div>{% endif %}
+  {% if ev and ev.kids_note %}<div class="extra"><i>“{{ ev.kids_note }}”</i></div>{% endif %}
+  {% if contacts %}<div class="extra"><b>{{ t.contacts_label }}:</b> {% for c in contacts %}{{ c.name }}{% if c.pretty %} {{ c.pretty }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+  {% if ev and ev.gift_note %}<div class="extra"><i>{{ t['gift_' ~ ev.gift_note] }}</i></div>{% endif %}
   {% if qr %}
   <div class="qr"><img src="{{ qr }}" alt="QR code"><p>{{ t.scan_rsvp }}</p></div>
   <div class="url">{{ rsvp_url }}</div>

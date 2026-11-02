@@ -28,6 +28,66 @@ def event_details(db: Session, order: Order) -> EventDetails:
     return order.event
 
 
+GIFT_NOTES = ("blessings_only", "no_boxed")
+MAX_GUESTS_AT_CREATE = 500
+
+
+def read_family_details(form, errors: list[str]) -> dict:
+    """The 'family & blessings' and 'guests' parts of the create form: blessing, who welcomes the guests,
+    the children's line, contact numbers for help, and a note about gifts."""
+    def f(key: str, limit: int) -> str:
+        return str(form.get(key) or "").strip()[:limit]
+
+    contacts = []
+    for i in (1, 2):
+        name, raw = f(f"contact_name_{i}", 80), f(f"contact_phone_{i}", 20)
+        phone = clean_phone(raw)
+        if raw and phone is None:
+            errors.append(f"Contact number {i} doesn't look right. Use 10 digits, or + and the country code.")
+        elif name or phone:
+            contacts.append({"name": name, "phone": phone or ""})
+    return {
+        "blessing_line": f("blessing_line", 300), "welcomers": f("welcomers", 300), "kids_note": f("kids_note", 200),
+        "rsvp_contacts": contacts, "gift_note": f("gift_note", 20) if f("gift_note", 20) in GIFT_NOTES else "",
+    }
+
+
+def save_family_details(db: Session, order: Order, details: dict, form=None) -> None:
+    ev = event_details(db, order)
+    for key, value in details.items():
+        setattr(ev, key, value)
+    if form is not None:  # dress code per function, typed next to each function in the create form
+        codes = dict(ev.dress_codes or {})
+        for fn in order.functions or []:
+            main = fn["key"] in ("wedding", "nikah") or not order.is_wedding
+            value = str(form.get("dress_main" if main else f"fn_{fn['key']}_dress") or "").strip()[:120]
+            if value:
+                codes[fn["key"]] = value
+        ev.dress_codes = codes
+
+
+def add_guest_list(db: Session, order: Order, text: str, sent_by: str = "") -> int:
+    """Guests pasted while creating (one per line: name, phone): each gets a personal card and link, ready to send."""
+    parsed = parse_guest_lines(text, [], [])[:MAX_GUESTS_AT_CREATE]
+    for g in parsed:
+        db.add(Invitee(order_id=order.id, code=new_code(db), name=g["name"], phone=g["phone"], side=g["side"],
+                       functions=[], sent_by=sent_by[:120]))
+        db.flush()
+    return len(parsed)
+
+
+def contact_rows(order: Order) -> list[dict]:
+    """Contact numbers for the invite page: name, pretty number, call and WhatsApp links."""
+    rows = []
+    for c in (order.event.rsvp_contacts if order.event else None) or []:
+        if c.get("phone"):
+            rows.append({"name": c.get("name", ""), "pretty": pretty_phone(c["phone"]), "tel": f"tel:+{c['phone']}",
+                         "wa": f"https://wa.me/{c['phone']}"})
+        elif c.get("name"):
+            rows.append({"name": c["name"], "pretty": "", "tel": "", "wa": ""})
+    return rows
+
+
 PORTRAIT_ROLES = {"bride": "Bride's photo", "groom": "Groom's photo", "family": "Family photo"}
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
 

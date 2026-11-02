@@ -134,6 +134,17 @@
         {% for s in schedule %}
         <div><label for="dress_{{ s.key }}">{{ s.icon }} {{ s.label }} dress code</label><input id="dress_{{ s.key }}" name="dress_{{ s.key }}" type="text" value="{{ (ev.dress_codes or {}).get(s.key, '') }}" placeholder="{{ {'haldi': 'Yellow ethnic', 'mehndi': 'Green / bright colours', 'sangeet': 'Indo-western glam', 'reception': 'Formal / gowns & suits'}.get(s.key, 'Traditional ethnic') }}" maxlength="120"></div>
         {% endfor %}
+        <div class="full"><label for="welcomers">Eagerly awaiting you <span class="hint">स्वागतोत्सुक, e.g. Chacha-Chachi, Mama-Mami and all the family</span></label><input id="welcomers" name="welcomers" type="text" value="{{ ev.welcomers }}" maxlength="300"></div>
+        <div class="full"><label for="kids_note">The children's line <span class="hint">बाल मनुहार, e.g. मेरे चाचा की शादी में ज़रूर आना!</span></label><input id="kids_note" name="kids_note" type="text" value="{{ ev.kids_note }}" maxlength="200"></div>
+        {% for i in (1, 2) %}{% set c = (ev.rsvp_contacts or [])[i - 1] if (ev.rsvp_contacts or [])|length >= i else {} %}
+        <div><label for="contact_name_{{ i }}">Contact {{ i }} name</label><input id="contact_name_{{ i }}" name="contact_name_{{ i }}" type="text" value="{{ c.get('name', '') }}" maxlength="80"></div>
+        <div><label for="contact_phone_{{ i }}">Contact {{ i }} mobile</label><input id="contact_phone_{{ i }}" name="contact_phone_{{ i }}" type="tel" value="{{ c.get('phone', '') }}" maxlength="20"></div>
+        {% endfor %}
+        <div class="full"><label for="gift_note">Gift note</label><select id="gift_note" name="gift_note">
+          <option value="">No note</option>
+          <option value="blessings_only" {% if ev.gift_note == 'blessings_only' %}selected{% endif %}>"Your blessings are our gift"</option>
+          <option value="no_boxed" {% if ev.gift_note == 'no_boxed' %}selected{% endif %}>"No boxed gifts please"</option>
+        </select></div>
         <div class="full"><label for="livestream_url">Live-stream link <span class="hint">YouTube / Zoom, optional</span></label><input id="livestream_url" name="livestream_url" type="url" value="{{ ev.livestream_url }}" maxlength="300"></div>
         <div class="full"><label style="font-size:1.05rem">🎁 Receive gifts &amp; shagun <span class="hint">guests pay you directly with any UPI app</span></label>
           {% with gv = {"upi": ev.upi_id, "phone": ev.gift_phone, "name": ev.gift_name},
