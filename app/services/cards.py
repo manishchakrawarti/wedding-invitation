@@ -73,6 +73,13 @@ def degree_of(order, side: str) -> str:
     return getattr(order, f"{side}_degree", "") or ""
 
 
+ENGLISH_INVITE_SHORT = "Together with their families"
+
+
+def _has_family_lines(order) -> bool:
+    return any(degree_of(order, s) or family_line(order, s) for s in ("bride", "groom"))
+
+
 def shows_ganesha(order) -> bool:
     """Lord Ganesha and 'Shri Ganeshaya Namah' on Hindu weddings and Ganesh-blessed occasions, unless the family
     turned it off. Never on Nikah or church weddings; not by default on Punjabi cards (Sikh weddings open with ੴ)."""
@@ -102,7 +109,8 @@ def main_card(order) -> CardSpec:
     items: list = ganesha_items(order) + [
         Line(headline, "headline", 46, "accent", gap_before=14 if shows_ganesha(order) else 0),
         Divider(gap_before=10),
-        Line(lang.invite_line or ENGLISH_INVITE_LINE, "invite", 34, "secondary", max_lines=3, gap_before=14),
+        Line(lang.invite_line or (ENGLISH_INVITE_SHORT if _has_family_lines(order) else ENGLISH_INVITE_LINE),
+             "invite", 34, "secondary", max_lines=3, gap_before=14),
         Line(bride, "names", 128, "primary", gap_before=26),
     ]
     for side in ("bride", "groom"):

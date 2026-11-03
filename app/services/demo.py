@@ -96,6 +96,112 @@ DEMOS: dict[str, dict] = {
     ),
 }
 
+# --- everything the create page offers, shown in the live demos ------------------------------------------
+# degrees and home towns under the names, the welcoming relatives, the children's line, contacts (names only:
+# a sample number could belong to a real person), a gift note, and dress codes in the card's language.
+DEMO_EXTRAS: dict[str, dict] = {
+    "en": dict(degrees=("B.Tech · Software Engineer", "MBA · Chartered Accountant"), homes=("Malviya Nagar, Jaipur", "C-Scheme, Jaipur"),
+               welcomers="Dada-Dadi, Chacha-Chachi, Mama-Mami, Bua-Phupha and the entire Sharma & Mehta families",
+               kids_note="Didi ki shaadi mein zaroor aana! — Aarav & Myra", contacts=("Rakesh Sharma (Papa)", "Rohit Sharma (Bhaiya)"),
+               sender="Rakesh Sharma"),
+    "hi": dict(degrees=("एम.बी.बी.एस. (डॉक्टर)", "बी.टेक (इंजीनियर)"), homes=("अस्सी, वाराणसी", "लंका, वाराणसी"),
+               welcomers="दादा-दादी, चाचा-चाची, मामा-मामी, बुआ-फूफा एवं समस्त शर्मा परिवार",
+               kids_note="मेरी दीदी की शादी में ज़रूर आना! — आरव, मायरा", contacts=("राकेश शर्मा (पापा)", "रोहित शर्मा (भैया)"),
+               sender="राकेश शर्मा",
+               dress={"haldi": "पीले परिधान 💛", "mehndi": "हरे और चटक रंग", "sangeet": "इंडो-वेस्टर्न ✨", "wedding": "पारंपरिक परिधान",
+                      "reception": "फ़ॉर्मल"}),
+    "mr": dict(degrees=("बी.ई. (अभियंता)", "एम.बी.ए."), homes=("कोथरूड, पुणे", "सदाशिव पेठ, पुणे"),
+               welcomers="आजी-आजोबा, काका-काकू, मामा-मामी आणि समस्त देशपांडे कुटुंब",
+               kids_note="माझ्या ताईच्या लग्नाला नक्की या! — आर्या, ओम", contacts=("विजय देशपांडे (बाबा)", "ओंकार देशपांडे (दादा)"),
+               sender="विजय देशपांडे",
+               dress={"haldi": "पिवळे कपडे 💛", "mehndi": "हिरवा रंग", "sangeet": "इंडो-वेस्टर्न ✨", "wedding": "पारंपरिक नऊवारी / फेटा",
+                      "reception": "फॉर्मल"}),
+    "bn": dict(degrees=("এম.বি.বি.এস.", "বি.টেক"), homes=("সল্টলেক, কলকাতা", "বেহালা, কলকাতা"),
+               welcomers="ঠাকুমা-দাদু, কাকা-কাকিমা ও সমস্ত চট্টোপাধ্যায় পরিবার", kids_note="দিদির বিয়েতে অবশ্যই এসো! — ঋজু, তিন্নি",
+               contacts=("অমিত চট্টোপাধ্যায় (বাবা)", "রাহুল (দাদা)"), sender="অমিত চট্টোপাধ্যায়"),
+    "gu": dict(degrees=("સી.એ.", "એમ.બી.એ."), homes=("નવરંગપુરા, અમદાવાદ", "સેટેલાઇટ, અમદાવાદ"),
+               welcomers="દાદા-દાદી, કાકા-કાકી, મામા-મામી અને સમસ્ત પટેલ પરિવાર", kids_note="દીદીના લગ્નમાં જરૂર આવજો! — આરવ, ક્રિશા",
+               contacts=("કિરીટભાઈ પટેલ (પપ્પા)", "હર્ષ પટેલ (ભાઈ)"), sender="કિરીટભાઈ પટેલ"),
+    "pa": dict(degrees=("ਬੀ.ਟੈੱਕ", "ਐੱਮ.ਬੀ.ਏ."), homes=("ਰਣਜੀਤ ਐਵੇਨਿਊ, ਅੰਮ੍ਰਿਤਸਰ", "ਮਾਡਲ ਟਾਊਨ, ਜਲੰਧਰ"),
+               welcomers="ਦਾਦਾ-ਦਾਦੀ, ਚਾਚਾ-ਚਾਚੀ, ਮਾਮਾ-ਮਾਮੀ ਅਤੇ ਸਮੂਹ ਗਿੱਲ ਪਰਿਵਾਰ", kids_note="ਦੀਦੀ ਦੇ ਵਿਆਹ ਵਿੱਚ ਜ਼ਰੂਰ ਆਉਣਾ! — ਗੁਰਨੂਰ, ਜੈਵੀਰ",
+               contacts=("ਗੁਰਪ੍ਰੀਤ ਸਿੰਘ ਗਿੱਲ (ਪਾਪਾ)", "ਅਮਨ (ਵੀਰ ਜੀ)"), sender="ਗੁਰਪ੍ਰੀਤ ਸਿੰਘ ਗਿੱਲ"),
+    "ta": dict(degrees=("பி.இ.", "எம்.பி.ஏ."), homes=("அண்ணா நகர், மதுரை", "கே.கே. நகர், மதுரை"),
+               welcomers="தாத்தா-பாட்டி, சித்தப்பா-சித்தி மற்றும் சுப்பிரமணியம் குடும்பத்தினர்", kids_note="அக்கா கல்யாணத்துக்கு கண்டிப்பா வாங்க! — ஆதவ், தியா",
+               contacts=("சுப்பிரமணியம் (அப்பா)", "ராஜேஷ் (அண்ணா)"), sender="சுப்பிரமணியம்"),
+    "te": dict(degrees=("ఎం.బి.బి.ఎస్.", "బి.టెక్"), homes=("జూబ్లీ హిల్స్, హైదరాబాద్", "కూకట్‌పల్లి, హైదరాబాద్"),
+               welcomers="తాతయ్య-నానమ్మ, బాబాయి-పిన్ని మరియు రెడ్డి కుటుంబ సభ్యులు", kids_note="అక్క పెళ్లికి తప్పకుండా రండి! — ఆద్య, విహాన్",
+               contacts=("శ్రీనివాస రెడ్డి (నాన్న)", "కిరణ్ (అన్నయ్య)"), sender="శ్రీనివాస రెడ్డి"),
+    "kn": dict(degrees=("ಬಿ.ಇ.", "ಎಂ.ಬಿ.ಎ."), homes=("ಸರಸ್ವತಿಪುರಂ, ಮೈಸೂರು", "ಜಯನಗರ, ಬೆಂಗಳೂರು"),
+               welcomers="ಅಜ್ಜ-ಅಜ್ಜಿ, ಚಿಕ್ಕಪ್ಪ-ಚಿಕ್ಕಮ್ಮ ಮತ್ತು ಗೌಡ ಕುಟುಂಬದವರು", kids_note="ಅಕ್ಕನ ಮದುವೆಗೆ ಖಂಡಿತ ಬನ್ನಿ! — ಅನ್ವಿ, ಆರುಷ್",
+               contacts=("ರಮೇಶ್ ಗೌಡ (ಅಪ್ಪ)", "ಸಂದೀಪ್ (ಅಣ್ಣ)"), sender="ರಮೇಶ್ ಗೌಡ"),
+    "ml": dict(degrees=("എം.ബി.ബി.എസ്.", "ബി.ടെക്"), homes=("കടവന്ത്ര, കൊച്ചി", "പാലാ, കോട്ടയം"),
+               welcomers="വല്യപ്പച്ചൻ, വല്യമ്മച്ചി, മറ്റ് ബന്ധുക്കൾ എന്നിവർ", kids_note="ചേച്ചിയുടെ കല്യാണത്തിന് ഉറപ്പായും വരണേ! — ആൻ, ജോയൽ",
+               contacts=("തോമസ് (പപ്പ)", "ജിതിൻ (ചേട്ടൻ)"), sender="തോമസ്"),
+}
+
+EVENT_EXTRAS: dict[str, dict] = {  # by category, with a few occasions overridden below
+    "birthday": dict(welcomers="Grandparents, cousins and all our friends", contacts=("Neha Sharma (Mummy)",), gift_note=""),
+    "anniversary": dict(blessing_line="With the blessings of our elders", welcomers="Their children, grandchildren and the whole family",
+                        kids_note="Come celebrate Mummy-Papa's big day! — Riya & Kabir", contacts=("Kabir (Son)",), gift_note="blessings_only"),
+    "puja": dict(blessing_line="With the blessings of Lord Ganesha and our elders", welcomers="The Sharma family and all our relatives",
+                 contacts=("Rakesh Sharma",), gift_note="blessings_only", dress="Traditional"),
+    "baby": dict(blessing_line="With the blessings of Dada-Dadi and Nana-Nani", welcomers="Grandparents, uncles, aunts and cousins",
+                 kids_note="Come meet me! I can't wait to see you 👶", contacts=("Rohan (Papa)",), gift_note="no_boxed"),
+    "festival": dict(welcomers="Family, neighbours and friends", contacts=("The hosts",), gift_note="blessings_only"),
+    "corporate": dict(contacts=("Events team",), gift_note=""),
+}
+TYPE_EXTRAS: dict[str, dict] = {
+    "kids_birthday": dict(kids_note="Please come to my party! There will be cake 🎂 — Aarav", dress="Superheroes & princesses welcome"),
+    "milestone_birthday": dict(blessing_line="With love from his children and grandchildren",
+                               kids_note="Come celebrate Dadu's 60th! — the grandchildren"),
+    "theme_party": dict(dress="Bollywood glam ✨"),
+    "kitty_party": dict(dress="Retro glam 💃"),
+    "christmas_newyear": dict(dress="Red, green or a little sparkle 🎄"),
+    "lohri_sankranti": dict(dress="Punjabi traditional"),
+    "eid_dawat": dict(blessing_line="", dress="Festive ethnic"),
+    "family_reunion": dict(kids_note="Can't wait to play with all my cousins! — Myra"),
+}
+
+
+def _set_extras(db, order: Order, extras: dict, dress: dict | None = None) -> None:
+    ev = invites.event_details(db, order)
+    for field in ("welcomers", "kids_note", "gift_note"):
+        if field in extras:
+            setattr(ev, field, extras[field])
+    if "blessing_line" in extras:
+        ev.blessing_line = extras["blessing_line"]
+    ev.rsvp_contacts = [{"name": n, "phone": ""} for n in extras.get("contacts", ())]
+    if dress:
+        ev.dress_codes = {**(ev.dress_codes or {}), **dress}
+    sender = extras.get("sender", "")
+    for invitee in order.invitees:
+        invitee.sent_by = sender
+
+
+def enrich_demos() -> None:
+    """Fill the live demos with everything the create page offers (safe to repeat: always the latest content)."""
+    from app import events
+
+    with SessionLocal() as db:
+        for order in db.scalars(select(Order).where(Order.source == "demo")).all():
+            if order.is_wedding:
+                x = DEMO_EXTRAS.get(order.language)
+                if not x:
+                    continue
+                order.bride_degree, order.groom_degree = x["degrees"]
+                order.bride_home, order.groom_home = x["homes"]
+                _set_extras(db, order, {**x, "gift_note": x.get("gift_note", "blessings_only")}, x.get("dress"))
+            else:
+                t = events.TYPES.get(order.event_type)
+                if t is None:
+                    continue
+                x = {**EVENT_EXTRAS.get(t.category, {}), **TYPE_EXTRAS.get(order.event_type, {})}
+                if "sender" not in x:
+                    x["sender"] = "The Sharma family" if t.category not in ("corporate", "festival") else ""
+                dress = {order.event_type: x["dress"]} if x.get("dress") else None
+                _set_extras(db, order, x, dress)
+        db.commit()
+
 # Other guests, to make the family console look lived-in. name, side, functions, reply, people, food
 OTHER_GUESTS = [
     ("Meena Bua & Family", "bride", ["haldi", "mehndi", "wedding"], "yes", 4, "veg"),
@@ -220,6 +326,7 @@ def ensure_demo() -> None:
     ensure_event_demos()
     ensure_demo_portraits()
     ensure_event_portraits()
+    enrich_demos()
     refresh_demo_designs()
 
 

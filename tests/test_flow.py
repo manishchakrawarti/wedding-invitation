@@ -1706,3 +1706,21 @@ def test_installable_app_and_android_asset_links(client, monkeypatch):
     monkeypatch.setattr(settings, "android_sha256", "aa:bb, CC:DD")
     links = client.get("/.well-known/assetlinks.json").json()
     assert links[0]["target"] == {"namespace": "android_app", "package_name": "com.inviteall.app", "sha256_cert_fingerprints": ["AA:BB", "CC:DD"]}
+
+
+def test_live_demos_show_every_create_feature(client):
+    from app.services import demo
+
+    demo.ensure_demo()
+    with SessionLocal() as db:
+        wedding = db.scalar(select(Order).where(Order.source == "demo", Order.language == "hi", Order.event_type == "wedding"))
+        ev = wedding.event
+        assert wedding.bride_degree and wedding.groom_home and ev.welcomers and ev.kids_note and ev.gift_note == "blessings_only"
+        assert ev.rsvp_contacts and all(c["phone"] == "" for c in ev.rsvp_contacts)  # names only: never a real person's number
+        assert all(i.sent_by for i in wedding.invitees)
+        kids = db.scalar(select(Order).where(Order.source == "demo", Order.event_type == "kids_birthday"))
+        assert "party" in kids.event.kids_note and kids.event.dress_codes.get("kids_birthday")
+    page = client.get(client.get("/demo?event=wedding&lang=en", follow_redirects=False).headers["location"]).text
+    for text in ("B.Tech · Software Engineer", "Eagerly awaiting you", "Didi ki shaadi", "Rakesh Sharma (Papa)",
+                 "Your blessings are our gift", "Invitation sent by"):
+        assert text in page, text
