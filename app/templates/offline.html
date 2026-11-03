@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}You're offline · {{ settings.brand_name }}{% endblock %}
+{% block content %}
+<section><div class="narrow center" style="padding:60px 0">
+  <img src="/static/icons/icon-192.png" alt="" width="96" height="96" style="border-radius:20px">
+  <h1>You're offline</h1>
+  <p class="muted">Check your internet connection and try again. Your invitations are safe.</p>
+  <p><button class="btn btn-primary" type="button" onclick="location.reload()">Try again</button></p>
+</div></section>
+{% endblock %}

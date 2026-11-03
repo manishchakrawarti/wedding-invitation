@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Invite All</string>
+    <string name="start_url">https://invite-all.com/?utm_source=android_app</string>
+    <string name="asset_statements" translatable="false">
+        [{ \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+           \"target\": { \"namespace\": \"web\", \"site\": \"https://invite-all.com\" } }]
+    </string>
+</resources>

@@ -62,9 +62,62 @@ def apple_touch_icon():
 
 @router.get("/site.webmanifest")
 def manifest():
-    return {"name": settings.brand_name, "short_name": settings.brand_name, "start_url": "/", "display": "standalone",
-            "background_color": "#fff8ec", "theme_color": "#7a1a2b",
-            "icons": [{"src": f"/static/icons/icon-{n}.png", "sizes": f"{n}x{n}", "type": "image/png"} for n in (192, 512)]}
+    """The installable web app (and the Android app, which opens the site in a Trusted Web Activity)."""
+    icons = [{"src": f"/static/icons/icon-{n}.png", "sizes": f"{n}x{n}", "type": "image/png", "purpose": "any"} for n in (192, 512)]
+    icons.append({"src": "/static/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"})
+    return {
+        "id": "/", "name": f"{settings.brand_name}: Invitation Card Maker", "short_name": settings.brand_name,
+        "description": "Beautiful invitation cards for weddings, birthdays, pujas and every occasion, in Hindi and 9 Indian languages.",
+        "start_url": "/?utm_source=app", "scope": "/", "display": "standalone", "orientation": "portrait", "lang": "en-IN",
+        "background_color": "#7a1a2b", "theme_color": "#7a1a2b", "categories": ["lifestyle", "productivity", "photo"],
+        "icons": icons,
+        "shortcuts": [
+            {"name": "Create an invitation", "short_name": "Create", "url": "/create?utm_source=app_shortcut",
+             "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192"}]},
+            {"name": "Invitation messages", "short_name": "Messages", "url": "/wording?utm_source=app_shortcut",
+             "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192"}]},
+            {"name": "Real invitations", "short_name": "Gallery", "url": "/gallery?utm_source=app_shortcut",
+             "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192"}]},
+        ],
+    }
+
+
+@router.get("/.well-known/assetlinks.json")
+def assetlinks():
+    """Tells Android the Invite All app may show this site full screen (no browser bar). The fingerprints are of
+    the app's signing keys: our upload key, and Google Play's app-signing key once the app is on Play."""
+    prints = [f.strip().upper() for f in settings.android_sha256.split(",") if f.strip()]
+    if not prints:
+        return []
+    return [{"relation": ["delegate_permission/common.handle_all_urls"],
+             "target": {"namespace": "android_app", "package_name": settings.android_package, "sha256_cert_fingerprints": prints}}]
+
+
+SERVICE_WORKER = """// Invite All service worker: an offline page, and quick start for the app's icons and styles.
+const CACHE = 'ia-v1';
+const OFFLINE = '/offline';
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll([OFFLINE, '/static/icons/icon-192.png'])).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', e => {
+  if (e.request.mode === 'navigate') {
+    e.respondWith(fetch(e.request).catch(() => caches.match(OFFLINE)));
+  }
+});
+"""
+
+
+@router.get("/sw.js")
+def service_worker():
+    return Response(SERVICE_WORKER, media_type="text/javascript", headers={"Cache-Control": "no-cache"})
+
+
+@router.get("/offline", response_class=HTMLResponse)
+def offline(request: Request):
+    return templates.TemplateResponse(request, "offline.html", {})
 
 
 @router.get("/indexnow-key.txt", response_class=PlainTextResponse)

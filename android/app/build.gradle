@@ -1,0 +1,50 @@
+// Invite All for Android: a Trusted Web Activity that opens https://invite-all.com full screen in Chrome.
+// Website updates reach the app instantly; only icons, colours or the version need a new build.
+plugins {
+    id "com.android.application"
+}
+
+def versionNumber = (System.getenv("VERSION_CODE") ?: "1") as Integer
+def keystore = System.getenv("KEYSTORE_FILE")
+
+android {
+    namespace "com.inviteall.app"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.inviteall.app"
+        minSdk 21
+        targetSdk 35
+        versionCode versionNumber
+        versionName "1.0.${versionNumber}"
+    }
+
+    signingConfigs {
+        release {
+            if (keystore) {
+                storeFile file(keystore)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS") ?: "upload"
+                keyPassword System.getenv("KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystore) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+}

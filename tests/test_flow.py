@@ -1688,3 +1688,21 @@ def test_bride_and_groom_degree_parents_and_home(client):
         html, _ = export.build_html(db.get(Order, order.id), "1080")
     assert "Son of Shri Vikram Mehta, Lucknow" in html and "B.Tech · Software Engineer" in html
     assert "Bride&#39;s side" in client.get("/create").text or "Bride's side" in client.get("/create").text
+
+
+def test_installable_app_and_android_asset_links(client, monkeypatch):
+    from app.config import settings
+
+    m = client.get("/site.webmanifest").json()
+    assert m["display"] == "standalone" and m["scope"] == "/" and m["id"] == "/"
+    assert any(i.get("purpose") == "maskable" for i in m["icons"]) and len(m["shortcuts"]) == 3
+    assert client.get("/static/icons/icon-maskable-512.png").status_code == 200
+    sw = client.get("/sw.js")
+    assert sw.headers["content-type"].startswith("text/javascript") and "/offline" in sw.text
+    assert "You're offline" in client.get("/offline").text.replace("&#39;", "'")
+    assert "serviceWorker.register('/sw.js')" in client.get("/").text
+
+    assert client.get("/.well-known/assetlinks.json").json() == []  # no app key configured
+    monkeypatch.setattr(settings, "android_sha256", "aa:bb, CC:DD")
+    links = client.get("/.well-known/assetlinks.json").json()
+    assert links[0]["target"] == {"namespace": "android_app", "package_name": "com.inviteall.app", "sha256_cert_fingerprints": ["AA:BB", "CC:DD"]}

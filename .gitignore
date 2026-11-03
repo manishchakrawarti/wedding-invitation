@@ -6,3 +6,11 @@ __pycache__/
 data/
 app/static/samples/*
 !app/static/samples/.gitkeep
+
+# Android build output and signing keys (keys live only on the owner PC)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.jks
+*.keystore
