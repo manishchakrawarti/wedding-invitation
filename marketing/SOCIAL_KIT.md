@@ -31,7 +31,7 @@ Everything to open the pages and start posting. After the first two weeks, follo
 
 **Instagram** (150 characters max)
 ```
-💌 Free invitation cards for weddings, birthdays, pujas & 27 occasions
+💌 Free invitation cards for weddings, birthdays, pujas & 28 occasions
 🗣️ Hindi + 9 Indian languages · ready in 60 sec
 👇 Make yours free
 ```
@@ -59,7 +59,7 @@ Email: sales.team.official.id@gmail.com
 
 **X bio** (160 characters max)
 ```
-Free invitation cards for weddings, birthdays, pujas & 27 occasions 💌 Hindi + 9 Indian languages. Ready in 60 seconds. Share on WhatsApp.
+Free invitation cards for weddings, birthdays, pujas & 28 occasions 💌 Hindi + 9 Indian languages. Ready in 60 seconds. Share on WhatsApp.
 ```
 
 ---
@@ -72,7 +72,7 @@ Post one every 1–2 days in this order. Each caption ends with the link (on Ins
 ```
 Say hello to Invite All 💌
 
-Beautiful invitation cards for weddings, birthdays, pujas and 27 occasions, ready in 60 seconds.
+Beautiful invitation cards for weddings, birthdays, pujas and 28 occasions, ready in 60 seconds.
 Pick a design, type the names, share on WhatsApp. That's it.
 
 ✨ Free to create
@@ -112,7 +112,7 @@ with every matra written correctly.
 
 **④ `post4_puja.png`: puja invitations**
 ```
-Griha Pravesh, Satyanarayan Puja, Diwali Laxmi Puja… 🪔
+Griha Pravesh, Satyanarayan Puja, Diwali Laxmi Puja, Chhath… 🪔
 
 Make a beautiful puja invitation with a Shri Ganesh blessing in 60 seconds:
 muhurat time, address with a map, and prasad timings, all on one card.
@@ -122,12 +122,12 @@ muhurat time, address with a map, and prasad timings, all on one card.
 #grihapravesh #housewarming #satyanarayanpuja #pujainvitation #diwalipuja #grihapraveshinvitation #invitationcard
 ```
 
-**⑤ `post5_occasions.png`: 27 occasions**
+**⑤ `post5_occasions.png`: 28 occasions**
 ```
 Not just weddings 🎉
 
 Birthdays · Anniversaries · Baby shower (Godh Bharai) · Namkaran · Mundan · Nikah · Eid Dawat ·
-Kitty parties · Shop openings · Office annual day… 27 occasions, one free app.
+Kitty parties · Shop openings · Office annual day… 28 occasions, one free app.
 
 Which one are you planning next? 👇
 
@@ -201,7 +201,7 @@ YouTube title example: *"Free wedding invitation card in Hindi in 60 seconds | I
 | 6 | Reel: video 4 | Share it | YouTube: video 4 |
 | 7 | ④ Puja | Question box: *"Which occasion next?"* | Pinterest: 5 pins |
 | 8 | Reel: video 3 | | |
-| 9 | ⑤ 27 occasions | | Facebook groups (section 7) |
+| 9 | ⑤ 28 occasions | | Facebook groups (section 7) |
 | 10 | Reel: video 5 | | YouTube: video 5 |
 | 11 | ⑥ How it works | | Pinterest: 5 pins |
 | 12 | Share a real customer's card (ask them first) | | |

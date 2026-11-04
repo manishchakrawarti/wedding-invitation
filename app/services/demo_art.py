@@ -386,7 +386,7 @@ EVENT_PORTRAITS = {
     "christmas_newyear": (None, None, "kerala_christian"),
 }
 for _key in ("satyanarayan_puja", "rudrabhishek", "ganesh_chaturthi", "griha_pravesh", "krishna_janmashtami",
-             "durga_puja", "diwali_puja", "sundar_kand", "lohri_sankranti", "family_reunion"):
+             "durga_puja", "diwali_puja", "chhath_puja", "sundar_kand", "lohri_sankranti", "family_reunion"):
     EVENT_PORTRAITS[_key] = (None, None, "bengal" if _key == "durga_puja" else "punjab" if _key == "lohri_sankranti" else "north")
 
 

@@ -12,7 +12,7 @@ SUFFIX = "invitation-card"
 
 # Shorter, search-shaped URL names than the occasion's display name
 TYPE_SLUGS = {
-    "milestone_anniversary": "silver-golden-jubilee", "durga_puja": "navratri-durga-puja", "diwali_puja": "diwali-puja",
+    "milestone_anniversary": "silver-golden-jubilee", "durga_puja": "navratri-durga-puja", "diwali_puja": "diwali-puja", "chhath_puja": "chhath-puja",
     "sundar_kand": "sundarkand-path", "baby_shower": "baby-shower-godh-bharai", "namakaran": "namkaran-naming-ceremony",
     "annaprashan": "annaprashan", "mundan": "mundan-ceremony", "upanayanam": "janeu-upanayanam",
     "christmas_newyear": "christmas-new-year-party", "grand_opening": "inauguration-opening-ceremony",
@@ -66,6 +66,17 @@ TIPS = {
 }
 
 
+TYPE_TIPS = {
+    "chhath-puja-invitation-card": [
+        "The four days: Nahay Khay, Kharna, Sandhya Arghya and Usha Arghya, with dates",
+        "The ghat or pond where the arghya will be offered, with a landmark, and the time of sunset and sunrise",
+        "Where to gather first (your home) and when the family will leave for the ghat",
+        "Kharna prasad timings (kheer, roti) and thekua prasad after the Usha Arghya",
+        "Who is observing the vrat (the vratee), and the host family's name",
+    ],
+}
+
+
 @dataclass(frozen=True)
 class Landing:
     slug: str
@@ -97,7 +108,7 @@ class Landing:
 
     @property
     def tips(self) -> list[str]:
-        return TIPS[self.category]
+        return TYPE_TIPS.get(self.slug) or TIPS[self.category]
 
     def faqs(self) -> list[tuple[str, str]]:
         hd = RESOLUTIONS["1080"]

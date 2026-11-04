@@ -162,7 +162,7 @@ def main() -> None:
                  "st_muslim_nikah.jpg", "ev_grand_opening.jpg", "ev_griha_pravesh.jpg"]
         for i, f in enumerate(files):
             paste_center(im, card(f, 270), 220 + (i % 3) * 320, 520 + (i // 3) * 400)
-    post("post5_occasions", "Birthday · Anniversary · Baby shower · Nikah · Opening", "27 occasions, one free app", "", grid)
+    post("post5_occasions", "Birthday · Anniversary · Baby shower · Nikah · Opening", "28 occasions, one free app", "", grid)
 
     def steps(im):
         d = ImageDraw.Draw(im)
@@ -210,7 +210,7 @@ def main() -> None:
     text(d, (W // 2, 320), "See your card in 1 second.", script(96), fill=(240, 205, 120), max_w=960)
     paste_center(img, card("en_personal.jpg", 660, -3), W // 2, 950)
     text(d, (W // 2, 1560), f"Free at {SITE}", cinzel(60), fill=(240, 205, 120))
-    text(d, (W // 2, 1640), "Wedding · Birthday · Puja · 27 occasions", serif(44), fill=SOFT)
+    text(d, (W // 2, 1640), "Wedding · Birthday · Puja · 28 occasions", serif(44), fill=SOFT)
     img.save(OUT / "story_launch_1080x1920.png", optimize=True)
     print("made", len(list(OUT.glob("*.png"))), "images in", OUT)
 

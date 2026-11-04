@@ -28,7 +28,7 @@ HI = {
         "शादी, जन्मदिन, पूजा, वर्षगाँठ और हर उत्सव: महल के दरवाज़े खुलते हैं, फूल बरसते हैं, आपका संगीत बजता है और हर मेहमान का नाम लेकर स्वागत होता है। WhatsApp पर भेजिए और जानिए कौन आ रहा है।",
     "Occasion": "अवसर", "Demo language": "डेमो की भाषा", "✨ Open live demo": "✨ लाइव डेमो देखें",
     "🎨 Create yours free": "🎨 अपना मुफ़्त बनाएँ", "Free download · HD from ₹9": "मुफ़्त डाउनलोड · HD सिर्फ़ ₹9 से",
-    "✦ Free to create": "✦ बनाना मुफ़्त", "✦ 27 occasions": "✦ 27 अवसर", "✦ 10 languages": "✦ 10 भाषाएँ", "✦ Pay by UPI": "✦ UPI से भुगतान",
+    "✦ Free to create": "✦ बनाना मुफ़्त", "✦ 28 occasions": "✦ 28 अवसर", "✦ 10 languages": "✦ 10 भाषाएँ", "✦ Pay by UPI": "✦ UPI से भुगतान",
     "💍 Wedding": "💍 शादी",
     # see your card in 1 second
     "See": "देखिए", "your": "अपना", "card in 1 second": "कार्ड 1 सेकंड में",
@@ -183,7 +183,7 @@ HI = {
     "Followed by (optional)": "इसके बाद (वैकल्पिक)", "Host family": "आयोजक परिवार", "Host family / committee": "आयोजक परिवार / समिति",
     "Host family photo": "आयोजक परिवार की फ़ोटो", "Host's photo": "आयोजक की फ़ोटो", "Hosted by / birthday person": "आयोजक / जन्मदिन वाले",
     "Inaugurated by (optional)": "उद्घाटनकर्ता (वैकल्पिक)", "Logo or storefront photo": "लोगो या दुकान की फ़ोटो",
-    "Milestone age": "ख़ास उम्र", "Mother-to-be": "होने वाली माँ", "Mother-to-be's photo": "होने वाली माँ की फ़ोटो", "Name": "नाम",
+    "Milestone age": "ख़ास उम्र", "Rituals (optional)": "अनुष्ठान (वैकल्पिक)", "Mother-to-be": "होने वाली माँ", "Mother-to-be's photo": "होने वाली माँ की फ़ोटो", "Name": "नाम",
     "Partner's name": "जीवनसाथी का नाम", "Partner's photo": "जीवनसाथी की फ़ोटो", "Photo": "फ़ोटो", "Product name": "उत्पाद का नाम",
     "Product or logo image": "उत्पाद या लोगो की तस्वीर", "Theme": "थीम", "Theme (optional)": "थीम (वैकल्पिक)",
     "Turning (age)": "उम्र (कितने साल)", "Years (25 = Silver, 50 = Golden)": "वर्ष (25 = रजत, 50 = स्वर्ण)", "Years together": "साथ के वर्ष",

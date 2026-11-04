@@ -159,6 +159,10 @@ TYPE_EXTRAS: dict[str, dict] = {
     "christmas_newyear": dict(dress="Red, green or a little sparkle 🎄"),
     "lohri_sankranti": dict(dress="Punjabi traditional"),
     "eid_dawat": dict(blessing_line="", dress="Festive ethnic"),
+    "chhath_puja": dict(blessing_line="Jai Chhathi Maiya 🙏 With the blessings of Surya Dev",
+                        welcomers="Dadi Maa (vratee), Chacha-Chachi and the entire Singh family",
+                        kids_note="Ghat pe zaroor aana, thekua milega! — Anshu & Pihu", contacts=("Manoj Singh",),
+                        dress="Traditional: saree, kurta-dhoti", sender="The Singh family"),
     "family_reunion": dict(kids_note="Can't wait to play with all my cousins! — Myra"),
 }
 
@@ -353,6 +357,8 @@ EVENT_VENUES = {
     "festival": ("Community Clubhouse", "Indiranagar", "Bengaluru"),
     "corporate": ("Hotel Grand Hyatt Ballroom", "BKC", "Mumbai"),
 }
+TYPE_VENUES = {"chhath_puja": ("Gandhi Ghat", "Ashok Rajpath", "Patna")}  # Chhath is offered at a ghat
+TYPE_TIMES = {"chhath_puja": "17:00"}  # Sandhya Arghya, at sunset
 EVENT_WISHES = {
     "birthday": "Happy birthday! Can't wait to celebrate with you 🎉",
     "anniversary": "Congratulations on this beautiful milestone! ❤️",
@@ -391,7 +397,7 @@ def ensure_event_demos() -> None:
                     db.commit()
             continue
         primary, secondary, detail = t.demo
-        venue, address, city = EVENT_VENUES[t.category]
+        venue, address, city = TYPE_VENUES.get(key) or EVENT_VENUES[t.category]
         with SessionLocal() as db:
             order = Order(
                 public_id=orders.new_public_id(db), token=new_token(), status=OrderStatus.QUEUED.value, source="demo",
@@ -399,7 +405,7 @@ def ensure_event_demos() -> None:
                 wedding_date=day, venue_name=venue, venue_address=address, city=city, language="en",
                 style=t.styles[0], package="premium", addons=[], event_type=key, occasion_detail=detail,
                 functions=[{"key": key, "label": t.headline, "label_hi": t.headline_hi, "date": day.isoformat(),
-                            "time": "10:00" if t.category == "puja" else "19:00", "venue": ""}],
+                            "time": TYPE_TIMES.get(key) or ("10:00" if t.category == "puja" else "19:00"), "venue": ""}],
                 referral_code=orders.new_referral_code(db, "demo"), total=0, amount_paid=0,
             )
             db.add(order)

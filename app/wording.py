@@ -113,6 +113,14 @@ SPECIFIC = {
         "hi": ["दीपों के इस पर्व पर माँ लक्ष्मी की कृपा आप पर बनी रहे। 🪔 दीपावली लक्ष्मी पूजन एवं रात्रि भोज में आप सपरिवार सादर आमंत्रित हैं।"],
         "en": ["May the festival of lights bring joy to your home! 🪔 Join us for Laxmi Puja, dinner and fireworks on [Date]."],
     },
+    "chhath_puja": {
+        "hi": ["जय छठी मइया! 🌅 छठ महापर्व के पावन अवसर पर संध्या अर्घ्य एवं उषा अर्घ्य में आप सपरिवार सादर आमंत्रित हैं।\n📅 [तारीख़] · 🌇 संध्या अर्घ्य: [समय]\n📍 [घाट का नाम]",
+               "सूर्य देव और छठी मइया की कृपा आप पर बनी रहे। 🙏 खरना का प्रसाद ग्रहण करने और घाट पर अर्घ्य देने अवश्य पधारें।",
+               "काँच ही बाँस के बहँगिया, बहँगी लचकत जाए… 🎶 इस छठ घाट पर साथ चलिए! ठेकुआ प्रसाद आपका इंतज़ार कर रहा है।"],
+        "en": ["Jai Chhathi Maiya! 🌅 Please join us for Chhath Mahaparv: Sandhya Arghya at sunset on [Date] and Usha Arghya at sunrise.\n📍 [Ghat name]",
+               "May Surya Dev and Chhathi Maiya bless your family. 🙏 Come for the Kharna prasad and join us at the ghat for the arghya.",
+               "Thekua, songs and the setting sun: celebrate Chhath with us at [Ghat] on [Date]. 🌇"],
+    },
     "sundar_kand": {
         "hi": ["जय श्री राम! 🙏 हमारे निवास पर श्री सुंदरकांड पाठ का आयोजन है। आप सपरिवार पधारकर पुण्य लाभ लें।"],
         "en": ["Jai Shri Ram! 🙏 Please join us for the Sundar Kand Path at our home on [Date], followed by prasad."],

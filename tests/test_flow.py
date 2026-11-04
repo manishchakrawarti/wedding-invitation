@@ -1724,3 +1724,29 @@ def test_live_demos_show_every_create_feature(client):
     for text in ("B.Tech · Software Engineer", "Eagerly awaiting you", "Didi ki shaadi", "Rakesh Sharma (Papa)",
                  "Your blessings are our gift", "Invitation sent by"):
         assert text in page, text
+
+
+def test_chhath_puja_everywhere(client):
+    from app import events
+    from app.services import demo
+
+    assert "chhath_puja" in events.CATEGORIES["puja"].types
+    resp = create_event(client, "chhath_puja", bride_name="The Singh Family", occasion_detail="Sandhya Arghya & Usha Arghya",
+                        venue_name="Gandhi Ghat", city="Patna")
+    order = get(resp.headers["location"].split("/")[2])
+    assert order.status == OrderStatus.PREVIEW.value
+    with SessionLocal() as db:
+        o = db.get(Order, order.id)
+        texts = [i.text for i in __import__("app.services.cards", fromlist=["x"]).cards_for_order(o)[0].items if hasattr(i, "text")]
+    assert "Chhath Mahaparv" in texts and not any("Ganeshaya" in t for t in texts)  # Surya puja: no Ganesh invocation
+    assert "Chhath" in client.get("/occasions").text and "Chhath" in client.get("/create?event=chhath_puja").text
+    landing = client.get("/chhath-puja-invitation-card").text
+    assert "Nahay Khay" in landing and "/create?event=chhath_puja" in landing
+    assert "छठ" in client.get("/wording/chhath-puja-invitation-message").text
+    assert "/chhath-puja-invitation-card" in client.get("/sitemap.xml").text
+    demo.ensure_demo()
+    with SessionLocal() as db:
+        d = db.scalar(select(Order).where(Order.source == "demo", Order.event_type == "chhath_puja"))
+        assert d.venue_name == "Gandhi Ghat" and d.functions[0]["time"] == "17:00" and "Chhathi" in d.event.blessing_line
+    page = client.get(client.get("/demo/event/chhath_puja", follow_redirects=False).headers["location"]).text
+    assert "Chhath Mahaparv" in page and "thekua" in page
