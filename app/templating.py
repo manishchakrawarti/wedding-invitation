@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from app import catalog, i18n, seo, ui_text, wording
 from app.config import APP_DIR, settings
 from app.models import STATUS_LABELS, OrderStatus
-from app.services import cards as _cards, telegram
+from app.services import cards as _cards, payments as _payments, telegram
 from app.utils import inr, pretty_date, pretty_time
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
@@ -26,6 +26,7 @@ templates.env.globals.update(
     css_version=CSS_VERSION,
     telegram=telegram,
     seo=seo,
+    upi_link=lambda p: _payments.upi_pay_link(p),
     family_line=_cards.family_line,
     degree_of=_cards.degree_of,
     wording=wording,

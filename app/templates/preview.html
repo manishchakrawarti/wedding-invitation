@@ -67,7 +67,10 @@
 <section class="reveal-head">
   <div class="wrap">
     <h1>Your invitation is ready <span class="script">{{ o.display_names }}</span></h1>
+    {% if request.query_params.get('edited') %}<div class="alert alert-ok" style="max-width:520px;margin:10px auto">✓ Saved. Your card has been redrawn with the new details.</div>{% endif %}
     <p class="muted">Tap the seal on the phone to open your live invitation, then download it below.</p>
+    <p><a class="btn btn-ghost btn-sm" href="/o/{{ o.token }}/edit">✏️ Edit details</a></p>
+    {% import "_my_invites.html" as mine %}{{ mine.remember(o) }}
   </div>
 </section>
 <section style="padding-top:10px" id="unlock">

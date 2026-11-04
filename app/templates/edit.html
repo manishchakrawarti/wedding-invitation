@@ -1,0 +1,97 @@
+{# Edit an instant invitation's details after creating it (typos, a new date or venue…). The card's text is
+   redrawn over the same design, and every link already sent keeps working. #}
+{% extends "base.html" %}
+{% import "_time.html" as tp %}
+{% block title %}Edit details · {{ o.display_names }} · {{ settings.brand_name }}{% endblock %}
+{% block head %}<meta name="robots" content="noindex">
+<style>
+  .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .side-box { border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px 14px; display: grid; gap: 10px; margin: 0; }
+  .side-box legend { font-weight: 700; color: var(--maroon); padding: 0 6px; }
+  .radio-row { display: flex; flex-wrap: wrap; gap: 8px 16px; } .radio-row label { display: flex; gap: 6px; align-items: center; font-weight: 400; margin: 0; }
+  @media (max-width: 640px) { .sides { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<section style="padding-top:30px">
+<form class="narrow" method="post" action="/o/{{ o.token }}/edit">
+  <p class="muted" style="margin:0"><a href="{{ back }}">← Back to your invitation</a></p>
+  <h1>Edit details</h1>
+  <p class="muted">Fix a spelling, change the date or venue, or add family details. Your card is redrawn in the same design, and links you've already sent keep working.</p>
+  {% if errors %}<div class="alert alert-error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+
+  <div class="card">
+    <h2>{{ 'The couple' if o.is_wedding else "Who's it for?" }}</h2>
+    <div class="form-grid">
+      <div><label for="bride_name">{{ c.primary }} *</label><input id="bride_name" name="bride_name" type="text" value="{{ v.bride_name }}" required maxlength="80"></div>
+      {% if c.secondary %}<div><label for="groom_name">{{ c.secondary }}{% if c.secondary_required %} *{% endif %}</label><input id="groom_name" name="groom_name" type="text" value="{{ v.groom_name }}" maxlength="80" {% if c.secondary_required %}required{% endif %}></div>{% endif %}
+      {% if c.detail %}<div class="full"><label for="occasion_detail">{{ c.detail }}</label><input id="occasion_detail" name="occasion_detail" type="text" value="{{ v.occasion_detail }}" maxlength="120"></div>{% endif %}
+      {% if o.language != 'en' %}
+      <div><label for="bride_name_local">{{ c.primary }} in your script</label><input id="bride_name_local" name="bride_name_local" type="text" value="{{ v.bride_name_local }}" maxlength="80"></div>
+      {% if c.secondary %}<div><label for="groom_name_local">{{ c.secondary }} in your script</label><input id="groom_name_local" name="groom_name_local" type="text" value="{{ v.groom_name_local }}" maxlength="80"></div>{% endif %}
+      {% endif %}
+    </div>
+    {% if o.is_wedding %}
+    <div class="sides" style="margin-top:14px">
+      {% for s, label in (('bride', "👰 Bride's side"), ('groom', "🤵 Groom's side")) %}
+      <fieldset class="side-box"><legend>{{ label }}</legend>
+        <div><label for="{{ s }}_degree">Degree / profession</label><input id="{{ s }}_degree" name="{{ s }}_degree" type="text" value="{{ v[s ~ '_degree'] }}" maxlength="120"></div>
+        <div><label for="{{ s }}_father">Father's name</label><input id="{{ s }}_father" name="{{ s }}_father" type="text" value="{{ v[s ~ '_father'] }}" maxlength="100"></div>
+        <div><label for="{{ s }}_mother">Mother's name</label><input id="{{ s }}_mother" name="{{ s }}_mother" type="text" value="{{ v[s ~ '_mother'] }}" maxlength="100"></div>
+        <div><label for="{{ s }}_home">Home town / address</label><input id="{{ s }}_home" name="{{ s }}_home" type="text" value="{{ v[s ~ '_home'] }}" maxlength="100"></div>
+      </fieldset>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>{{ c.step2 }}</h2>
+    <div class="form-grid">
+      <div><label for="wedding_date">{{ c.date }} *</label><input id="wedding_date" name="wedding_date" type="date" min="{{ today }}" value="{{ v.wedding_date }}" required></div>
+      <div><label for="wedding_time">Time</label>{{ tp.time_input("wedding_time", v.wedding_time, "Time", id="wedding_time") }}</div>
+      <div class="full">{{ tp.format_switch(v.time_format) }}</div>
+      <div class="full"><label for="venue_name">Venue *</label><input id="venue_name" name="venue_name" type="text" value="{{ v.venue_name }}" required maxlength="100"></div>
+      <div><label for="city">City</label><input id="city" name="city" type="text" value="{{ v.city }}" maxlength="60"></div>
+      <div><label for="venue_address">Address</label><input id="venue_address" name="venue_address" type="text" value="{{ v.venue_address }}" maxlength="160"></div>
+      <div class="full"><label for="dress_main">Dress code</label><input id="dress_main" name="dress_main" type="text" value="{{ v.dress_main }}" maxlength="120"></div>
+    </div>
+    {% if o.is_wedding and other_functions %}<p class="hint">Other functions ({{ other_functions|join(', ') }}) keep their own dates.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Family &amp; blessings</h2>
+    <div class="form-grid">
+      <div class="full"><label for="blessing_line">With the blessings of</label><input id="blessing_line" name="blessing_line" type="text" value="{{ v.blessing_line }}" maxlength="300"></div>
+      <div class="full"><label for="hosts">{{ c.hosts }}</label><input id="hosts" name="hosts" type="text" value="{{ v.hosts }}" maxlength="120"></div>
+      <div class="full"><label for="welcomers">Eagerly awaiting you</label><input id="welcomers" name="welcomers" type="text" value="{{ v.welcomers }}" maxlength="300"></div>
+      <div class="full"><label for="kids_note">The children's line</label><input id="kids_note" name="kids_note" type="text" value="{{ v.kids_note }}" maxlength="200"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Contact for guests</h2>
+    <div class="form-grid">
+      {% for i in (1, 2) %}
+      <div><label for="contact_name_{{ i }}">Name {{ i }}</label><input id="contact_name_{{ i }}" name="contact_name_{{ i }}" type="text" value="{{ v['contact_name_' ~ i] }}" maxlength="80"></div>
+      <div><label for="contact_phone_{{ i }}">Mobile {{ i }}</label><input id="contact_phone_{{ i }}" name="contact_phone_{{ i }}" type="tel" inputmode="tel" value="{{ v['contact_phone_' ~ i] }}" maxlength="20"></div>
+      {% endfor %}
+    </div>
+    <h3 style="margin-top:18px">Gifts &amp; shagun</h3>
+    <div class="radio-row">
+      <label><input type="radio" name="gift_note" value="" {% if not v.gift_note %}checked{% endif %}> No note</label>
+      <label><input type="radio" name="gift_note" value="blessings_only" {% if v.gift_note == 'blessings_only' %}checked{% endif %}> "Your blessings are our gift"</label>
+      <label><input type="radio" name="gift_note" value="no_boxed" {% if v.gift_note == 'no_boxed' %}checked{% endif %}> "No boxed gifts please"</label>
+    </div>
+  </div>
+
+  <div class="cta-bar" style="position:sticky;bottom:0;background:var(--maroon-dark);padding:14px 0;z-index:10">
+    <div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--cream)">
+      <a href="{{ back }}" style="color:var(--gold-soft)">Cancel</a>
+      <button class="btn" type="submit">💾 Save &amp; redraw my card</button>
+    </div>
+  </div>
+</form>
+</section>
+{% endblock %}
+{% block scripts %}{{ tp.script() }}{% endblock %}

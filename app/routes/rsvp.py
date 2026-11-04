@@ -117,7 +117,7 @@ def personal_invite(request: Request, thanks: bool = False, preview: bool = Fals
 
 
 @lru_cache(maxsize=48)
-def _personal_card(code: str, name: str, status: str, version: int, paid: int) -> bytes:
+def _personal_card(code: str, name: str, status: str, version: int, paid: int, updated: str = "") -> bytes:
     """Rendered once per guest and state: chat apps fetch the link-preview image several times."""
     with SessionLocal() as db:
         invitee = db.scalar(select(Invitee).where(Invitee.code == code))
@@ -130,7 +130,8 @@ def personal_card(invitee: Invitee = Depends(get_invitee)):
     order = invitee.order
     if hires.main_final(order) is None or not invites.can_personalize(order):
         raise HTTPException(404)
-    data = _personal_card(invitee.code, invitee.name, order.status, order.current_version, order.amount_paid + order.discount)
+    data = _personal_card(invitee.code, invitee.name, order.status, order.current_version, order.amount_paid + order.discount,
+                          str(order.updated_at))
     return Response(data, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=600"})
 
 

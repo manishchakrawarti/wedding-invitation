@@ -1,0 +1,44 @@
+{# "Your invitations on this phone": families lose their private order link, so each order page remembers itself
+   in this browser (localStorage, nothing leaves the phone) and the homepage / create page offer to continue.
+
+   {% import "_my_invites.html" as mine %}
+   {{ mine.remember(o) }}   on an order page
+   {{ mine.listing() }}     where to show the list #}
+
+{% macro remember(o) %}
+<script>
+try {
+  const KEY = 'ia_my_invites', list = JSON.parse(localStorage.getItem(KEY) || '[]').filter(x => x.t !== {{ o.token|tojson }});
+  list.unshift({ t: {{ o.token|tojson }}, n: {{ o.display_names|tojson }}, o: {{ o.occasion_name|tojson }},
+                 d: {{ pretty_date(o.wedding_date)|tojson }}, at: Date.now() });
+  localStorage.setItem(KEY, JSON.stringify(list.slice(0, 8)));
+} catch (e) {}
+</script>
+{% endmacro %}
+
+{% macro listing() %}
+<div class="my-invites" id="my-invites" hidden>
+  <strong>📱 Your invitations on this phone</strong>
+  <div class="mi-list"></div>
+</div>
+<style>
+  .my-invites { background: #fff; border: 1px solid var(--gold-soft); border-radius: 14px; padding: 12px 14px; margin: 14px 0; box-shadow: var(--shadow); color: var(--ink); text-align: left; }
+  .my-invites .mi-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .my-invites a { display: inline-flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; text-decoration: none; background: #fffaf0; }
+  .my-invites a small { color: var(--muted); }
+  .my-invites button { border: 0; background: none; color: var(--muted); font-size: .85rem; cursor: pointer; text-decoration: underline; }
+</style>
+<script>
+(function () {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem('ia_my_invites') || '[]'); } catch (e) { return; }
+  if (!list.length) return;
+  const box = document.getElementById('my-invites'), wrap = box.querySelector('.mi-list');
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  wrap.innerHTML = list.map(x => `<a href="/o/${encodeURIComponent(x.t)}"><span>${esc(x.n)}</span><small>${esc(x.o)} · ${esc(x.d)}</small></a>`).join('')
+    + '<button type="button" id="mi-forget">Forget on this phone</button>';
+  document.getElementById('mi-forget').addEventListener('click', () => { try { localStorage.removeItem('ia_my_invites'); } catch (e) {} box.hidden = true; });
+  box.hidden = false;
+})();
+</script>
+{% endmacro %}

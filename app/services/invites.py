@@ -313,6 +313,40 @@ def email_link(order: Order, invitee: Invitee) -> str:
     return f"mailto:{quote(invitee.email or '', safe='@')}?subject={quote(subject)}&body={quote(whatsapp_text(order, invitee))}"
 
 
+def occasion_phrase(order: Order) -> str:
+    """'the wedding of Ananya & Arjun' / 'अनन्या संग अर्जुन — शुभ विवाह' / 'Griha Pravesh (The Gupta Family)'."""
+    from app.catalog import LANGUAGES
+    from app.events import TYPES
+
+    local = order.language != "en"
+    first = order.bride_name_local if local and order.bride_name_local else order.bride_name
+    second = order.groom_name_local if local and order.groom_name_local else order.groom_name
+    if order.is_wedding:
+        lang = LANGUAGES[order.language]
+        names = f"{first} {lang.connector} {second}" if local else f"{first} & {second}"
+        return f"{names} — {lang.headline}" if local else f"the wedding of {names}"
+    t = TYPES[order.event_type]
+    names = f"{first} & {second}" if second else first
+    return f"{t.headline_hi if local else t.headline} ({names})"
+
+
+def _main_moment(order: Order) -> tuple[str, str]:
+    """(when, where) of the main ceremony, for reminders: 'Monday, 21 December 2026 · 7:30 PM', 'ITC Rajputana, Jaipur'."""
+    fn = next((f for f in schedule(order) if f["key"] in ("wedding", "nikah", order.event_type)), None) or next(iter(schedule(order)), {})
+    when = pretty_date(fn.get("date") or order.wedding_date) + (f" · {fn['pretty_time']}" if fn.get("pretty_time") else "")
+    return when, fn.get("place") or place_for(order, {})
+
+
+def reminder_text(order: Order, invitee: Invitee) -> str:
+    when, place = _main_moment(order)
+    return i18n.texts(order.language)["reminder_msg"].format(
+        name=invitee.name, what=occasion_phrase(order), when=when, place=place, link=invite_url(invitee))
+
+
+def thanks_text(order: Order, invitee: Invitee) -> str:
+    return i18n.texts(order.language)["thanks_msg"].format(name=invitee.name, what=occasion_phrase(order))
+
+
 def send_row(order: Order, invitee: Invitee) -> dict:
     """Everything the send buttons for one guest need."""
     url = invite_url(invitee)
@@ -323,6 +357,11 @@ def send_row(order: Order, invitee: Invitee) -> dict:
         "facebook": f"https://www.facebook.com/sharer/sharer.php?u={quote(url, safe='')}",
         "pdf": f"/o/{order.token}/guests/{invitee.id}/invite.pdf",
         "card": f"/o/{order.token}/guests/{invitee.id}/card.jpg",
+        # before the day: a reminder; from the day on: a thank-you (both from the family's own WhatsApp)
+        "remind": f"https://wa.me/{normalize_phone(invitee.phone) if invitee.phone else ''}?text={quote(reminder_text(order, invitee))}"
+        if order.wedding_date >= date.today() else "",
+        "thanks": f"https://wa.me/{normalize_phone(invitee.phone) if invitee.phone else ''}?text={quote(thanks_text(order, invitee))}"
+        if order.wedding_date <= date.today() else "",
         "fns": [FUNCTIONS.get(k, k) for k in invitee.functions] if invitee.functions else ["All functions"],
     }
 

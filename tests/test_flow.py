@@ -1750,3 +1750,59 @@ def test_chhath_puja_everywhere(client):
         assert d.venue_name == "Gandhi Ghat" and d.functions[0]["time"] == "17:00" and "Chhathi" in d.event.blessing_line
     page = client.get(client.get("/demo/event/chhath_puja", follow_redirects=False).headers["location"]).text
     assert "Chhath Mahaparv" in page and "thekua" in page
+
+
+def test_edit_details_after_creating_redraws_the_card(client):
+    from app.services.storage import storage
+
+    order = create_instant(client, bride_name="Priyanaka")  # a typo
+    final = next(a for a in get(order.token).assets if a.kind == "final" and a.card_key == "main")
+    before = storage.read(final.path)
+    page = client.get(f"/o/{order.token}/edit").text
+    assert 'value="Priyanaka"' in page and "Save &amp; redraw my card" in page
+    assert "✏️ Edit details" in client.get(f"/o/{order.token}/preview").text
+
+    new_day = (date.today() + timedelta(days=70)).isoformat()
+    resp = client.post(f"/o/{order.token}/edit", data={
+        "bride_name": "Priyanka", "groom_name": "Rohan", "wedding_date": new_day, "wedding_time": "18:00",
+        "venue_name": "Rambagh Palace", "city": "Jaipur", "bride_degree": "MBA", "welcomers": "All the Sharma family",
+        "contact_name_1": "Papa", "contact_phone_1": "9876543210", "gift_note": "no_boxed",
+    }, follow_redirects=False)
+    assert resp.headers["location"].endswith("/preview?edited=1")
+    o = get(order.token)
+    wedding = next(f for f in o.functions if f["key"] == "wedding")
+    assert o.bride_name == "Priyanka" and o.venue_name == "Rambagh Palace" and o.bride_degree == "MBA"
+    assert o.wedding_date.isoformat() == new_day and wedding["date"] == new_day and wedding["time"] == "18:00"
+    assert storage.read(final.path) != before  # card redrawn over the same design
+    with SessionLocal() as db:
+        ev = db.get(Order, o.id).event
+        assert ev.welcomers == "All the Sharma family" and ev.gift_note == "no_boxed" and ev.rsvp_contacts[0]["phone"] == "919876543210"
+    assert "Details edited" in " ".join(e.message for e in get(order.token).events)
+
+    bad = client.post(f"/o/{order.token}/edit", data={"bride_name": "", "groom_name": "R", "wedding_date": "2000-01-01", "venue_name": ""})
+    assert bad.status_code == 422 and "in the past" in bad.text
+
+
+def test_phone_memory_reminders_and_one_tap_upi(client, monkeypatch):
+    from app.config import settings
+
+    order = create_instant(client)
+    preview = client.get(f"/o/{order.token}/preview").text
+    assert "ia_my_invites" in preview and order.token in preview  # remembered on this phone
+    assert 'id="my-invites"' in client.get("/").text and 'id="my-invites"' in client.get("/create").text
+
+    # a guest who has been sent the invite gets a reminder button (event ahead) in the card's language
+    client.post(f"/o/{order.token}/guests", data={"name": "Mehta Family", "phone": "9123456780"})
+    guest = _invitees(order.id)[-1]
+    client.post(f"/o/{order.token}/guests/{guest.id}/sent")
+    page = client.get(f"/o/{order.token}/preview").text.replace("&amp;", "&")
+    assert "⏰ Reminder" in page and "a%20gentle%20reminder" in page and "🙏 Thank you" not in page
+
+    # one-tap UPI with the amount filled in, once a business UPI ID is set
+    monkeypatch.setattr(settings, "business_upi_id", "inviteall@okhdfcbank")
+    client.post(f"/o/{order.token}/unlock", data={"res": "1080"})
+    pay_page = client.get(f"/o/{order.token}/pay").text.replace("&amp;", "&")
+    assert "upi://pay?pa=inviteall@okhdfcbank" in pay_page and "am=9.00" in pay_page and order.public_id in pay_page
+    payment = get(order.token).payments[-1]
+    qr = client.get(f"/o/{order.token}/pay/upi/{payment.id}.png")
+    assert qr.status_code == 200 and qr.headers["content-type"] == "image/png"

@@ -9,6 +9,9 @@
 
   {% if request.query_params.get('coupon') %}<div class="alert alert-ok">Coupon applied. Your invitation is unlocked! 🎉</div>{% endif %}
   {% if request.query_params.get('paid') %}<div class="alert alert-ok">Payment received, thank you! 🙏</div>{% endif %}
+  {% import "_my_invites.html" as mine %}{{ mine.remember(o) }}
+  {% if request.query_params.get('edited') %}<div class="alert alert-ok">✓ Saved. Your card has been redrawn with the new details.</div>{% endif %}
+  {% if o.source in ('instant', 'test') and o.status == 'delivered' %}<p><a class="btn btn-ghost btn-sm" href="/o/{{ o.token }}/edit">✏️ Edit details</a> <span class="hint">Fix a spelling, change the date or venue</span></p>{% endif %}
   {% if request.query_params.get('changes') %}<div class="alert alert-ok">Got it! Our designers are working on your changes. We'll WhatsApp you the new proof.</div>{% endif %}
 
   <div class="card">

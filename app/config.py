@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     razorpay_webhook_secret: str = ""
     # Until API keys are set: customers pay on this Razorpay.me page and the owner confirms in admin.
     razorpay_me_url: str = ""
+    # Or/also: your business UPI ID. Customers pay in one tap with the amount filled in (any UPI app, no fees);
+    # you confirm in admin, as with Razorpay.me.
+    business_upi_id: str = ""
     advance_percent: int = 50
     # Secret code for ₹1 test orders: /order?test=<code>. Empty = disabled.
     test_order_code: str = ""
@@ -112,7 +115,7 @@ class Settings(BaseSettings):
     def payment_provider(self) -> str:
         if self.payments_live:
             return "razorpay"
-        return "manual" if self.razorpay_me_url else "mock"
+        return "manual" if self.razorpay_me_url or self.business_upi_id else "mock"
 
     @property
     def gemini_enabled(self) -> bool:

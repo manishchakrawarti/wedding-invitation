@@ -12,6 +12,8 @@
      data-file="{{ (r.i.name ~ ' invitation')|replace('/', '-') }}.jpg">
   <a class="btn btn-sm btn-wa js-sent" href="{{ r.wa }}" target="_blank" rel="noopener">WhatsApp</a>
   <button class="btn btn-sm btn-primary js-share" type="button">📤 Share card <span class="hint-inline">Instagram, Facebook…</span></button>
+  {% if r.i.sent_at and r.remind %}<a class="btn btn-sm btn-ghost" href="{{ r.remind }}" target="_blank" rel="noopener">⏰ Reminder</a>{% endif %}
+  {% if r.thanks %}<a class="btn btn-sm btn-ghost" href="{{ r.thanks }}" target="_blank" rel="noopener">🙏 Thank you</a>{% endif %}
   <a class="btn btn-sm btn-ghost js-sent" href="{{ r.sms }}">💬 SMS</a>
   <a class="btn btn-sm btn-ghost js-sent" href="{{ r.telegram }}" target="_blank" rel="noopener">✈️ Telegram</a>
   <a class="btn btn-sm btn-ghost js-sent" href="{{ r.facebook }}" target="_blank" rel="noopener">Facebook</a>

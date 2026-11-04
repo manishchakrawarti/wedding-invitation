@@ -44,6 +44,17 @@
         {% set tg = telegram.order_link(o) %}{% if tg %}<p><a class="btn btn-sm btn-tg" href="{{ tg }}" target="_blank" rel="noopener">✈️ Get your PDF on Telegram once it's confirmed</a></p>{% endif %}
         <p class="small"><a href="{{ wa_link('Hi, I paid ' ~ inr(p.amount) ~ ' for ' ~ o.public_id ~ ', payment ID ' ~ p.provider_payment_id) }}">Taking long? Message us on WhatsApp</a></p>
       {% else %}
+        {% set upi = upi_link(p) %}
+        {% if upi %}
+        <div class="upi-pay">
+          <a class="btn btn-primary btn-block upi-btn" href="{{ upi }}">⚡ Pay {{ inr(p.amount) }} with any UPI app</a>
+          <p class="small muted" style="margin:6px 0 0">GPay, PhonePe, Paytm or BHIM opens with the amount filled in. On a computer, scan this with your phone:</p>
+          <img class="upi-qr" src="/o/{{ o.token }}/pay/upi/{{ p.id }}.png" alt="UPI QR code for {{ inr(p.amount) }}" width="180" height="180">
+          <p class="small" style="margin-top:4px">Then enter the 12-digit <strong>UPI reference (UTR)</strong> from your payment app below.</p>
+        </div>
+        {% endif %}
+        {% if settings.razorpay_me_url %}
+        {% if upi %}<details class="more" style="text-align:left"><summary>Or pay by card / netbanking on Razorpay</summary>{% endif %}
         <ol class="pay-steps">
           <li>Tap <strong>Pay on Razorpay</strong> (opens in a new tab, keep this page open).</li>
           <li>Razorpay asks for the amount: enter exactly <strong>{{ inr(p.amount) }}</strong>
@@ -52,6 +63,8 @@
           <li>After paying, copy the <strong>Payment ID</strong> (starts with <code>pay_</code>, shown on the success screen and in Razorpay's receipt) and paste it below.</li>
         </ol>
         <a class="btn btn-primary" href="{{ settings.razorpay_me_url }}" target="_blank" rel="noopener">Pay {{ inr(p.amount) }} on Razorpay ↗</a>
+        {% if upi %}</details>{% endif %}
+        {% endif %}
         <form method="post" action="/o/{{ o.token }}/pay/claim/{{ p.id }}" style="max-width:26em;margin:22px auto 0;text-align:left">
           <label for="reference">Payment ID / UPI reference *</label>
           <input id="reference" name="reference" type="text" required maxlength="80" placeholder="e.g. pay_N3xY… or 4321 0987 6543" autocomplete="off">
@@ -70,6 +83,9 @@
 {% block head %}
 <style>
   .pay-steps { text-align: left; max-width: 32em; margin: 0 auto 16px; line-height: 1.7; }
+  .upi-pay { max-width: 26em; margin: 0 auto 10px; } .upi-btn { font-size: 1.1rem; }
+  .upi-qr { display: block; margin: 10px auto 0; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  @media (hover: none) { .upi-qr { display: none; } }
   .copy-mini { border: 1px solid var(--gold); background: #fff8e6; color: var(--maroon); border-radius: 999px; padding: 1px 10px; font: 600 .8rem var(--sans); cursor: pointer; }
 </style>
 {% endblock %}

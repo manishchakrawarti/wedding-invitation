@@ -75,6 +75,7 @@
       {% endfor %}
     </div>
   </div>
+  {% import "_my_invites.html" as mine %}{{ mine.listing() }}
   <div class="wz-step" data-title="Names">
   {% include "_occasion_picker.html" %}
   <input type="hidden" name="event_type" value="{{ current_event }}" id="event_type">

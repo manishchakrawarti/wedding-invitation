@@ -473,6 +473,20 @@ def pay_status(payment_id: int, order: Order = Depends(get_order)):
     return {"paid": payment.status == "paid"}
 
 
+@router.get("/o/{token}/pay/upi/{payment_id}.png")
+def pay_upi_qr(payment_id: int, order: Order = Depends(get_order)):
+    """QR of the one-tap UPI link, for paying from a computer with a phone."""
+    import qrcode
+
+    payment = next((p for p in order.payments if p.id == payment_id), None)
+    link = payments.upi_pay_link(payment) if payment else ""
+    if not link:
+        raise HTTPException(404)
+    buf = io.BytesIO()
+    qrcode.make(link, box_size=8, border=2).save(buf, "PNG")
+    return Response(buf.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
+
+
 @router.post("/o/{token}/pay/claim/{payment_id}")
 async def pay_claim(request: Request, payment_id: int, order: Order = Depends(get_order), db: Session = Depends(get_db)):
     payment = next((p for p in order.payments if p.id == payment_id), None)
@@ -804,6 +818,117 @@ def _back(order: Order) -> str:
     if order.source == "instant" and order.status != OrderStatus.DELIVERED.value:
         return f"/o/{order.token}/preview"
     return f"/o/{order.token}"
+
+
+# --- edit details after creating (instant invitations) ----------------------------------------------------
+
+COUPLE_EXTRAS = [f"{s}_{p}" for s in ("bride", "groom") for p in ("degree", "father", "mother", "home")]  # weddings only
+EDIT_TEXT = ["bride_name", "groom_name", "bride_name_local", "groom_name_local", "occasion_detail", "venue_name",
+             "venue_address", "city"] + COUPLE_EXTRAS
+
+
+def _main_function(order: Order) -> dict | None:
+    keys = ("wedding", "nikah") if order.is_wedding else (order.event_type,)
+    return next((f for f in order.functions or [] if f["key"] in keys), None)
+
+
+def _edit_values(order: Order) -> dict:
+    ev = order.event
+    main = _main_function(order) or {}
+    contacts = (ev.rsvp_contacts if ev else None) or []
+    values = {k: getattr(order, k) or "" for k in EDIT_TEXT}
+    values.update(wedding_date=order.wedding_date.isoformat(), wedding_time=main.get("time", ""), time_format=order.time_format,
+                  hosts=ev.hosts if ev else "", blessing_line=ev.blessing_line if ev else "", welcomers=ev.welcomers if ev else "",
+                  kids_note=ev.kids_note if ev else "", gift_note=ev.gift_note if ev else "",
+                  dress_main=((ev.dress_codes or {}).get(main.get("key", "")) if ev else "") or "")
+    for i in (1, 2):
+        c = contacts[i - 1] if len(contacts) >= i else {}
+        values[f"contact_name_{i}"], values[f"contact_phone_{i}"] = c.get("name", ""), invites.pretty_phone(c.get("phone", ""))
+    return values
+
+
+def _edit_page(request: Request, order: Order, values: dict, errors: list[str] | None = None, status: int = 200):
+    cfg = _localized_form_config()
+    return templates.TemplateResponse(request, "edit.html", {
+        "o": order, "v": values, "errors": errors or [], "c": cfg.get(order.event_type) or cfg["wedding"],
+        "today": date.today().isoformat(), "back": _back(order),
+        "other_functions": [FUNCTIONS.get(f["key"], f["key"]) for f in order.functions or [] if f is not _main_function(order)],
+    }, status_code=status)
+
+
+def _editable(order: Order) -> bool:
+    return order.source in ("instant", "test") and order.status in (OrderStatus.PREVIEW.value, OrderStatus.DELIVERED.value)
+
+
+@router.get("/o/{token}/edit", response_class=HTMLResponse)
+def edit_form(request: Request, order: Order = Depends(get_order)):
+    if not _editable(order):
+        return redirect(_back(order))
+    return _edit_page(request, order, _edit_values(order))
+
+
+@router.post("/o/{token}/edit")
+async def edit_save(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    """Save new details and redraw the card text over the same design (no new artwork, nothing to pay)."""
+    if not _editable(order):
+        return redirect(_back(order))
+    form = await request.form()
+
+    def f(key: str) -> str:
+        return str(form.get(key) or "").strip()
+
+    errors: list[str] = []
+    values = {k: f(k) for k in form.keys()}
+    cfg = (occasion_form_config().get(order.event_type) or occasion_form_config()["wedding"])
+    if not f("bride_name"):
+        errors.append(f"{cfg['primary']} is required.")
+    if cfg["secondary"] and cfg["secondary_required"] and not f("groom_name"):
+        errors.append(f"{cfg['secondary']} is required.")
+    if not f("venue_name"):
+        errors.append("Venue is required.")
+    try:
+        new_date = date.fromisoformat(f("wedding_date"))
+        if new_date < date.today():
+            errors.append("The date is in the past.")
+    except ValueError:
+        new_date = None
+        errors.append("Please choose the date.")
+    family = invites.read_family_details(form, errors)
+    if errors:
+        return _edit_page(request, order, values, errors, status=422)
+
+    changed = []
+    for key in EDIT_TEXT:
+        if key in ("groom_name", "groom_name_local") and not cfg["secondary"]:
+            continue
+        if key == "occasion_detail" and not cfg["detail"]:
+            continue
+        if key.endswith("_local") and order.language == "en":
+            continue
+        if key in COUPLE_EXTRAS and not order.is_wedding:
+            continue
+        new = f(key)[:120]
+        if (getattr(order, key) or "") != new:
+            setattr(order, key, new)
+            changed.append(key)
+    if order.wedding_date != new_date:
+        order.wedding_date = new_date
+        changed.append("date")
+    main = _main_function(order)
+    if main is not None:
+        functions = [dict(fn) for fn in order.functions]
+        for fn in functions:
+            if fn["key"] == main["key"]:
+                fn["date"], fn["time"] = new_date.isoformat(), clean_time(f("wedding_time"))
+        order.functions = sorted(functions, key=lambda x: x["date"])
+    order.time_format = "24h" if f("time_format") == "24h" else "12h"
+    ev = invites.event_details(db, order)
+    ev.hosts = f("hosts")[:200]
+    invites.save_family_details(db, order, family, form)
+    orders.log_event(db, order, "Details edited by the customer" + (f": {', '.join(changed)}" if changed else ""))
+    db.commit()
+    pipeline.redraw_text(db, order)
+    return redirect(f"{_back(order)}?edited=1")
 
 
 @router.post("/o/{token}/photos")

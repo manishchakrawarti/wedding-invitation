@@ -24,6 +24,7 @@
     <div>
       <h1>Not just a card. <span class="script">An invitation they'll never forget.</span></h1>
       <p class="lead">Weddings, birthdays, pujas, anniversaries and every celebration: palace doors swing open, petals fall, your music plays, and each guest is greeted by name. Share on WhatsApp and know exactly who's coming.</p>
+      {% import "_my_invites.html" as mine %}{{ mine.listing() }}
       <form class="demo-picker" action="/demo" method="get" target="_blank">
 <label class="sr-only" for="demo-event-hero">Occasion</label>
         <select class="lang-select occ-select" id="demo-event-hero" name="event">

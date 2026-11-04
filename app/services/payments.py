@@ -43,6 +43,17 @@ def create_payment(db: Session, order: Order, purpose: str) -> Payment:
     return payment
 
 
+def upi_pay_link(payment: Payment) -> str:
+    """upi://pay link with the amount and order number filled in (GPay, PhonePe, Paytm, BHIM…), or "" if no UPI ID."""
+    from urllib.parse import quote
+
+    if not settings.business_upi_id:
+        return ""
+    amount = f"{payment.amount / 100:.2f}"
+    return (f"upi://pay?pa={quote(settings.business_upi_id, safe='@')}&pn={quote(settings.brand_name)}&am={amount}&cu=INR"
+            f"&tn={quote(payment.order.public_id)}")
+
+
 def claim_manual_payment(db: Session, payment: Payment, reference: str) -> None:
     """Customer says they paid on the Razorpay.me page; the owner confirms it in admin."""
     order = payment.order
