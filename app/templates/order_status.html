@@ -124,6 +124,51 @@
     <p class="hint">Larger sizes take a few seconds the first time (4K up to ~30 s) while we prepare them.</p>
   </div>
 
+  {% if o.status == 'delivered' %}{% set vstate = video_state(o) %}
+  <div class="card" id="video">
+    <h2 style="margin-bottom:4px">🎬 Video invitation</h2>
+    {% if video_allowed(o) %}
+      {% if vstate in ('ready', 'stale') %}
+      <video class="vid" src="/o/{{ o.token }}/video.mp4" controls playsinline preload="metadata"></video>
+      <p style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px">
+        <a class="btn btn-primary" href="/o/{{ o.token }}/video.mp4?download=1">⬇ Download video</a>
+        <button class="btn btn-wa" type="button" id="vid-share">📤 Share (WhatsApp status, Instagram…)</button></p>
+      {% if vstate == 'stale' %}<form method="post" action="/o/{{ o.token }}/video" class="center"><p class="hint">You've edited the details since this video was made.</p><button class="btn btn-ghost btn-sm" type="submit">🔄 Remake with the new details</button></form>{% endif %}
+      {% elif vstate == 'making' %}
+      <p class="center" id="vid-wait">⏳ Making your video with music… about a minute. This page updates by itself.</p>
+      {% else %}
+      <p class="muted">A 9:16 video of your whole invitation, with gentle motion and music{% if not music %} (or upload your own song in the family console){% endif %}, perfect for WhatsApp status and Instagram stories.</p>
+      <form method="post" action="/o/{{ o.token }}/video"><button class="btn btn-primary" type="submit">✨ Make my video invitation</button></form>
+      {% endif %}
+    {% else %}
+      <video class="vid" src="/samples/video.mp4" autoplay muted loop playsinline onerror="this.hidden=true"></video>
+      <p class="muted">A 9:16 video of your whole invitation, with gentle motion and music, ready for WhatsApp status and Instagram stories.
+        <strong>Included with 2K and 4K.</strong></p>
+      {% if o.source in ('instant', 'test') %}
+      <form method="post" action="/o/{{ o.token }}/unlock"><input type="hidden" name="res" value="2k">
+        <button class="btn btn-primary" type="submit">🎬 Get 2K + video for {{ inr(((catalog.RESOLUTIONS['2k'].price * 100) - o.amount_paid - o.discount) if (catalog.RESOLUTIONS['2k'].price * 100) > (o.amount_paid + o.discount) else 0) }} more</button></form>
+      {% endif %}
+    {% endif %}
+  </div>
+  <style>.vid { display: block; width: 100%; max-width: 320px; aspect-ratio: 9 / 16; margin: 10px auto 0; border-radius: 16px; background: #2a0a12; box-shadow: var(--shadow); }</style>
+  <script>
+  (function () {
+    const wait = document.getElementById('vid-wait');
+    if (wait) (function poll() { fetch('/o/{{ o.token }}/video/status').then(r => r.json()).then(d => {
+      if (d.state !== 'making') location.reload(); else setTimeout(poll, 5000); }).catch(() => setTimeout(poll, 10000)); })();
+    const share = document.getElementById('vid-share');
+    if (share) share.addEventListener('click', async () => {
+      try {
+        const blob = await (await fetch('/o/{{ o.token }}/video.mp4')).blob();
+        const file = new File([blob], 'invitation.mp4', { type: 'video/mp4' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+      } catch (e) { if (e.name === 'AbortError') return; }
+      location.href = '/o/{{ o.token }}/video.mp4?download=1';
+    });
+  })();
+  </script>
+  {% endif %}
+
   <div class="card" id="email">
     <h2>✉️ Send to email</h2>
     {% set emailed = request.query_params.get('emailed') %}

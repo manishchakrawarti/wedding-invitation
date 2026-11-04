@@ -38,8 +38,8 @@ RESOLUTIONS: dict[str, Resolution] = {
     for r in [
         Resolution("free", "Standard", 720, 900, 0, "Quick sharing, with a small credit"),
         Resolution("1080", "Full HD", 1080, 1350, 9, "Perfect for WhatsApp & Instagram"),
-        Resolution("2k", "2K", 2048, 2560, 49, "Extra crisp on any phone or TV"),
-        Resolution("4k", "4K", 3840, 4800, 99, "Print-ready for cards & banners"),
+        Resolution("2k", "2K", 2048, 2560, 49, "Extra crisp + 🎬 video invite with music"),
+        Resolution("4k", "4K", 3840, 4800, 99, "Print-ready + 🎬 video invite with music"),
     ]
 }
 

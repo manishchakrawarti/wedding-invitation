@@ -321,6 +321,7 @@ def order_status(request: Request, order: Order = Depends(get_order)):
         "o": order, "visible": PROOF_VISIBLE, "console": has_guest_console(order), "gift": gifts.info(order),
         "photos": invites.portraits(order), "photo_slots": photo_slots(order),
         "entitled": hires.entitled(order), "tiers": hires.TIERS, **_send_context(order),
+        "music": bool(order.live_assets("music")),
     })
 
 
@@ -999,6 +1000,48 @@ def einvite(fmt: str, res: str, order: Order = Depends(get_order)):
     name = f"{slugify(order.bride_name + '-weds-' + order.groom_name) or 'wedding'}-invitation-{res}.{ext}"
     return Response(data, media_type="application/pdf" if fmt == "pdf" else "image/jpeg",
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+# --- video invitation (included with 2K and 4K) -------------------------------------------------------------
+
+@router.post("/o/{token}/video")
+def make_video(order: Order = Depends(get_order)):
+    from app.services import video
+
+    if order.status == OrderStatus.DELIVERED.value and video.allowed(order):
+        video.start(order)
+    return redirect(f"/o/{order.token}#video")
+
+
+@router.get("/o/{token}/video/status")
+def video_status(order: Order = Depends(get_order)):
+    from app.services import video
+
+    return {"state": video.state(order)}
+
+
+@router.get("/o/{token}/video.mp4")
+def video_file(download: bool = False, order: Order = Depends(get_order)):
+    from app.services import video
+
+    v = video.latest(order) if video.allowed(order) else None
+    if v is None:
+        raise HTTPException(404)
+    name = f"{slugify(order.display_names + '-' + order.occasion_name) or 'invitation'}-video.mp4"
+    disposition = "attachment" if download else "inline"
+    return Response(storage.read(v.path), media_type="video/mp4", headers={"Content-Disposition": f'{disposition}; filename="{name}"'})
+
+
+@router.get("/samples/video.mp4")
+def sample_video():
+    from fastapi.responses import FileResponse
+
+    from app.services import video
+
+    path = video.sample_path()
+    if path is None:
+        raise HTTPException(404)
+    return FileResponse(path, media_type="video/mp4", headers={"Cache-Control": "public, max-age=86400"})
 
 
 @router.post("/o/{token}/email")

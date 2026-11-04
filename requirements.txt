@@ -8,6 +8,7 @@ pillow==12.3.0
 httpx==0.28.1
 google-genai==2.33.0
 qrcode[pil]==8.2
+imageio-ffmpeg==0.8.1  # video invitations: bundles its own ffmpeg
 
 # Optional
 # google-cloud-storage   # STORAGE_BACKEND=gcs

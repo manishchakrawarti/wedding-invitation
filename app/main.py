@@ -17,6 +17,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("app")
 
 
+def _demos_then_sample_video() -> None:
+    from app.services import video
+
+    demo.ensure_demo()
+    video.ensure_sample()
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
@@ -25,7 +32,7 @@ async def lifespan(_: FastAPI):
         if recovered:
             log.info("re-queued %d unfinished order(s)", recovered)
         maintenance.start_daily_cleanup()
-        threading.Thread(target=demo.ensure_demo, name="demo", daemon=True).start()
+        threading.Thread(target=_demos_then_sample_video, name="demo", daemon=True).start()
         if settings.telegram_enabled:
             telegram.setup()
         seo.start_indexnow()

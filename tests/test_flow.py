@@ -1564,7 +1564,7 @@ def test_homepage_feature_cards(client):
     page = client.get("/?ui=en").text
     section = page[page.index('id="experience"'):page.index('id="occasions"')]
     assert section.count('<div class="card">') == 10
-    for title in ("selfie frame", "See it as you type", "230 ready messages", "PDF, long image &amp; 4K print"):
+    for title in ("selfie frame", "See it as you type", "230 ready messages", "Video invite, PDF &amp; 4K print"):
         assert title in section, title
     assert "(Premium)." not in section and "a real designer checks every invite" not in section
 
@@ -1806,3 +1806,32 @@ def test_phone_memory_reminders_and_one_tap_upi(client, monkeypatch):
     payment = get(order.token).payments[-1]
     qr = client.get(f"/o/{order.token}/pay/upi/{payment.id}.png")
     assert qr.status_code == 200 and qr.headers["content-type"] == "image/png"
+
+
+def test_video_invitation_with_2k_and_upsell_below(client):
+    import pytest
+
+    from app.services import export
+
+    if not export.chrome_binary():
+        pytest.skip("Chrome/Chromium not installed")
+    # ₹9 (Full HD): the video is offered as an upgrade, not made
+    basic = create_instant(client, bride_name="Basic")
+    client.post(f"/o/{basic.token}/unlock", data={"res": "1080"})
+    basic = pay(client, get(basic.token))
+    page = client.get(f"/o/{basic.token}").text
+    assert "🎬 Video invitation" in page and "Get 2K + video for ₹40 more" in page
+    client.post(f"/o/{basic.token}/video")
+    assert client.get(f"/o/{basic.token}/video.mp4").status_code == 404
+
+    # 2K (₹49): make it, watch it, download it
+    order = create_instant(client)
+    client.post(f"/o/{order.token}/unlock", data={"res": "2k"})
+    order = pay(client, get(order.token))
+    assert "Make my video invitation" in client.get(f"/o/{order.token}").text
+    client.post(f"/o/{order.token}/video")  # inline in tests
+    assert client.get(f"/o/{order.token}/video/status").json() == {"state": "ready"}
+    mp4 = client.get(f"/o/{order.token}/video.mp4?download=1")
+    assert mp4.status_code == 200 and mp4.headers["content-type"] == "video/mp4" and mp4.content[4:8] == b"ftyp"
+    assert "attachment" in mp4.headers["content-disposition"] and len(mp4.content) > 100_000
+    assert '<video class="vid" src="/o/' in client.get(f"/o/{order.token}").text
