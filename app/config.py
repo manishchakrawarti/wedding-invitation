@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     # Or/also: your business UPI ID. Customers pay in one tap with the amount filled in (any UPI app, no fees);
     # you confirm in admin, as with Razorpay.me.
     business_upi_id: str = ""
+    partner_commission_percent: int = 20  # of what families referred by a partner pay
     advance_percent: int = 50
     # Secret code for ₹1 test orders: /order?test=<code>. Empty = disabled.
     test_order_code: str = ""

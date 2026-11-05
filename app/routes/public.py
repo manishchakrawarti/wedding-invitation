@@ -14,11 +14,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import events, ui_text
-from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, RESOLUTIONS, STYLES
+from app.catalog import ADDONS, FUNCTIONS, LANGUAGES, PACKAGES, PRINT_PAPERS, PRINT_QUANTITIES, RESOLUTIONS, STYLES
 from app.config import settings
 from app.db import get_db
-from app.models import Asset, Invitee, Order, OrderStatus, utcnow
-from app.services import export, gifts, hires, invites, notify, orders, payments, pipeline, stash, stats
+from app.models import Asset, Invitee, Order, OrderStatus, PrintRequest, utcnow
+from app.services import export, gifts, hires, invites, notify, orders, partners, payments, pipeline, save_date, stash, stats
 from app.services.cards import has_guest_console
 from app.services.maintenance import sample_event_image, sample_image
 from app.services.storage import storage
@@ -199,6 +199,25 @@ def _clean_photo(data: bytes) -> bytes:
     return buf.getvalue()
 
 
+def _parse_sessions(form, main_date: date, errors: list[str]) -> list[dict]:
+    """The extra days or sessions of a puja or festival (Nahay Khay, Kharna…): s1..s4, each with its own label."""
+    sessions = []
+    for i in range(1, events.MAX_SESSIONS + 1):
+        label = str(form.get(f"sess_{i}_label") or "").strip()[:60]
+        if not label:
+            continue
+        day = str(form.get(f"sess_{i}_date") or "").strip() or main_date.isoformat()
+        try:
+            date.fromisoformat(day)
+        except ValueError:
+            errors.append(f"Please check the date for {label}.")
+            continue
+        sessions.append({"key": f"s{i}", "label": label, "label_hi": "", "date": day,
+                         "time": clean_time(str(form.get(f"sess_{i}_time") or "")),
+                         "venue": str(form.get(f"sess_{i}_venue") or "").strip()[:100]})
+    return sessions
+
+
 def _parse_functions(form, wedding_date: date | None, errors: list[str]) -> list[dict]:
     functions = []
     for key in FUNCTIONS:
@@ -298,6 +317,7 @@ async def submit_order(request: Request, db: Session = Depends(get_db)):
         referral_code=orders.new_referral_code(db, f("bride_name")), referred_by_code=referral if referral_ok else "",
         payment_option=payment_option, subtotal=subtotal, discount=discount, total=total,
         source="test" if test_order else "website", time_format="24h" if f("time_format") == "24h" else "12h",
+        partner_code=partner.code if (partner := partners.by_code(db, request.cookies.get(partners.COOKIE, ""))) else "",
     )
     db.add(order)
     db.flush()
@@ -400,6 +420,51 @@ def invitee_card(invitee_id: int, order: Order = Depends(get_order)):
     name = f"{slugify(f'{order.display_names}-card-for-{invitee.name}') or 'invitation'}.jpg"
     return Response(hires.render_personal(order, final, invitee), media_type="image/jpeg",
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@router.post("/o/{token}/print")
+async def request_print(request: Request, order: Order = Depends(get_order), db: Session = Depends(get_db)):
+    """Printed cards: the family leaves the details, we quote on WhatsApp and arrange a local press."""
+    form = await request.form()
+
+    def f(key: str, limit: int = 200) -> str:
+        return str(form.get(key) or "").strip()[:limit]
+
+    back = _back(order)
+    phone = invites.clean_phone(f("phone", 20))
+    quantity = int(f("quantity")) if f("quantity").isdigit() and int(f("quantity")) in PRINT_QUANTITIES else 0
+    error = ""
+    if not quantity:
+        error = "Please choose how many cards."
+    elif not phone:
+        error = "Please enter your mobile number so we can send the quote."
+    elif not re.fullmatch(r"\d{6}", f("pincode", 10)):
+        error = "Please enter your 6-digit PIN code."
+    elif not f("address", 400):
+        error = "Please enter the delivery address."
+    if error:
+        return redirect(f"{back}?print_error={quote(error)}#print")
+    paper = f("paper") if f("paper") in PRINT_PAPERS else "matte"
+    req = PrintRequest(order_id=order.id, quantity=quantity, paper=paper, name=f("name", 120) or order.customer_name,
+                       phone=phone, address=f("address", 400), pincode=f("pincode", 10), notes=f("notes", 500))
+    db.add(req)
+    orders.log_event(db, order, f"Printed cards requested: {quantity} × {PRINT_PAPERS[paper]}")
+    db.commit()
+    notify.alert_owner(db, f"🖨️ Print request: {quantity} × {PRINT_PAPERS[paper]} for {order.display_names}, "
+                           f"{req.name} {invites.pretty_phone(phone)}, PIN {req.pincode}", order)
+    return redirect(f"{back}?print=ok#print")
+
+
+@router.get("/o/{token}/save-the-date.jpg")
+def save_the_date(download: int = 0, order: Order = Depends(get_order)):
+    """A Save the Date card on the invitation's own design, to send weeks before the full invitation."""
+    try:
+        data = save_date.render(order)
+    except LookupError as exc:
+        raise HTTPException(403, "Available once your invitation is ready") from exc
+    name = f"{slugify(f'{order.display_names}-save-the-date') or 'save-the-date'}.jpg"
+    disposition = "attachment" if download else "inline"
+    return Response(data, media_type="image/jpeg", headers={"Content-Disposition": f'{disposition}; filename="{name}"'})
 
 
 @router.get("/o/{token}/guests/{invitee_id}/invite.pdf")
@@ -585,6 +650,7 @@ def occasion_form_config() -> dict:
             "photo1": t.photo_labels[0], "photo2": t.photo_labels[1] or "Second photo",
             "photo3": "Team / venue photo" if t.category == "corporate" else "Family photo",
             "styles": list(t.styles), "sample": f"/samples/event/{key}.jpg?style={{style}}", "wedding": False,
+            "sessions": list(events.session_ideas(key)),
         }
     return cfg
 
@@ -671,6 +737,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
     if etype and wedding_date:
         functions = [{"key": etype.key, "label": etype.headline, "label_hi": etype.headline_hi,
                       "date": wedding_date.isoformat(), "time": clean_time(f("wedding_time")), "venue": ""}]
+        functions += _parse_sessions(form, wedding_date, errors)
     if not etype and not any(fn["key"] in ("wedding", "nikah") for fn in functions) and wedding_date:
         functions.append({"key": "nikah" if style == "muslim_nikah" else "wedding", "date": wedding_date.isoformat(),
                           "time": clean_time(f("wedding_time")), "venue": ""})
@@ -706,6 +773,7 @@ async def create_submit(request: Request, db: Session = Depends(get_db)):
         event_type=etype.key if etype else "wedding", occasion_detail=f("occasion_detail")[:120] if etype else "",
         time_format="24h" if f("time_format") == "24h" else "12h", gallery_ok=bool(form.get("gallery_ok")),
         show_ganesha=f("ganesha") != "off",
+        partner_code=partner.code if (partner := partners.by_code(db, request.cookies.get(partners.COOKIE, ""))) else "",
     )
     db.add(order)
     db.flush()

@@ -186,6 +186,22 @@
       <div><label for="venue_address">Address <span class="hint">for the map</span></label><input id="venue_address" name="venue_address" type="text" value="{{ v.venue_address }}" maxlength="160"></div>
       <div class="full"><label for="dress_main">Dress code <span class="hint">optional</span></label><input id="dress_main" name="dress_main" type="text" value="{{ v.dress_main }}" maxlength="120" placeholder="e.g. Traditional / pastel ethnic"></div>
     </div>
+    <details class="more event-only" id="sessions" {% if c.wedding %}hidden{% endif %} {% if v.sess_1_label %}open{% endif %}>
+      <summary>+ Add more days or sessions <span class="hint">(e.g. Kharna, Aarti, Bhandara: shown in the schedule)</span></summary>
+      <div class="chip-row" id="session-chips" style="margin-top:10px"></div>
+      <div style="margin-top:8px">
+        {% for i in range(1, 5) %}
+        <div class="fn-row on sess-row">
+          <input type="text" name="sess_{{ i }}_label" value="{{ v.get('sess_' ~ i ~ '_label', '') }}" maxlength="60" placeholder="Day / session {{ i }} name" aria-label="Session {{ i }} name">
+          <div class="fn-fields">
+            <input type="date" name="sess_{{ i }}_date" value="{{ v.get('sess_' ~ i ~ '_date', '') }}" aria-label="Session {{ i }} date">
+            {{ tp.time_input("sess_" ~ i ~ "_time", v.get("sess_" ~ i ~ "_time", ""), "Session " ~ i ~ " time") }}
+            <input type="text" name="sess_{{ i }}_venue" value="{{ v.get('sess_' ~ i ~ '_venue', '') }}" maxlength="100" placeholder="Venue (if different, e.g. Ghat)" aria-label="Session {{ i }} venue">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
     <details class="more wedding-only" {% if not c.wedding %}hidden{% endif %} {% if v.fn_haldi or v.fn_mehndi or v.fn_sangeet or v.fn_reception or v.fn_engagement %}open{% endif %}>
       <summary>+ Add Haldi, Mehndi, Sangeet, Reception… <span class="hint">(each gets its own matching card)</span></summary>
       <div style="margin-top:12px">
@@ -324,6 +340,15 @@
     field($('photo2-field'), hasSecond);
     document.querySelectorAll('.wedding-only').forEach(el => field(el, c.wedding));
     document.querySelectorAll('.event-only').forEach(el => show(el, !c.wedding));
+    const chips = $('session-chips');
+    if (chips) chips.replaceChildren(...(c.sessions || []).map(name => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = '+ ' + name;
+      b.addEventListener('click', () => {
+        const empty = [...document.querySelectorAll('.sess-row input[name$="_label"]')].find(i => !i.value);
+        if (empty) { empty.value = name; empty.closest('.sess-row').querySelector('input[type=date]').focus(); }
+      });
+      return b;
+    }));
     // styles: only the ones that suit this occasion, with matching sample cards
     let checkedOk = false;
     document.querySelectorAll('#style-grid .choice').forEach(label => {

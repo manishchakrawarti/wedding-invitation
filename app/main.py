@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app import ui_text
 from app.config import APP_DIR, settings
 from app.db import init_db
-from app.routes import admin, public, rsvp, seo, webhooks
+from app.routes import admin, partners, public, rsvp, seo, webhooks
 from app.services import demo, maintenance, pipeline, stats, telegram
 from app.services.overlay import RAQM
 
@@ -56,6 +56,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title=settings.brand_name, lifespan=lifespan, docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 app.include_router(public.router)
+app.include_router(partners.router)
 app.include_router(rsvp.router)
 app.include_router(webhooks.router)
 app.include_router(admin.router)

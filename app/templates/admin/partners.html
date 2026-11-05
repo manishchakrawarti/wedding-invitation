@@ -1,0 +1,31 @@
+{% extends "admin/base.html" %}
+{% block title %}Partners{% endblock %}
+{% block content %}
+<h1>Partners</h1>
+<p class="muted">Commission {{ settings.partner_commission_percent }}% of what referred families pay. Pay the "owed" amount to their UPI, then record it here.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Partner</th><th>Link</th><th>Opens</th><th>Made / paid</th><th>Revenue</th><th>Earned</th><th>Owed</th><th>Record payout</th><th></th></tr></thead>
+  <tbody>
+  {% for p, s in rows %}
+    <tr {% if p.active is false %}style="opacity:.5"{% endif %}>
+      <td><strong>{{ p.name }}</strong><br><span class="small">{{ businesses.get(p.business, p.business) }}{% if p.city %} · {{ p.city }}{% endif %}<br>
+        <a href="https://wa.me/{{ p.phone|replace('+', '') }}" target="_blank" rel="noopener">{{ p.phone }}</a>{% if p.upi_id %} · UPI {{ p.upi_id }}{% endif %}</span></td>
+      <td class="small"><a href="{{ link(p) }}" target="_blank">{{ p.code }}</a><br><a href="/partners/{{ p.token }}" target="_blank">dashboard ↗</a></td>
+      <td>{{ p.clicks or 0 }}</td>
+      <td>{{ s.made }} / {{ s.paid }}</td>
+      <td>{{ inr(s.revenue) }}</td>
+      <td>{{ inr(s.earned) }}</td>
+      <td><strong>{{ inr(s.owed) }}</strong><br><span class="small">paid {{ inr(p.paid_out or 0) }}</span></td>
+      <td><form method="post" action="/admin/partners/{{ p.id }}" style="display:flex;gap:6px">
+        <input name="payout" type="number" min="1" step="1" placeholder="₹" style="width:90px"><button class="btn btn-sm" type="submit">Paid</button></form></td>
+      <td><form method="post" action="/admin/partners/{{ p.id }}"><input type="hidden" name="toggle" value="1">
+        <button class="btn btn-sm btn-ghost" type="submit">{{ 'Activate' if p.active is false else 'Pause' }}</button></form></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="9" class="center muted">No partners yet. Share {{ settings.base_url }}/partners with vendors.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

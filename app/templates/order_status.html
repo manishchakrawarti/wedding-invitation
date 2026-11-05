@@ -207,6 +207,8 @@
   {% endif %}
 
   {% if can_send and not console %}{% include "_send_card.html" %}{% endif %}
+  {% include "_save_date_card.html" %}
+  {% if o.status not in ['cancelled'] %}{% include "_print_card.html" %}{% endif %}
 
   {% if o.status == 'delivered' %}
   <div class="card" id="gallery">

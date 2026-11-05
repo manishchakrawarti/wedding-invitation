@@ -1,0 +1,22 @@
+{# Printed cards on request: details go to the owner, who quotes on WhatsApp and arranges a local press. #}
+{% set reqs = o.print_requests %}
+<div class="card" id="print">
+  <h2 style="margin-bottom:4px">🖨️ Printed cards, delivered</h2>
+  <p class="muted" style="margin-top:0">Want real cards for elders and close family? We print this same design with your names and send it to your door. Usually <strong>₹12–40 per card</strong> depending on paper and quantity; we WhatsApp you an exact quote first. Nothing to pay now.</p>
+  {% if request.query_params.get('print') == 'ok' %}<div class="alert alert-success">🙏 Thank you! We'll WhatsApp you a quote within a few hours.</div>{% endif %}
+  {% if request.query_params.get('print_error') %}<div class="alert alert-error">{{ request.query_params.get('print_error') }}</div>{% endif %}
+  {% for r in reqs %}<p class="small">📦 {{ r.quantity }} cards · {{ catalog.PRINT_PAPERS.get(r.paper, r.paper) }} · <strong>{{ {'new': 'Quote coming', 'quoted': 'Quote sent', 'done': 'Printed & sent', 'cancelled': 'Cancelled'}.get(r.status, r.status) }}</strong></p>{% endfor %}
+  <details {% if request.query_params.get('print_error') %}open{% endif %}>
+    <summary class="btn btn-ghost btn-sm">{{ 'Request more printed cards' if reqs else 'Get a quote for printed cards' }}</summary>
+    <form method="post" action="/o/{{ o.token }}/print" class="form-grid" style="margin-top:12px">
+      <div><label for="pr-qty">How many cards *</label><select id="pr-qty" name="quantity">{% for q in catalog.PRINT_QUANTITIES %}<option value="{{ q }}" {% if q == 100 %}selected{% endif %}>{{ q }}{{ '+' if q == 500 }}</option>{% endfor %}</select></div>
+      <div><label for="pr-paper">Paper</label><select id="pr-paper" name="paper">{% for k, label in catalog.PRINT_PAPERS.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></div>
+      <div><label for="pr-name">Your name</label><input id="pr-name" name="name" type="text" maxlength="120" value="{{ o.customer_name }}"></div>
+      <div><label for="pr-phone">Mobile (WhatsApp) *</label><input id="pr-phone" name="phone" type="tel" inputmode="tel" maxlength="20" required value="{{ o.phone }}"></div>
+      <div class="full"><label for="pr-address">Delivery address *</label><textarea id="pr-address" name="address" rows="2" maxlength="400" required></textarea></div>
+      <div><label for="pr-pin">PIN code *</label><input id="pr-pin" name="pincode" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></div>
+      <div><label for="pr-notes">Anything else <span class="hint">optional</span></label><input id="pr-notes" name="notes" type="text" maxlength="500" placeholder="Needed by 10 Dec, envelopes with names…"></div>
+      <div class="full"><button class="btn btn-primary" type="submit">Send request</button></div>
+    </form>
+  </details>
+</div>

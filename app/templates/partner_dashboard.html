@@ -1,0 +1,67 @@
+{# A partner's private dashboard: their link, QR, share message, families referred and earnings. #}
+{% extends "base.html" %}
+{% block title %}Partner dashboard · {{ p.name }}{% endblock %}
+{% block head %}
+<meta name="robots" content="noindex">
+<style>
+  .pd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 14px 0; }
+  .pd-stats div { background: var(--cream); border-radius: 12px; padding: 12px; text-align: center; }
+  .pd-stats strong { display: block; font-family: var(--serif); font-size: 1.7rem; color: var(--maroon); }
+  .pd-link { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pd-link input { flex: 1; min-width: 0; font-weight: 600; }
+  .pd-qr { display: block; width: 180px; height: 180px; margin: 12px auto 4px; border-radius: 10px; border: 1px solid var(--line); }
+</style>
+{% endblock %}
+{% block content %}
+<section style="padding-top:36px"><div class="narrow">
+  {% if request.query_params.get('new') %}<div class="alert alert-success">🎉 Welcome, {{ p.name }}! Bookmark this page: it's your private dashboard.</div>{% endif %}
+  {% if request.query_params.get('saved') %}<div class="alert alert-success">Saved.</div>{% endif %}
+  <h1 style="margin-bottom:2px">{{ p.name }}</h1>
+  <p class="muted" style="margin-top:0">{{ business }}{% if p.city %} · {{ p.city }}{% endif %} · Partner code <strong>{{ p.code }}</strong></p>
+
+  <div class="card">
+    <h2 style="margin-bottom:6px">🔗 Your link</h2>
+    <div class="pd-link"><input id="pd-url" type="text" readonly value="{{ link }}" aria-label="Your partner link">
+      <button class="btn btn-ghost btn-sm" type="button" id="pd-copy">Copy</button></div>
+    <p style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <a class="btn btn-wa" href="https://wa.me/?text={{ share|urlencode }}" target="_blank" rel="noopener">📤 Share on WhatsApp</a>
+      <a class="btn btn-ghost" href="/partners/{{ p.token }}/qr.png" download="invite-all-qr-{{ p.code }}.png">⬇ Download QR</a></p>
+    <img class="pd-qr" src="/partners/{{ p.token }}/qr.png" alt="QR code of your partner link">
+    <p class="center small muted">Print it at your counter or on your visiting card. Families who scan it are linked to you for 60 days.</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:0">📊 Your families</h2>
+    <div class="pd-stats">
+      <div><strong>{{ p.clicks or 0 }}</strong>link opens</div>
+      <div><strong>{{ s.made }}</strong>invitations made</div>
+      <div><strong>{{ s.paid }}</strong>paid</div>
+      <div><strong>{{ inr(s.earned) }}</strong>earned ({{ percent }}%)</div>
+      <div><strong>{{ inr(s.owed) }}</strong>to be paid</div>
+    </div>
+    {% if recent %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Occasion</th><th>Paid</th></tr></thead>
+      <tbody>{% for o in recent %}<tr><td class="small">{{ o.created_at.strftime('%d %b') }}</td><td>{{ o.occasion_name }}</td><td>{{ inr(o.amount_paid) if o.amount_paid else '—' }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}
+    <p class="muted">No families yet. Share your link with your next client, it takes them 2 minutes.</p>
+    {% endif %}
+    <p class="small muted">Payouts go to your UPI at the start of every month.</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:6px">💰 Payout UPI</h2>
+    <form method="post" action="/partners/{{ p.token }}/upi" class="pd-link">
+      <input name="upi_id" type="text" maxlength="100" value="{{ p.upi_id }}" placeholder="yourname@okaxis" aria-label="UPI ID">
+      <button class="btn btn-primary btn-sm" type="submit">Save</button></form>
+  </div>
+</div></section>
+<script>
+document.getElementById('pd-copy').addEventListener('click', e => {
+  const input = document.getElementById('pd-url'); input.select();
+  (navigator.clipboard ? navigator.clipboard.writeText(input.value) : Promise.reject()).catch(() => document.execCommand('copy'));
+  e.target.textContent = 'Copied ✓';
+});
+</script>
+{% endblock %}

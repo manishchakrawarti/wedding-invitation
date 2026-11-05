@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% block title %}Print requests{% endblock %}
+{% block content %}
+<h1>Printed-card requests</h1>
+<p class="muted">WhatsApp the family a quote (₹12–40 per card), arrange the press, then mark the request.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>When</th><th>Invitation</th><th>Cards</th><th>Contact &amp; address</th><th>Notes</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td class="small">{{ r.created_at.strftime('%d %b %H:%M') }}</td>
+      <td><a href="/admin/orders/{{ r.order_id }}">{{ r.order.display_names }}</a><br><span class="small">{{ r.order.occasion_name }} · {{ pretty_date(r.order.wedding_date) }}</span></td>
+      <td>{{ r.quantity }}<br><span class="small">{{ catalog.PRINT_PAPERS.get(r.paper, r.paper) }}</span></td>
+      <td>{{ r.name }}<br><a href="https://wa.me/{{ r.phone|replace('+', '') }}" target="_blank" rel="noopener">{{ r.phone }}</a><br><span class="small" style="white-space:pre-line">{{ r.address }} · {{ r.pincode }}</span></td>
+      <td class="small">{{ r.notes or '—' }}</td>
+      <td><form method="post" action="/admin/prints/{{ r.id }}" style="display:flex;gap:6px">
+        <select name="status">{% for s in ('new', 'quoted', 'done', 'cancelled') %}<option {% if s == r.status %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+        <button class="btn btn-sm" type="submit">Save</button></form></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="center muted">No print requests yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

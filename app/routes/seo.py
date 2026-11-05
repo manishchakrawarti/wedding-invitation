@@ -19,7 +19,7 @@ from app.templating import templates
 log = logging.getLogger(__name__)
 router = APIRouter()
 ICONS = APP_DIR / "static" / "icons"
-PUBLIC_PAGES = ["/", "/occasions", "/create", "/gallery", "/order", "/terms", "/privacy", "/refund"]
+PUBLIC_PAGES = ["/", "/occasions", "/create", "/gallery", "/partners", "/order", "/terms", "/privacy", "/refund"]
 UPDATED = date.today().isoformat()  # pages change with deploys, and the app restarts on every deploy
 
 
@@ -28,8 +28,8 @@ def indexnow_key() -> str:
 
 
 def sitemap_paths() -> list[str]:
-    return (PUBLIC_PAGES[:4] + [p.path for p in seo.pages().values()] + ["/wording"]
-            + [p.path for p in wording.pages().values()] + PUBLIC_PAGES[4:])
+    return (PUBLIC_PAGES[:5] + [p.path for p in seo.pages().values()] + ["/wording"]
+            + [p.path for p in wording.pages().values()] + PUBLIC_PAGES[5:])
 
 
 @router.get("/robots.txt", response_class=PlainTextResponse)

@@ -167,7 +167,7 @@ def event_card(order) -> CardSpec:
         items.append(Line(e["detail"], "detail", 36, "secondary", max_lines=2, gap_before=14))
     items.append(Divider(gap_before=24))
     items.append(Line(pretty_date(order.wedding_date), "date", 38, "accent", gap_before=14))
-    main = next(iter(order.functions or []), {})
+    main = next((f for f in order.functions or [] if f["key"] == order.event_type), {})
     if main.get("time"):
         items.append(Line(f"at {pretty_time(main['time'], order.time_format)}", "detail", 32, gap_before=4))
     items.append(Line(order.venue_name, "detail", 36, "primary", max_lines=2, gap_before=16))

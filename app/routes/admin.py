@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 from app.catalog import FUNCTIONS, LANGUAGES, PACKAGES, STYLES
 from app.config import settings
 from app.db import get_db
-from app.models import Asset, DailyStat, Notification, Order, OrderStatus, Payment, TelegramChat
-from app.services import notify, orders, payments, pipeline
+from app.models import Asset, DailyStat, Notification, Order, OrderStatus, Partner, Payment, PrintRequest, TelegramChat
+from app.services import notify, orders, partners, payments, pipeline
 from app.services.maintenance import cleanup_expired
 from app.services.storage import storage
 from app.templating import templates
@@ -307,6 +307,56 @@ async def test_email(request: Request, db: Session = Depends(get_db)):
     result = {"sent": "Sent! Check the inbox (and spam folder).", "logged": "Not sent: SMTP is not configured in .env.",
               "skipped": "Enter an email address."}.get(note.status, f"Failed: {note.error[:200]}")
     return RedirectResponse(f"/admin/notifications?msg={result}", status_code=303)
+
+
+@router.get("/prints", response_class=HTMLResponse)
+def prints_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
+    """Printed-card requests: call or WhatsApp the family with a quote, then mark them."""
+    rows = db.scalars(select(PrintRequest).order_by(PrintRequest.id.desc()).limit(300)).all()
+    return templates.TemplateResponse(request, "admin/prints.html", {"rows": rows, "msg": msg})
+
+
+@router.post("/prints/{request_id}")
+async def print_status(request: Request, request_id: int, db: Session = Depends(get_db)):
+    req = db.get(PrintRequest, request_id)
+    status = str((await request.form()).get("status", ""))
+    if req is None or status not in ("new", "quoted", "done", "cancelled"):
+        raise HTTPException(404)
+    req.status = status
+    orders.log_event(db, req.order, f"Print request #{req.id}: {status}")
+    db.commit()
+    return RedirectResponse(f"/admin/prints?msg=Request {req.id} marked {status}", status_code=303)
+
+
+@router.get("/partners", response_class=HTMLResponse)
+def partners_admin(request: Request, msg: str = "", db: Session = Depends(get_db)):
+    rows = [(p, partners.summary(db, p)) for p in db.scalars(select(Partner).order_by(Partner.id.desc()))]
+    return templates.TemplateResponse(request, "admin/partners.html", {
+        "rows": rows, "msg": msg, "businesses": partners.BUSINESSES, "link": partners.link})
+
+
+@router.post("/partners/{partner_id}")
+async def partner_update(request: Request, partner_id: int, db: Session = Depends(get_db)):
+    """Record a payout (₹) sent to the partner's UPI, or switch them on/off."""
+    partner = db.get(Partner, partner_id)
+    if partner is None:
+        raise HTTPException(404)
+    form = await request.form()
+    msg = ""
+    if form.get("toggle"):
+        partner.active = partner.active is False
+        msg = f"{partner.name} {'activated' if partner.active else 'paused'}"
+    else:
+        try:
+            rupees = float(str(form.get("payout", "")).strip())
+        except ValueError:
+            rupees = 0
+        if rupees <= 0:
+            return RedirectResponse("/admin/partners?msg=Enter the amount you paid", status_code=303)
+        partner.paid_out = (partner.paid_out or 0) + round(rupees * 100)
+        msg = f"Recorded ₹{rupees:g} paid to {partner.name}"
+    db.commit()
+    return RedirectResponse(f"/admin/partners?msg={msg}", status_code=303)
 
 
 @router.post("/cleanup")

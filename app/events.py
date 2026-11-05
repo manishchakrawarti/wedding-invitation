@@ -206,6 +206,35 @@ SCHEDULE_TITLE = ("Event Details", "कार्यक्रम")
 DEFAULT_HOSTS = ("Our family", "हमारा परिवार")
 
 
+MAX_SESSIONS = 4
+# Suggestions for "+ Add more days or sessions": the parts families usually list on a multi-day card.
+SESSION_IDEAS: dict[str, tuple[str, ...]] = {
+    "chhath_puja": ("Nahay Khay", "Kharna", "Sandhya Arghya", "Usha Arghya"),
+    "durga_puja": ("Ghatasthapana", "Ashtami Puja", "Kanya Pujan", "Garba Night", "Dussehra"),
+    "ganesh_chaturthi": ("Sthapana", "Maha Aarti", "Bhandara", "Visarjan"),
+    "diwali_puja": ("Dhanteras", "Laxmi Puja", "Govardhan Puja", "Bhai Dooj"),
+    "krishna_janmashtami": ("Jhanki Darshan", "Midnight Aarti", "Dahi Handi"),
+    "griha_pravesh": ("Vastu Puja", "Havan", "Bhoj"),
+    "upanayanam": ("Haldi", "Janeu Sanskar", "Bhoj"),
+    "mundan": ("Puja", "Mundan", "Bhoj"),
+    "lohri_sankranti": ("Lohri Bonfire", "Makar Sankranti Lunch"),
+    "eid_dawat": ("Chand Raat", "Eid Dawat"),
+    "grand_opening": ("Puja", "Ribbon Cutting", "Lunch"),
+    "annual_day": ("Awards", "Cultural Evening", "Dinner"),
+    "puja": ("Katha", "Aarti", "Havan", "Bhandara"),
+    "baby": ("Puja", "Ceremony", "Lunch"),
+    "birthday": ("Cake Cutting", "Dinner", "After Party"),
+    "anniversary": ("Puja", "Dinner", "Dance Night"),
+    "festival": ("Puja", "Dinner", "Party"),
+    "corporate": ("Registration", "Keynote", "Dinner"),
+}
+
+
+def session_ideas(key: str) -> tuple[str, ...]:
+    t = TYPES.get(key)
+    return SESSION_IDEAS.get(key) or (SESSION_IDEAS.get(t.category, ()) if t else ())
+
+
 def jubilee(detail: str) -> tuple[str, str] | None:
     try:
         years = int(str(detail).strip())

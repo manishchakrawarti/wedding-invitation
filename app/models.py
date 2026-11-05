@@ -88,6 +88,7 @@ class Order(Base):
     marketing_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     gallery_ok: Mapped[bool] = mapped_column(Boolean, default=False)  # family agreed to show the card in /gallery
     show_ganesha: Mapped[bool] = mapped_column(Boolean, default=True)  # see cards.shows_ganesha
+    partner_code: Mapped[str] = mapped_column(String(24), default="", index=True)  # partner who referred this family
 
     referral_code: Mapped[str] = mapped_column(String(16), unique=True, index=True)
     referred_by_code: Mapped[str] = mapped_column(String(16), default="")
@@ -255,6 +256,45 @@ class Notification(Base):
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20))  # sent | logged | failed
     error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class PrintRequest(Base):
+    """A family asking for printed cards; the owner quotes and arranges them with a local press."""
+
+    __tablename__ = "print_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), index=True)
+    quantity: Mapped[int] = mapped_column(Integer, default=100)
+    paper: Mapped[str] = mapped_column(String(40), default="")
+    name: Mapped[str] = mapped_column(String(120), default="")
+    phone: Mapped[str] = mapped_column(String(20), default="")
+    address: Mapped[str] = mapped_column(Text, default="")
+    pincode: Mapped[str] = mapped_column(String(10), default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="new")  # new | quoted | done | cancelled
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    order: Mapped[Order] = relationship(backref="print_requests")
+
+
+class Partner(Base):
+    """A vendor (mehndi artist, pandit, photographer, banquet hall…) who refers families for a commission."""
+
+    __tablename__ = "partners"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(24), unique=True, index=True)  # in their link: ?ref=RIYAMEHNDI
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)  # their private dashboard link
+    name: Mapped[str] = mapped_column(String(120))
+    business: Mapped[str] = mapped_column(String(40), default="")
+    city: Mapped[str] = mapped_column(String(80), default="")
+    phone: Mapped[str] = mapped_column(String(20), default="")
+    upi_id: Mapped[str] = mapped_column(String(100), default="")
+    paid_out: Mapped[int] = mapped_column(Integer, default=0)  # paise already paid to them
+    clicks: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 

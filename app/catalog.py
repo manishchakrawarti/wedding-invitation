@@ -320,3 +320,7 @@ def card_style_for(order_style: str, function_key: str) -> str:
     if function_key in ("haldi", "mehndi") and order_style not in ("christian", "modern_minimal"):
         return function_key
     return order_style
+
+# Printed cards on request (order page): quoted on WhatsApp, printed by a partner press.
+PRINT_QUANTITIES = (50, 100, 200, 300, 500)
+PRINT_PAPERS = {"matte": "Matte card (300 GSM)", "gold_foil": "Gold foil on textured card", "box": "Premium box / scroll invite"}

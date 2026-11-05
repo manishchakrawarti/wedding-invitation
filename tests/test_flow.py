@@ -1835,3 +1835,124 @@ def test_video_invitation_with_2k_and_upsell_below(client):
     assert mp4.status_code == 200 and mp4.headers["content-type"] == "video/mp4" and mp4.content[4:8] == b"ftyp"
     assert "attachment" in mp4.headers["content-disposition"] and len(mp4.content) > 100_000
     assert '<video class="vid" src="/o/' in client.get(f"/o/{order.token}").text
+
+
+def test_save_the_date_card(client):
+    from PIL import Image
+
+    order = create_instant(client)
+    assert "📅 Save the Date" in client.get(f"/o/{order.token}/preview").text
+    img = client.get(f"/o/{order.token}/save-the-date.jpg")
+    assert img.status_code == 200 and img.headers["content-type"] == "image/jpeg" and "inline" in img.headers["content-disposition"]
+    assert Image.open(io.BytesIO(img.content)).size == (720, 900)  # the free size, with the credit
+    assert "attachment" in client.get(f"/o/{order.token}/save-the-date.jpg?download=1").headers["content-disposition"]
+    with SessionLocal() as db:
+        from app.services import save_date
+
+        texts = [i.text for i in save_date.items(db.get(Order, order.id)) if hasattr(i, "text")]
+    assert texts[0] == "Save the Date" and "Priya" in texts and "Rohan" in texts and "Formal invitation to follow" in texts
+    # Hindi card, puja card: localized heading, the event's name instead of a couple
+    resp = create_event(client, "chhath_puja", language="hi")
+    puja = get(resp.headers["location"].split("/")[2])
+    with SessionLocal() as db:
+        texts = [i.text for i in save_date.items(db.get(Order, puja.id)) if hasattr(i, "text")]
+    assert texts[0] == "शुभ तिथि याद रखें" and "छठ महापर्व" in texts
+    english = get(create_event(client, "chhath_puja").headers["location"].split("/")[2])
+    assert client.get(f"/o/{english.token}/save-the-date.jpg").status_code == 200
+
+
+def test_multi_day_sessions_for_pujas(client):
+    from app.services import invites
+
+    form = client.get("/create?type=chhath_puja").text
+    assert "+ Add more days or sessions" in form and "Kharna" in form and 'name="sess_1_label"' in form
+    day1 = (date.fromisoformat(WEDDING) - timedelta(days=2)).isoformat()
+    resp = create_event(client, "chhath_puja", sess_1_label="Nahay Khay", sess_1_date=day1, sess_1_time="07:00",
+                        sess_2_label="Usha Arghya", sess_2_time="05:30", sess_2_venue="Gandhi Ghat",
+                        sess_3_label="", sess_3_date="2027-01-01")
+    order = get(resp.headers["location"].split("/")[2])
+    keys = [f["key"] for f in order.functions]
+    assert keys == ["s1", "chhath_puja", "s2"] or keys == ["s1", "s2", "chhath_puja"]
+    with SessionLocal() as db:
+        sched = invites.schedule(db.get(Order, order.id))
+    labels = [s["label"] for s in sched]
+    assert labels[0] == "Nahay Khay" and "Usha Arghya" in labels and "Chhath Mahaparv" in labels
+    assert next(s for s in sched if s["key"] == "s2")["place"].startswith("Gandhi Ghat")
+    # the main card keeps the main day's time even though Nahay Khay sorts first
+    from app.services import cards
+
+    with SessionLocal() as db:
+        main = cards.event_card(db.get(Order, order.id))
+    assert any(getattr(i, "text", "") == "at 6:00 PM" for i in main.items), [getattr(i, "text", "") for i in main.items]
+    bad = create_event(client, "chhath_puja", sess_1_label="Kharna", sess_1_date="not-a-date")
+    assert bad.status_code == 422 and "Please check the date for Kharna" in bad.text
+
+
+def test_print_request_goes_to_owner(client, admin_auth):
+    from app.models import PrintRequest
+
+    order = create_instant(client)
+    page = client.get(f"/o/{order.token}/preview").text
+    assert "🖨️ Printed cards, delivered" in page and "₹12–40 per card" in page
+    bad = client.post(f"/o/{order.token}/print", data={"quantity": "100", "phone": "9876543210", "pincode": "12", "address": "x"},
+                      follow_redirects=False)
+    assert "print_error=" in bad.headers["location"] and "PIN" in client.get(bad.headers["location"]).text
+    ok = client.post(f"/o/{order.token}/print", data={"quantity": "200", "paper": "gold_foil", "name": "Rakesh", "phone": "98765 43210",
+                                                       "pincode": "800001", "address": "12 Boring Road, Patna", "notes": "By 1 Dec"},
+                     follow_redirects=False)
+    assert ok.headers["location"].endswith("?print=ok#print")
+    with SessionLocal() as db:
+        req = db.scalar(select(PrintRequest).where(PrintRequest.order_id == order.id))
+        assert (req.quantity, req.paper, req.phone, req.pincode, req.status) == (200, "gold_foil", "919876543210", "800001", "new")
+    assert "Quote coming" in client.get(f"/o/{order.token}/preview").text
+    admin = client.get("/admin/prints", auth=admin_auth).text
+    assert "12 Boring Road, Patna" in admin and "Gold foil" in admin
+    client.post(f"/admin/prints/{req.id}", data={"status": "quoted"}, auth=admin_auth)
+    assert "Quote sent" in client.get(f"/o/{order.token}/preview").text
+
+
+def test_partner_programme(client, admin_auth):
+    from app.models import Partner
+
+    landing = client.get("/partners")
+    assert landing.status_code == 200 and "Partner with" in landing.text and "/partners" in client.get("/sitemap.xml").text
+    resp = client.post("/partners", data={"name": "Riya Mehndi Arts", "business": "mehndi", "phone": "9812345670", "city": "Patna"},
+                       follow_redirects=False)
+    assert resp.status_code == 303 and "/partners/" in resp.headers["location"]
+    with SessionLocal() as db:
+        partner = db.scalar(select(Partner).where(Partner.phone == "919812345670"))
+        code, token = partner.code, partner.token
+    assert code.startswith("RIYAMEHN")
+    # signing up again from the same number opens the same dashboard
+    again = client.post("/partners", data={"name": "Riya", "phone": "+91 98123 45670"}, follow_redirects=False)
+    assert again.headers["location"] == f"/partners/{token}"
+    dash = client.get(f"/partners/{token}").text
+    assert f"/p/{code}" in dash and "Share on WhatsApp" in dash
+    assert client.get(f"/partners/{token}/qr.png").headers["content-type"] == "image/png"
+    assert client.get("/partners/not-a-real-token-at-all-xx").status_code == 404
+
+    # a family opens the partner's link, creates and pays: the partner earns 20%
+    link = client.get(f"/p/{code.lower()}", follow_redirects=False)
+    assert link.status_code == 302 and "ia_partner" in link.headers.get("set-cookie", "")
+    order = create_instant(client, bride_name="Referred")
+    assert order.partner_code == code
+    client.post(f"/o/{order.token}/unlock", data={"res": "2k"})
+    pay(client, get(order.token))
+    from app.services import partners
+
+    with SessionLocal() as db:
+        summary = partners.summary(db, db.scalar(select(Partner).where(Partner.code == code)))
+    assert summary == {"made": 1, "paid": 1, "revenue": 4900, "earned": 980, "owed": 980}  # 20% of ₹49
+    assert "₹10</strong>earned" in client.get(f"/partners/{token}").text
+    client.cookies.delete("ia_partner")
+    assert create_instant(client, bride_name="Direct").partner_code == ""
+
+    admin = client.get("/admin/partners", auth=admin_auth).text
+    assert "Riya Mehndi Arts" in admin and code in admin
+    with SessionLocal() as db:
+        pid = db.scalar(select(Partner.id).where(Partner.code == code))
+    client.post(f"/admin/partners/{pid}", data={"payout": "9.8"}, auth=admin_auth)
+    with SessionLocal() as db:
+        assert db.get(Partner, pid).paid_out == 980
+    client.post(f"/admin/partners/{pid}", data={"toggle": "1"}, auth=admin_auth)
+    assert "ia_partner" not in client.get(f"/p/{code}", follow_redirects=False).headers.get("set-cookie", "")

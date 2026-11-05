@@ -1,0 +1,55 @@
+{# Partner programme: vendors share their own link and earn a share of what referred families pay. #}
+{% extends "base.html" %}
+{% block title %}Partner Programme: Earn {{ percent }}% Sharing {{ settings.brand_name }} Invitations{% endblock %}
+{% block description %}Mehndi artists, pandits, photographers, banquet halls and card printers: share your own {{ settings.brand_name }} link with families and earn {{ percent }}% of every paid invitation. Free to join.{% endblock %}
+{% block head %}
+<style>
+  .pt-hero { background: radial-gradient(ellipse at top, #8d2335, var(--maroon-dark) 75%); color: var(--cream); text-align: center; padding: 48px 0 38px; }
+  .pt-hero h1 { color: #fff; margin-bottom: 8px; }
+  .pt-hero .big { font-family: var(--serif); font-size: 3rem; color: var(--gold-soft); line-height: 1; margin: 10px 0 4px; }
+  .pt-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .pt-steps .card { text-align: center; margin: 0; }
+  .pt-steps .n { font-size: 2rem; }
+  .pt-who { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+  .pt-who span { border: 1px solid rgba(234,215,166,.45); color: var(--gold-soft); padding: 6px 14px; border-radius: 99px; }
+  .hp { position: absolute; left: -9999px; }
+</style>
+{% endblock %}
+{% block content %}
+<section class="pt-hero">
+  <div class="wrap">
+    <h1>Partner with {{ settings.brand_name }}</h1>
+    <p>Families ask you about invitations every day. Send them to us with your own link.</p>
+    <p class="big">{{ percent }}%</p>
+    <p>of everything they pay, sent to your UPI. Free to join, no targets.</p>
+    <div class="pt-who">{% for label in businesses.values() if label != 'Other' %}<span>{{ label }}</span>{% endfor %}</div>
+  </div>
+</section>
+
+<section><div class="wrap">
+  <div class="pt-steps">
+    <div class="card"><div class="n">🔗</div><h3>Get your link</h3><p class="muted">Join below in 30 seconds. You get your own link and QR code.</p></div>
+    <div class="card"><div class="n">📲</div><h3>Share it</h3><p class="muted">Send it on WhatsApp, print the QR at your counter or on your visiting card.</p></div>
+    <div class="card"><div class="n">💌</div><h3>Families create free</h3><p class="muted">Card, video, PDF and personal invites for every guest, in 10 languages.</p></div>
+    <div class="card"><div class="n">💰</div><h3>You earn</h3><p class="muted">When they buy HD, 2K or 4K, {{ percent }}% is yours. Track every family on your dashboard.</p></div>
+  </div>
+</div></section>
+
+<section style="padding-top:0"><div class="narrow">
+  <div class="card" id="join">
+    <h2 style="margin-bottom:4px">Join free</h2>
+    <p class="muted" style="margin-top:0">Already joined? Enter the same mobile number to open your dashboard.</p>
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    <form method="post" action="/partners" class="form-grid">
+      <div><label for="pt-name">Your name / business name *</label><input id="pt-name" name="name" type="text" required maxlength="120" placeholder="Riya Mehndi Arts"></div>
+      <div><label for="pt-business">What do you do?</label><select id="pt-business" name="business">{% for k, label in businesses.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></div>
+      <div><label for="pt-phone">Mobile (WhatsApp) *</label><input id="pt-phone" name="phone" type="tel" inputmode="tel" required maxlength="20" placeholder="98765 43210"></div>
+      <div><label for="pt-city">City</label><input id="pt-city" name="city" type="text" maxlength="80" placeholder="Patna"></div>
+      <div class="full"><label for="pt-upi">UPI ID for payouts <span class="hint">optional, you can add it later</span></label><input id="pt-upi" name="upi_id" type="text" maxlength="100" placeholder="yourname@okaxis"></div>
+      <input class="hp" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div class="full"><button class="btn btn-primary" type="submit">Get my partner link</button></div>
+    </form>
+    <p class="small muted">Payouts are sent to your UPI at the start of every month for the previous month's paid invitations. Questions? <a href="{{ wa_link('Hi, I have a question about the partner programme') }}" target="_blank" rel="noopener">WhatsApp us</a>.</p>
+  </div>
+</div></section>
+{% endblock %}

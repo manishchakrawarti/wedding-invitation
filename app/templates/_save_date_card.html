@@ -1,0 +1,22 @@
+{# Save the Date: the invitation's own design with just the names, date and city, sent weeks ahead. #}
+{% if save_date_ready(o) %}
+<div class="card" id="save-date">
+  <h2 style="margin-bottom:4px">📅 Save the Date</h2>
+  <p class="muted" style="margin-top:0">Send this weeks before the full invitation, so relatives keep the date free and book their travel early. Same design, just the names, date and city.</p>
+  <img class="sd-img" src="/o/{{ o.token }}/save-the-date.jpg?v={{ o.updated_at.timestamp()|int if o.updated_at else 0 }}" alt="Save the Date card" loading="lazy">
+  <p style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px">
+    <a class="btn btn-primary" href="/o/{{ o.token }}/save-the-date.jpg?download=1">⬇ Download</a>
+    <button class="btn btn-wa" type="button" id="sd-share">📤 Share on WhatsApp</button></p>
+</div>
+<style>.sd-img { display: block; width: 100%; max-width: 340px; aspect-ratio: 4 / 5; margin: 10px auto 0; border-radius: 14px; box-shadow: var(--shadow); background: #f6efe4; }</style>
+<script>
+document.getElementById('sd-share').addEventListener('click', async () => {
+  try {
+    const blob = await (await fetch('/o/{{ o.token }}/save-the-date.jpg')).blob();
+    const file = new File([blob], 'save-the-date.jpg', { type: 'image/jpeg' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: 'Save the Date 💌' }); return; }
+  } catch (e) { if (e.name === 'AbortError') return; }
+  location.href = '/o/{{ o.token }}/save-the-date.jpg?download=1';
+});
+</script>
+{% endif %}
