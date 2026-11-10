@@ -116,7 +116,7 @@
       </div>
       {% endfor %}
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px">
-        <span><strong>Standard</strong> <span class="small muted">720p · with a small credit</span></span>
+        <span><strong>Standard</strong> <span class="small muted">{{ catalog.RESOLUTIONS['free'].width }}p · with a small credit</span></span>
         <span style="display:flex;gap:6px"><a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/einvite/pdf/free">⬇ PDF</a>
           <a class="btn btn-sm btn-ghost" href="/o/{{ o.token }}/einvite/image/free">⬇ Long image</a></span>
       </div>

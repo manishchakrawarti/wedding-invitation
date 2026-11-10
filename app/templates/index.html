@@ -257,6 +257,7 @@
   <div class="wrap">
     <h2 class="center">Simple, honest pricing</h2>
     <p class="center muted">Create it yourself for any occasion. Pay only for the size you need.</p>
+    <p class="center"><span class="launch-tag">🎉 Launch offer prices · unlimited guests on every plan</span></p>
     <div class="tier-strip">
       {% for r in catalog.RESOLUTIONS.values() %}
       <div class="tier-box {% if r.key == '1080' %}popular{% endif %}">
@@ -293,7 +294,7 @@
   <div class="narrow">
     <h2 class="center">Questions families ask</h2>
     <details><summary>Which occasions can I make invitations for?</summary><p>Weddings plus {{ occasion_types|length }} other occasions: birthdays, anniversaries, pujas (Satyanarayan, Griha Pravesh, Diwali…), baby ceremonies, festivals and parties, and business events. <a href="/occasions">See them all</a>.</p></details>
-    <details><summary>Is it really free?</summary><p>Yes. Creating and previewing is free, and the Standard (720p) download is free. Pay only if you want Full HD (₹9), 2K (₹49) or 4K (₹99), which also makes your invite page live for RSVPs.</p></details>
+    <details><summary>Is it really free?</summary><p>Yes. Creating and previewing is free, and the Standard (480p) download is free, with unlimited personal invites. Pay only if you want Full HD (₹9), 2K (₹49) or 4K (₹99), which also makes your invite page live for RSVPs.</p></details>
     <details><summary>How do guests RSVP?</summary><p>Share your invite page link on WhatsApp. Guests open it, see the schedule and map, add it to their calendar and reply in a tap. You see every reply on your order page.</p></details>
     <details><summary>How fast will I get my invitation?</summary><p>Self-made invitations are ready in seconds. Done-for-you wedding proofs arrive within 48 hours of payment (24 hours with Premium or Express).</p></details>
     <details><summary>Can the card be in Hindi or my regional language?</summary><p>Yes: {{ catalog.LANGUAGES.values()|map(attribute='name')|join(', ') }}. Just write the names in your script on the order form, exactly as you want them printed.</p></details>

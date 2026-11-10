@@ -347,9 +347,6 @@ def order_status(request: Request, order: Order = Depends(get_order)):
 
 # --- personal invites: one guest at a time, each with their own card, by any free channel ---------------
 
-MAX_INVITEES = 2000
-
-
 def _send_context(order: Order) -> dict:
     if not invites.can_personalize(order):
         return {"can_send": False}
@@ -384,8 +381,6 @@ async def add_invitee(request: Request, order: Order = Depends(get_order), db: S
         error = "The guest's mobile number doesn't look right. Use 10 digits, or + and the country code."
     elif email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         error = "The guest's email doesn't look right."
-    elif len(order.invitees) >= MAX_INVITEES:
-        error = f"You can send up to {MAX_INVITEES} personal invites."
     if error:
         return redirect(f"{back}?send_error={quote(error)}#send")
     invitee = Invitee(order_id=order.id, code=invites.new_code(db), name=name, phone=phone, email=email, functions=[], **sender)

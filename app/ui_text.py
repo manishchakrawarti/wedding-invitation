@@ -200,6 +200,8 @@ HI = {
     'Send request': 'अनुरोध भेजें',
     "🙏 Thank you! We'll WhatsApp you a quote within a few hours.": '🙏 धन्यवाद! कुछ ही घंटों में हम WhatsApp पर दाम भेजेंगे।',
     'Partner with us · earn 20%': 'हमारे पार्टनर बनें · 20% कमाएँ',
+    '🎉 Launch offer prices · unlimited guests on every plan': '🎉 लॉन्च ऑफ़र दाम · हर प्लान में असीमित मेहमान',
+    '🎉 Launch offer': '🎉 लॉन्च ऑफ़र',
     # homepage feature cards
     'Send anywhere in one tap': 'एक टैप में कहीं भी भेजें',
     '"A special invitation for Sharma Family": each guest gets their own card, PDF and link with their name on it, free.': '"शर्मा परिवार के लिए विशेष निमंत्रण": हर मेहमान को उसके नाम वाला अपना कार्ड, PDF और लिंक, मुफ़्त।',

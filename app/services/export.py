@@ -71,7 +71,7 @@ def build_html(order: Order, tier: str = "1080", pages_range: tuple[int, int] | 
                invitee=None) -> tuple[str, int]:
     """The print page and its number of pages.
 
-    tier sets the card images inside (free = 720 with a credit and no RSVP QR, since the
+    tier sets the card images inside (free = 480 with a credit and no RSVP QR, since the
     invite page only goes live once a paid size is bought). pages_range (first, last) renders only those pages.
     invitee: a personal copy for one guest, with their name, who sent it and a QR to their own invite link.
     """
@@ -163,7 +163,7 @@ def render(order: Order, fmt: str, tier: str = "1080", invitee=None) -> bytes:
 
 def _render(order: Order, fmt: str, tier: str = "1080", invitee=None) -> bytes:
     """fmt 'pdf': one page per section. fmt 'image': all pages stacked into one tall JPEG
-    whose width matches the tier (720 / 1080 / 2048 / 3840 px). Personal copies (invitee) aren't cached:
+    whose width matches the tier (480 / 1080 / 2048 / 3840 px). Personal copies (invitee) aren't cached:
     one per guest would fill the disk."""
     from PIL import Image
 

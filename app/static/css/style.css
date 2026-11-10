@@ -231,3 +231,4 @@ body:has(.summary-bar) .wa-float, body:has(.cta-bar) .wa-float, body:has(.sticky
 
 .legal h2 { font-size: 1.5rem; margin-top: 1.6em; }
 .legal li { margin-bottom: 6px; }
+.launch-tag { display: inline-block; background: #fff3d6; color: var(--maroon-dark); border: 1px solid var(--gold); font-family: var(--sans); font-size: .82rem; font-weight: 700; padding: 3px 12px; border-radius: 99px; vertical-align: middle; }

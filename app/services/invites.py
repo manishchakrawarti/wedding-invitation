@@ -29,7 +29,6 @@ def event_details(db: Session, order: Order) -> EventDetails:
 
 
 GIFT_NOTES = ("blessings_only", "no_boxed")
-MAX_GUESTS_AT_CREATE = 500
 
 
 def read_family_details(form, errors: list[str]) -> dict:
@@ -68,7 +67,7 @@ def save_family_details(db: Session, order: Order, details: dict, form=None) -> 
 
 def add_guest_list(db: Session, order: Order, text: str, sent_by: str = "") -> int:
     """Guests pasted while creating (one per line: name, phone): each gets a personal card and link, ready to send."""
-    parsed = parse_guest_lines(text, [], [])[:MAX_GUESTS_AT_CREATE]
+    parsed = parse_guest_lines(text, [], [])
     for g in parsed:
         db.add(Invitee(order_id=order.id, code=new_code(db), name=g["name"], phone=g["phone"], side=g["side"],
                        functions=[], sent_by=sent_by[:120]))

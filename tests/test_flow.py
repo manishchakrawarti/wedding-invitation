@@ -482,7 +482,7 @@ def test_instant_free_download_then_paid_sizes(client):
     page = client.get(f"/o/{order.token}/preview").text
     assert "Get Full HD" in page and "Get 4K" in page and "⬇ Free" in page
     free = client.get(f"{dl}/free")
-    assert free.status_code == 200 and _image_size(free) == (720, 900)
+    assert free.status_code == 200 and _image_size(free) == (480, 600)
     assert client.get(f"{dl}/1080").status_code == 403
     assert client.get(f"/o/{order.token}/files/{final.id}").status_code == 403
     assert client.get(f"/o/{order.token}", follow_redirects=False).headers["location"].endswith("/preview")
@@ -571,7 +571,7 @@ def test_einvite_pdf_and_long_image_in_sizes(client):
     order = create_instant(client, fn_haldi="on", fn_haldi_date=WEDDING)
     base = f"/o/{order.token}/einvite"
 
-    # Free preview: the live invitation is shown, and the 720p e-invite is free.
+    # Free preview: the live invitation is shown, and the 480p e-invite is free.
     page = client.get(f"/o/{order.token}/preview").text
     assert f'<iframe src="/e/{order.rsvp_slug}"' in page and "Download your e-invite" in page
     free_pdf = client.get(f"{base}/pdf/free")
@@ -579,7 +579,7 @@ def test_einvite_pdf_and_long_image_in_sizes(client):
     # cover + invitation (shloka, families) + main card + haldi card + celebrations + venue + closing
     assert len(re.findall(rb"/Type\s*/Page[^s]", free_pdf.content)) == 7
     free_img = client.get(f"{base}/image/free")
-    assert free_img.headers["content-type"] == "image/jpeg" and _image_size(free_img) == (720, 900 * 7)
+    assert free_img.headers["content-type"] == "image/jpeg" and _image_size(free_img) == (480, 600 * 7)
     assert client.get(f"{base}/pdf/1080").status_code == 403
 
     # Buy Full HD (₹9): 1080 unlocked, 2K still locked.
@@ -1365,7 +1365,7 @@ def test_personal_cards_while_creating_for_every_occasion(client):
 
         # Their card: free size with their name on it (and the small credit), no QR yet.
         card = client.get(f"/o/{order.token}/guests/{sharma.id}/card.jpg")
-        assert card.status_code == 200 and Image.open(io.BytesIO(card.content)).size == (720, 900), event
+        assert card.status_code == 200 and Image.open(io.BytesIO(card.content)).size == (480, 600), event
         assert client.get(f"/i/{sharma.code}/card.jpg").content == card.content
 
         # Their link shows that card while the family is on the free preview.
@@ -1844,7 +1844,7 @@ def test_save_the_date_card(client):
     assert "📅 Save the Date" in client.get(f"/o/{order.token}/preview").text
     img = client.get(f"/o/{order.token}/save-the-date.jpg")
     assert img.status_code == 200 and img.headers["content-type"] == "image/jpeg" and "inline" in img.headers["content-disposition"]
-    assert Image.open(io.BytesIO(img.content)).size == (720, 900)  # the free size, with the credit
+    assert Image.open(io.BytesIO(img.content)).size == (480, 600)  # the free size, with the credit
     assert "attachment" in client.get(f"/o/{order.token}/save-the-date.jpg?download=1").headers["content-disposition"]
     with SessionLocal() as db:
         from app.services import save_date
